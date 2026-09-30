@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Webspine.Delivery/Webspine.Delivery.csproj" />
+    <Project Path="src/Webspine.Caching.Memory/Webspine.Caching.Memory.csproj" />
+    <Project Path="src/Webspine.Core/Webspine.Core.csproj" />
+    <Project Path="src/Webspine.Demo/Webspine.Demo.csproj" />
+    <Project Path="src/Webspine.Management/Webspine.Management.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Webspine.Checks/Webspine.Checks.csproj" />
+    <Project Path="tests/Webspine.ManagementChecks/Webspine.ManagementChecks.csproj" />
+  </Folder>
+</Solution>

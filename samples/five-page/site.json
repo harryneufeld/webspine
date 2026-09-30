@@ -1,0 +1,55 @@
+{
+  "source": { "id": "five-page-demo", "kind": "fixture" },
+  "revision": "fixture-v1",
+  "website": {
+    "id": "northline-studio", "title": "Northline Studio", "language": "en",
+    "assets": [{ "id": "studio-illustration", "file": "assets/studio.svg", "contentType": "image/svg+xml" }],
+    "pages": [
+      {
+        "id": "home", "path": "/", "title": "Home", "description": "Thoughtful services. Useful products. Built to last.",
+        "sections": [
+          { "kind": "text", "id": "introduction", "heading": "Good ideas deserve a clear direction.", "text": "We help small businesses turn complex challenges into useful digital experiences. Explore our services, discover our products, and meet the people behind the work." },
+          { "kind": "image", "id": "studio-image", "assetId": "studio-illustration", "alternativeText": "Abstract illustration of a studio workspace with architectural shapes" },
+          { "kind": "cta", "id": "services-cta", "heading": "A little clarity goes a long way.", "text": "Start with the challenge. We will help you find the next practical step.", "label": "Explore our services", "destination": "/services/" }
+        ]
+      },
+      {
+        "id": "services", "path": "/services/", "title": "Services", "description": "From first questions to a better working day.",
+        "sections": [
+          { "kind": "cards", "id": "service-list", "heading": "How we can help", "items": [
+            { "title": "Digital strategy", "description": "A clear plan based on your business, your customers, and what you can realistically maintain.", "assetId": null, "destination": "/contact/" },
+            { "title": "Website design", "description": "Readable, accessible websites with an identity that feels like your business.", "assetId": null, "destination": "/contact/" },
+            { "title": "Ongoing care", "description": "Practical improvements and dependable maintenance as your needs change.", "assetId": null, "destination": "/contact/" }
+          ] },
+          { "kind": "cta", "id": "services-contact", "heading": "Tell us what you are working on.", "text": "A conversation is a useful place to start.", "label": "Get in touch", "destination": "/contact/" }
+        ]
+      },
+      {
+        "id": "products", "path": "/products/", "title": "Products", "description": "Small tools for work that matters.",
+        "sections": [
+          { "kind": "cards", "id": "product-list", "heading": "Our collection", "items": [
+            { "title": "Studio Planner", "description": "A simple planning kit for turning the next big idea into manageable steps.", "assetId": "studio-illustration", "destination": "/contact/" },
+            { "title": "Brand Essentials", "description": "A practical set of templates for a consistent business identity.", "assetId": "studio-illustration", "destination": "/contact/" },
+            { "title": "Website Starter", "description": "A considered starting point for your next informational website.", "assetId": "studio-illustration", "destination": "/contact/" }
+          ] },
+          { "kind": "text", "id": "product-information", "heading": "Want to know more?", "text": "These are example products for the webspine demo. This website has no checkout or payment system." }
+        ]
+      },
+      {
+        "id": "about", "path": "/about/", "title": "About", "description": "A small studio with a practical outlook.",
+        "sections": [
+          { "kind": "text", "id": "our-story", "heading": "We value work that stays useful.", "text": "Northline is a fictional independent studio. We use it to demonstrate a common business website, combining services, products, and a clear introduction to the company." },
+          { "kind": "text", "id": "our-approach", "heading": "Clear thinking. Careful making.", "text": "We prefer understandable systems, thoughtful design, and improvements that people can maintain." },
+          { "kind": "cta", "id": "about-contact", "heading": "Good work starts with a conversation.", "text": "Find our example contact details on the next page.", "label": "Contact the studio", "destination": "/contact/" }
+        ]
+      },
+      {
+        "id": "contact", "path": "/contact/", "title": "Contact", "description": "Let us hear what you have in mind.",
+        "sections": [
+          { "kind": "text", "id": "contact-details", "heading": "Say hello", "text": "Email: hello@example.invalid\nHours: Monday–Friday, 09:00–17:00\nThis is fictional demo information. No contact form submissions are collected." },
+          { "kind": "cta", "id": "contact-services", "heading": "Still exploring?", "text": "Take another look at the ways we can help.", "label": "View our services", "destination": "/services/" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+# .NET and editor output
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+TestResults/
+artifacts/
+coverage/
+
+# Private operator/runtime data
+.local/
+.runtime/
+data/
+secrets/
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+appsettings.Local.json
+
+# OS files
+.DS_Store
+Thumbs.db
