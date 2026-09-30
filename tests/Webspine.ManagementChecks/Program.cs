@@ -7,6 +7,7 @@ using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { 
 await DeliveryChecks.RunAsync();
 await ContentStoreChecks.RunAsync();
 await AuthoringChecks.RunAsync();
+await AccountChecks.RunAsync();
 
 await using (var host = CheckHost.Start("Development", true))
 {

@@ -12,7 +12,7 @@ public sealed class SiteNotInitializedException() : Exception("Create a site bef
 public sealed record StoredContent(ContentSnapshot Snapshot, ImmutableDictionary<string, ImmutableArray<byte>> Assets);
 public sealed record DraftRevision(string Revision, string CreatedUtc);
 
-public sealed class SqliteContentSource : IContentSource
+public sealed class SqliteContentSource : IWebsiteAuthoringSource
 {
     private readonly string connectionString;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
@@ -85,6 +85,8 @@ public sealed class SqliteContentSource : IContentSource
         }, ct);
     public async Task<ContentSnapshot> AddPageAsync(string expected, string title, string path, string description, CancellationToken ct = default)
         => await Change(expected, snapshot => snapshot.Website with { Pages = snapshot.Website.Pages.Add(new("page-" + Guid.NewGuid().ToString("N"), path, title, description, [new TextSection("introduction", "Tell your story", "Add your page content here.")])) }, ct);
+    public async Task<ContentSnapshot> UpdateWebsiteAsync(string expected, string title, string language, CancellationToken ct = default)
+        => await Change(expected, snapshot => snapshot.Website with { Title = title, Language = language }, ct);
     public async ValueTask<ContentSnapshot> UpdateDraftAsync(DraftChange change, CancellationToken cancellationToken = default)
         => await Change(change.ExpectedRevision, snapshot =>
         {

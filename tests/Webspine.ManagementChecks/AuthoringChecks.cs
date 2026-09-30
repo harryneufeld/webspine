@@ -18,6 +18,7 @@ static partial class AuthoringChecks
             await using (var host = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
             {
                 await host.WaitHealthyAsync(client);
+                await AccountChecks.BootstrapAsync(client, host.Url);
                 var setup = await client.GetStringAsync(host.Url + "/manage");
                 Require(setup.Contains("Start blank") && setup.Contains("Use demo"), "Setup choices missing.");
                 using var unprotected = await client.PostAsync(host.Url + "/manage/setup", new FormUrlEncodedContent(new Dictionary<string, string> { ["title"] = "Unsafe", ["mode"] = "demo" }));
@@ -77,6 +78,7 @@ static partial class AuthoringChecks
             await using (var blank = CheckHost.Start("Development", false, dataDirectory: blankDirectory, managementEnabled: true))
             {
                 await blank.WaitHealthyAsync(client);
+                await AccountChecks.BootstrapAsync(client, blank.Url);
                 var values = Form(await client.GetStringAsync(blank.Url + "/manage")); values["mode"] = "blank"; values["title"] = "Blank project";
                 using var created = await client.PostAsync(blank.Url + "/manage/setup", new FormUrlEncodedContent(values));
                 var overview = await client.GetStringAsync(blank.Url + "/manage");

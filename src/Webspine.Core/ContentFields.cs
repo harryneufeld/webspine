@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Webspine.Core;
 
-namespace Webspine.Content.Sqlite;
+namespace Webspine.Core;
 
 public sealed record EditableField(string Key, string Label, string Value, bool Multiline = false);
 

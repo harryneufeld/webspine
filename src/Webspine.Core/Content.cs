@@ -38,6 +38,14 @@ public interface IContentSource
 public sealed record DraftChange(string ExpectedRevision, string PageId, string SectionId,
     string Field, string Value);
 
+// Authoring capabilities extend the read/field contract without requiring read-only sources to write.
+public interface IWebsiteAuthoringSource : IContentSource
+{
+    Task<ContentSnapshot> UpdateWebsiteAsync(string expectedRevision, string title, string language, CancellationToken cancellationToken = default);
+    Task<ContentSnapshot> AddPageAsync(string expectedRevision, string title, string path, string description, CancellationToken cancellationToken = default);
+    Task<ContentSnapshot> EditPageAsync(string expectedRevision, string pageId, string title, string description, IReadOnlyDictionary<string, string> fields, CancellationToken cancellationToken = default);
+}
+
 public sealed class ContentValidationException(string message) : Exception(message);
 public sealed class SourceOperationNotSupportedException(string message) : Exception(message);
 
@@ -51,6 +59,9 @@ public static partial class ContentContract
     [GeneratedRegex("^/(?:[a-z0-9]+(?:-[a-z0-9]+)*/)*$", RegexOptions.CultureInvariant)]
     private static partial Regex PagePathPattern();
 
+    [GeneratedRegex("^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$", RegexOptions.CultureInvariant)]
+    private static partial Regex LanguagePattern();
+
     public static void Validate(ContentSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
@@ -62,6 +73,7 @@ public static partial class ContentContract
         Identifier(website.Id);
         Text(website.Title, 120);
         Text(website.Language, 35);
+        if (!LanguagePattern().IsMatch(website.Language)) Fail("Use a language tag such as en, de or en-GB.");
         if (website.Pages.IsDefaultOrEmpty || website.Pages.Length > 100) Fail("A website needs 1–100 pages.");
         if (website.Assets.IsDefault || website.Assets.Length > 500) Fail("Invalid asset collection.");
         var assetIds = new HashSet<string>(StringComparer.Ordinal);

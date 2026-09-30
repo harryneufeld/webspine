@@ -4,6 +4,12 @@ using Webspine.Delivery;
 using Webspine.Caching.Memory;
 using Webspine.Management;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
+using System.Text.Json.Serialization;
+using Webspine.Content.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -15,6 +21,33 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
 {
     var dataDirectory = builder.Configuration["Management:DataDirectory"] ?? Path.Combine(builder.Environment.ContentRootPath, ".local");
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDirectory, "keys"))).SetApplicationName("webspine-local");
+    Directory.CreateDirectory(dataDirectory);
+    builder.Services.AddDbContext<AccountDatabase>(options => options.UseSqlite(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = Path.Combine(Path.GetFullPath(dataDirectory), "accounts.db"), Pooling = false }.ToString()));
+    builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+    {
+        options.Password.RequiredLength = 12;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    }).AddEntityFrameworkStores<AccountDatabase>();
+    builder.Services.ConfigureApplicationCookie(options =>
+    {
+        options.Cookie.Name = "webspine.session";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = false;
+    });
+    builder.Services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
+    builder.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, IntegrationAuthentication>(IntegrationAuthentication.SchemeName, _ => { });
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = 429;
+        options.AddPolicy("accounts", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 12, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    });
+    builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
+    builder.Services.AddSingleton(new SqliteContentSource(Path.Combine(dataDirectory, "webspine.db")));
+    builder.Services.AddSingleton<IWebsiteAuthoringSource>(services => services.GetRequiredService<SqliteContentSource>());
+    builder.Services.AddSingleton<AuthoringOperations>();
 }
 builder.Services.AddSingleton<IDeliveryCache>(services =>
     builder.Configuration.GetValue("Demo:CacheEnabled", true) ? new MemoryDeliveryCache() : new NoDeliveryCache());
@@ -31,7 +64,15 @@ if ((demoEnabled || managementEnabled) && !app.Environment.IsDevelopment())
     return;
 }
 
-if (managementEnabled) await app.MapManagementAsync();
+if (managementEnabled)
+{
+    app.UseAuthentication();
+    app.UseRateLimiter();
+    await app.InitializeAccountsAsync();
+    await app.MapManagementAsync();
+    app.MapAccounts();
+    app.MapAuthoringApi();
+}
 
 if (demoEnabled)
 {
