@@ -4,7 +4,7 @@ An open-source, self-hosted modular web engine with a built-in content source, r
 
 ## Current state
 
-The local authoring workflow supports Start blank or Use demo, persistent page editing, revision conflicts, retained previews and content/image export. A separate SQLite content module implements the replaceable source contract. Validated prerendered builds and delivery support extension hooks, replaceable caching, HEAD and ETags. Accounts, dynamic rendering, durable jobs and publishing remain planned.
+The local authoring workflow supports owner setup/sign-in, Start blank or Use demo, persistent page editing, shared website settings, revision conflicts, retained previews and content/image export. External apps use a scoped HTTP API with expiring, revocable credentials. A separate SQLite content module implements the replaceable source contract. Validated prerendered builds and delivery support extension hooks, replaceable caching, HEAD and ETags. Additional human roles, account recovery, hosted management, dynamic rendering, durable jobs and publishing remain planned.
 
 The earlier `website-poc` sibling folder is a separate experiment. Its source, generated credentials and runtime data are not part of this repository. Its successful checks are evidence about that experiment, not validation of the MVP.
 
@@ -15,6 +15,7 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 - [Content contract](docs/content-contract.md) and [extensions](docs/extensions.md): current contracts and modularity roadmap.
 - [Delivery pipeline](docs/delivery.md): page modes, replaceable caching, HTTP behavior and current limits.
 - [Local management](docs/management.md): setup, editing, stored data and preview limitations.
+- [Authoring API](docs/authoring-api.md): external apps, permissions and conditional operations.
 - [MVP plan](docs/mvp-plan.md): milestones and issue seeds with acceptance criteria.
 - [Foundation decision](docs/decisions/0001-fresh-mvp-foundation.md): what this workspace establishes.
 - [Validation](VALIDATION.md): checks performed in this workspace.
@@ -51,8 +52,8 @@ Try the local editor:
 dotnet run --project src/Webspine.Management -- --urls http://127.0.0.1:9087 --environment Development --Management:Enabled true
 ```
 
-Open `http://127.0.0.1:9087/manage`. Choose a blank site or an explicit copy of the five-page demo. Save a draft, then Build preview. Restarting preserves the site and existing preview URLs. Management is disabled by default and restricted to Development and loopback access; it has no accounts yet. See [local management](docs/management.md) for storage settings and limits.
+Open `http://127.0.0.1:9087/manage`. Create the owner account, then choose a blank site or an explicit copy of the five-page demo. Save a draft, then Build preview. Website settings edits the shared name/title and language; Connected apps creates scoped API credentials. Restarting preserves the site, accounts and existing preview URLs. Management is disabled by default and restricted to Development and loopback access. See [local management](docs/management.md) for storage settings and limits.
 
-Next implement accounts and server permissions before enabling hosted management or AI access, followed by durable builds and exact-artifact publication. The [content decision](docs/decisions/0006-built-in-content-and-first-management-workflow.md) records why the first built-in engine uses a narrow C# module and SQLite.
+Next implement owner recovery and additional human permissions, then durable builds and exact-artifact publication before hosted pilot deployment. The [content decision](docs/decisions/0006-built-in-content-and-first-management-workflow.md) records the narrow C# engine and SQLite; [decision 0007](docs/decisions/0007-owner-accounts-scoped-apps-and-shared-settings.md) records accounts, app scopes and shared metadata.
 
 The repository is [harryneufeld/webspine](https://github.com/harryneufeld/webspine), initially private while the MVP is developed. The [MVP plan](docs/mvp-plan.md) links the first four implementation issues; GitHub owns their status.

@@ -10,8 +10,11 @@ Updated 30 September 2026. The first implementation issues are linked below; Git
 | [#2](https://github.com/harryneufeld/webspine/issues/2) | Versioned SQLite content and atomic edits |
 | [#3](https://github.com/harryneufeld/webspine/issues/3) | Local blank/demo setup and page editor |
 | [#4](https://github.com/harryneufeld/webspine/issues/4) | Retained previews from saved drafts |
+| [#6](https://github.com/harryneufeld/webspine/issues/6) | First owner account and protected sessions |
+| [#7](https://github.com/harryneufeld/webspine/issues/7) | Scoped external-app authoring and credentials |
+| [#8](https://github.com/harryneufeld/webspine/issues/8) | Shared website metadata in UI and API |
 
-This slice provides local setup, editing, preview, export and restart persistence. It does not complete M1 or M2: accounts, scoped AI access, durable jobs and publication retain their acceptance requirements. Next split account bootstrap/session/server permission work from MVP-05 into a focused issue before exposing management beyond loopback.
+These slices provide local setup, editing, metadata, preview, export, owner sessions, scoped app access and restart persistence. They do not complete M1 or M2: owner recovery, additional human permissions, durable jobs and publication retain their acceptance requirements. Next split recovery and human-role management from MVP-05 into focused issues before exposing management beyond loopback. MCP can later adapt the same authenticated operations.
 
 ## Release objective
 

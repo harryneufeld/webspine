@@ -56,6 +56,13 @@ static class ContentStoreChecks
             Require(retained is not null && retained.Digest == preview.Digest && retained.Files.Zip(preview.Files).All(pair => pair.First.Bytes.SequenceEqual(pair.Second.Bytes)), "Preview changed after editing/reopening.");
             await Fails<RevisionConflictException>(() => store.SavePreviewAsync(Guid.NewGuid().ToString("N"), preview));
             Console.WriteLine("PASS: Retained previews preserve exact bytes across edits/reopening and stale builds cannot be recorded.");
+            head = await reopened.ReadAsync();
+            var renamed = await ((IWebsiteAuthoringSource)store).UpdateWebsiteAsync(head.Revision, "Shared name", "de-AT");
+            await Fails<RevisionConflictException>(() => reopened.UpdateWebsiteAsync(head.Revision, "Stale name", "en"));
+            await Fails<ContentValidationException>(() => reopened.UpdateWebsiteAsync(renamed.Revision, "Invalid language", "not a language"));
+            var savedMetadata = await reopened.ReadAsync();
+            Require(savedMetadata.Revision == renamed.Revision && savedMetadata.Website.Title == "Shared name" && savedMetadata.Website.Language == "de-AT", "Rejected metadata update changed persistent settings.");
+            Console.WriteLine("PASS: Shared metadata uses the common authoring contract and rejects stale/invalid updates atomically.");
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true); }
     }

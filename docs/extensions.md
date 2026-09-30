@@ -4,7 +4,7 @@ Baseline, 30 September 2026. Modularity is an MVP requirement. WordPress is a us
 
 | Stage | Current implementation | Next contract work |
 | --- | --- | --- |
-| Content sources | `IContentSource`, immutable snapshots, SQLite conditional writes and capability reporting | External adapters, migrations and scoped writes; general page/media authoring contract |
+| Content sources | `IContentSource`, `IWebsiteAuthoringSource`, shared approved fields and SQLite conditional writes | External adapters, source migrations and full component/media authoring |
 | Components | Four typed kinds and mandatory validation | Versioned component schema, validator and renderer registry |
 | Validation | Ordered `IContentValidator` extensions | Operation-specific policies and installation compatibility |
 | Rendering | Replaceable `IWebsiteRenderer` | Versioned design packages and component composition |
@@ -12,7 +12,7 @@ Baseline, 30 September 2026. Modularity is an MVP requirement. WordPress is a us
 | Preview | Retained SQLite artifacts and loopback Development delivery | Replaceable artifact store, account-protected preview provider and review hooks |
 | Delivery/cache | Prerendered pipeline, artifact source, replaceable cache and per-response header hooks | Dynamic rendering, production policies, separate host and broader request hooks |
 | Deployment | Planned | Deployment provider, promotion checks, rollback and status events |
-| AI/API | Planned | Scoped reads, change proposals/writes, build/export/preview/release operations |
+| AI/API | Bearer scopes, conditional page/settings operations and retained previews through shared authoring operations | MCP adapter, component/media operations, durable audit and release permissions |
 
 Current extensions are explicitly supplied to the pipeline in stable order. Duplicate or empty extension IDs fail. Contributor files enter the same artifact digest as renderer output. Duplicate paths fail, failures return no finalized artifact, and extensions cannot append files after finalization. Required core validation always runs; there is no hook that disables it. Future post-build observers receive immutable artifacts and cannot mutate the reviewed bytes.
 

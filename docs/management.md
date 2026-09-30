@@ -1,6 +1,6 @@
 # Local authoring workflow
 
-Implemented 30 September 2026. This is a Development-only workflow for one website, before accounts and hosted management.
+Updated 1 October 2026. This is a Development-only workflow for one website and one owner; hosted management remains planned.
 
 From the repository root:
 
@@ -8,7 +8,7 @@ From the repository root:
 dotnet run --project src/Webspine.Management -- --urls http://127.0.0.1:9087 --environment Development --Management:Enabled true
 ```
 
-Open `/manage`. Start blank creates one minimal Home page; Use demo explicitly copies Home, Services, Products, About and Contact, including their sample image. Neither application startup nor visiting the editor seeds content. Setup cannot replace an existing website. The separate `Demo:Enabled` read-only fixture remains independent.
+Open `/manage`. Create the owner account before site setup; existing installations keep their content and receive this account-bootstrap step. Sign in to access editing, exports and previews. Start blank creates one minimal Home page; Use demo explicitly copies Home, Services, Products, About and Contact, including their sample image. Neither application startup nor visiting the editor seeds content. Setup cannot replace an existing website. The separate `Demo:Enabled` read-only fixture remains independent.
 
 Edit page names, descriptions and approved fields in text, image, CTA and card sections. Add page creates a canonical route with a starter text section. Saving creates a new opaque revision and never publishes. A stale form returns a conflict and preserves its submitted page values; reopen the latest form and reconcile your changes. Mandatory content validation rejects invalid links, duplicate routes and unapproved fields. This slice has no layout designer, section insertion/removal, image uploads or page deletion.
 
@@ -16,15 +16,17 @@ Build preview captures content and stored images, validates them and retains the
 
 Download content/images exports a ZIP containing the current content snapshot and referenced media. This is portable content export, not a complete installation backup. Import, restore, retention cleanup and rollback are not implemented.
 
+Website settings edits the shared name/title and language through the same conditional authoring operation as the API. Updated values appear in the management overview and new page titles/header/footer/language attributes. Changing settings creates a revision and does not mutate existing previews.
+
 ## Storage and access
 
-By default the host stores `webspine.db` and antiforgery Data Protection keys in `.local/` beneath its content root (`src/Webspine.Management` with the command above). `--Management:DataDirectory /absolute/path` selects another directory; relative paths resolve from the process working directory. Prefer an absolute path when running outside development. Runtime directories and database files are ignored by Git.
+By default the host stores `webspine.db`, `accounts.db` and Data Protection keys in `.local/` beneath its content root (`src/Webspine.Management` with the command above). `--Management:DataDirectory /absolute/path` selects another directory; relative paths resolve from the process working directory. Prefer an absolute path when running outside development. Runtime directories and database files are ignored by Git.
 
 Schema version 1 stores immutable JSON content revisions, the current head, copied media bytes and retained preview artifacts. Writes compare and save in one SQLite transaction. The source adapter owns all content access; the management editor does not issue SQL. Future schema versions require explicit migrations. Preview storage currently uses this same database; extracting it into a replaceable artifact-store boundary is planned with release work.
 
-Management requires an explicit opt-in and refuses startup outside Development. Every management request checks loopback IP and localhost Host; state-changing forms require ASP.NET Core antiforgery validation. All management and preview responses disable browser/proxy caching. This does not establish human identity or isolate local users: any local process/user with access can operate the editor. Do not expose it through a proxy or tunnel. Data Protection keys are stored unencrypted and require local filesystem protection, as does the database.
+Management requires an explicit opt-in and refuses startup outside Development. Every management request checks loopback IP and localhost Host; state-changing forms require ASP.NET Core antiforgery validation. All management and preview responses disable browser/proxy caching. Management now requires an owner Identity session and server permissions. Initial owner setup must be completed by the operator; local filesystem access still controls the databases and keys. Do not expose it through a proxy or tunnel. Data Protection keys are stored unencrypted and require local filesystem protection, as does the database.
 
-ASP.NET Core Identity is the selected starting point for future accounts and cookie sessions. Server permissions, account recovery and separately scoped integration credentials must be implemented before hosted management or AI access. Existing previews are development artifacts, not reviewed or published releases.
+ASP.NET Core Identity implements the owner account and cookie session. Connected apps creates separate scoped, expiring and revocable credentials for the [authoring API](authoring-api.md). Account recovery, additional users/roles, explicit upgrade migrations and hosted access remain unimplemented. Keep the owner password safe; this slice provides no password-reset UI. Existing previews are development artifacts, not reviewed or published releases.
 
 ## Verification
 

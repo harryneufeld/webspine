@@ -1,6 +1,6 @@
 # Contributing
 
-webspine is starting its MVP implementation. Read the charter and architecture before choosing a task. The MVP plan contains issue seeds; GitHub issues have not yet been created.
+webspine is starting its MVP implementation. Read the charter and architecture before choosing a task. The MVP plan links implementation issues and retains broader issue seeds; GitHub owns task status.
 
 Use a short feature branch for a focused change. A pull request should explain the problem, resulting behavior, relevant validation and limitations. Link its issue when available.
 

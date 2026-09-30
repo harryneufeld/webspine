@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Features;
 using Webspine.Caching.Memory;
 using Webspine.Content.Sqlite;
@@ -16,12 +17,13 @@ internal static class ManagementEndpoints
 {
     public static async Task MapManagementAsync(this WebApplication app)
     {
-        var directory = app.Configuration["Management:DataDirectory"] ?? Path.Combine(app.Environment.ContentRootPath, ".local");
-        var store = new SqliteContentSource(Path.Combine(directory, "webspine.db"));
+        var store = app.Services.GetRequiredService<SqliteContentSource>();
+        var operations = app.Services.GetRequiredService<AuthoringOperations>();
         await store.InitializeSchemaAsync();
         app.Use(async (context, next) =>
         {
-            if (context.Request.Path.StartsWithSegments("/manage"))
+            var isApi = context.Request.Path.StartsWithSegments("/api");
+            if (context.Request.Path.StartsWithSegments("/manage") || isApi)
             {
                 var host = context.Request.Host.Host;
                 if (context.Connection.RemoteIpAddress is not { } remote || !IPAddress.IsLoopback(remote) ||
@@ -31,7 +33,26 @@ internal static class ManagementEndpoints
                 context.Response.Headers.XContentTypeOptions = "nosniff";
                 context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
                 if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = 262144;
-                if (HttpMethods.IsPost(context.Request.Method))
+                var path = context.Request.Path.Value ?? "";
+                if (isApi)
+                {
+                    var identity = await context.AuthenticateAsync(IntegrationAuthentication.SchemeName);
+                    if (!identity.Succeeded) { context.Response.Headers.WWWAuthenticate = "Bearer"; context.Response.StatusCode = 401; return; }
+                    context.User = identity.Principal!;
+                }
+                var publicAccount = path is "/manage/account/start" or "/manage/account/login" or "/manage/assets/editor.css";
+                if (!publicAccount)
+                {
+                    if (context.User.Identity?.IsAuthenticated != true) { context.Response.Redirect("/manage/account/login"); return; }
+                    var permission = isApi ? context.GetEndpoint()?.Metadata.GetMetadata<ApiPermission>()?.Name ?? "content:read"
+                        : path.StartsWith("/manage/integrations", StringComparison.Ordinal) ? "integrations:manage"
+                        : path.StartsWith("/manage/settings", StringComparison.Ordinal) ? "settings:write"
+                        : path.StartsWith("/manage/preview/", StringComparison.Ordinal) ? "preview:read"
+                        : path == "/manage/preview" ? "preview:build"
+                        : HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method) || path == "/manage/account/logout" ? "content:read" : "content:write";
+                    if (!Permissions.Has(context.User, permission)) { context.Response.StatusCode = 403; return; }
+                }
+                if (!isApi && HttpMethods.IsPost(context.Request.Method))
                 {
                     try { await context.RequestServices.GetRequiredService<IAntiforgery>().ValidateRequestAsync(context); }
                     catch (AntiforgeryValidationException) { await ManagementUi.Problem("This form expired or could not be verified. Reopen the page and try again.", 400).ExecuteAsync(context); return; }
@@ -82,7 +103,7 @@ internal static class ManagementEndpoints
             try
             {
                 var fields = form.Where(f => f.Key.StartsWith("field.", StringComparison.Ordinal)).ToDictionary(f => f.Key[6..], f => f.Value.ToString(), StringComparer.Ordinal);
-                await store.EditPageAsync(form["revision"].ToString(), id, form["title"].ToString(), form["description"].ToString(), fields, context.RequestAborted);
+                await operations.EditPageAsync(form["revision"].ToString(), id, form["title"].ToString(), form["description"].ToString(), fields, context.RequestAborted);
                 return Results.Redirect("/manage");
             }
             catch (Exception error) when (error is RevisionConflictException or ContentValidationException)
@@ -98,7 +119,7 @@ internal static class ManagementEndpoints
             var form = await context.Request.ReadFormAsync(context.RequestAborted);
             try
             {
-                await store.AddPageAsync(form["revision"].ToString(), form["title"].ToString(), form["path"].ToString(), form["description"].ToString(), context.RequestAborted);
+                await operations.AddPageAsync(form["revision"].ToString(), form["title"].ToString(), form["path"].ToString(), form["description"].ToString(), context.RequestAborted);
                 return Results.Redirect("/manage");
             }
             catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException)
@@ -109,12 +130,8 @@ internal static class ManagementEndpoints
             var form = await context.Request.ReadFormAsync(context.RequestAborted);
             try
             {
-                var captured = await store.CaptureAsync(context.RequestAborted);
-                if (captured.Snapshot.Revision != form["revision"].ToString()) throw new RevisionConflictException();
-                var id = Guid.NewGuid().ToString("N");
-                var artifact = await DemoSite.BuildSnapshotAsync(captured.Snapshot, captured.Assets, "/manage/preview/" + id, context.RequestAborted);
-                await store.SavePreviewAsync(id, artifact, context.RequestAborted);
-                return Results.Redirect("/manage/preview/" + id + "/");
+                var preview = await operations.PreviewAsync(form["revision"].ToString(), "/manage/preview/", context.RequestAborted);
+                return Results.Redirect("/manage/preview/" + preview.Id + "/");
             }
             catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException)
             { return ManagementUi.Problem(error.Message, error is ContentValidationException ? 422 : 409); }
@@ -140,6 +157,23 @@ internal static class ManagementEndpoints
                 }
             }
             return Results.File(stream.ToArray(), "application/zip", "webspine-content.zip");
+        });
+        app.MapGet("/manage/settings", async (HttpContext context) =>
+        {
+            var snapshot = await store.TryReadAsync(context.RequestAborted);
+            return snapshot is null ? Results.Redirect("/manage") : ManagementUi.Settings(context, snapshot);
+        });
+        app.MapPost("/manage/settings", async (HttpContext context) =>
+        {
+            var form = await context.Request.ReadFormAsync(context.RequestAborted);
+            try
+            {
+                await operations.SettingsAsync(form["revision"].ToString(), form["title"].ToString(), form["language"].ToString(), context.RequestAborted);
+                return Results.Redirect("/manage");
+            }
+            catch (Exception error) when (error is RevisionConflictException or ContentValidationException)
+            { return ManagementUi.Settings(context, await store.ReadAsync(context.RequestAborted), error.Message, error is RevisionConflictException ? 409 : 422, form); }
+            catch (SiteNotInitializedException error) { return ManagementUi.Problem(error.Message, 409); }
         });
     }
 }
