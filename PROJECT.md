@@ -55,11 +55,11 @@ Cross-platform operation is required: Windows and Linux, with macOS included in 
 | Decision | Proposed starting point | When needed |
 | --- | --- | --- |
 | Pilot customer/site | One small informational website | First discovery task |
-| Default CMS scope | Small website-focused content model behind the common adapter | Before content implementation |
+| Default CMS scope | Narrow C# engine + SQLite; see decision 0006 | Decided for first authoring slice |
 | Reference external CMS and supported version | Choose from pilot needs; prove draft writes, permissions and revisions | Before external connector implementation |
 | Repository owner/name/visibility | `harryneufeld/webspine`, initially private; selected 30 September 2026 | Decided |
 | Hosting target | One operator-managed Linux host with containers | Before deployment design |
-| Authentication library, database and job storage | Choose maintained components after default content and deployment discovery | Before persistent services |
+| Authentication library, database and job storage | SQLite content implemented; ASP.NET Core Identity selected for future accounts; durable job storage remains open | Before hosted management/build workers |
 | Source approval policy | Explicit built-in draft eligibility and supported external CMS workflow | Before release implementation |
 | Initial AI client | One client that can reach the management API | Before integration acceptance |
 
@@ -67,7 +67,7 @@ C# is an established project choice. The MVP foundation targets .NET 10; impleme
 
 ## Working agreements
 
-`PROJECT.md` owns purpose and scope. `docs/architecture.md` owns boundaries and design decisions. `docs/mvp-plan.md` is the initial backlog seed. GitHub issues will own task status once created; link issue numbers back to the plan and stop maintaining duplicate status lists.
+`PROJECT.md` owns purpose and scope. `docs/architecture.md` owns boundaries and design decisions. `docs/mvp-plan.md` links implementation issues and retains the broader backlog seed. GitHub issues own task status; do not maintain duplicate status lists.
 
 An implementation issue is complete when its acceptance criteria are demonstrated, relevant checks pass, and affected API/operation documentation is updated. Record significant decisions in short files under `docs/decisions/` when they are actually made.
 

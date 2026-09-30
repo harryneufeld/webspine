@@ -5,6 +5,8 @@ using System.Text.Json;
 
 using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(2) };
 await DeliveryChecks.RunAsync();
+await ContentStoreChecks.RunAsync();
+await AuthoringChecks.RunAsync();
 
 await using (var host = CheckHost.Start("Development", true))
 {
@@ -84,7 +86,7 @@ sealed class CheckHost : IAsyncDisposable
         output = process.StandardOutput.ReadToEndAsync();
     }
 
-    public static CheckHost Start(string environment, bool enableDemo, bool cacheEnabled = true)
+    public static CheckHost Start(string environment, bool enableDemo, bool cacheEnabled = true, string? dataDirectory = null, bool managementEnabled = false)
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -105,6 +107,13 @@ sealed class CheckHost : IAsyncDisposable
             start.ArgumentList.Add(argument);
         start.ArgumentList.Add("--Demo:CacheEnabled");
         start.ArgumentList.Add(cacheEnabled ? "true" : "false");
+        start.ArgumentList.Add("--Management:Enabled");
+        start.ArgumentList.Add(managementEnabled ? "true" : "false");
+        if (dataDirectory is not null)
+        {
+            start.ArgumentList.Add("--Management:DataDirectory");
+            start.ArgumentList.Add(dataDirectory);
+        }
         return new(Process.Start(start) ?? throw new InvalidOperationException("Could not start management host."), url);
     }
 

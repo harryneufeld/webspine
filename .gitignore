@@ -19,7 +19,8 @@ secrets/
 *.db
 *.db-shm
 *.db-wal
-*.sqlite
+*.[sS][qQ][lL][iI][tT][eE]
+!src/Webspine.Content.Sqlite/
 *.sqlite3
 appsettings.Local.json
 

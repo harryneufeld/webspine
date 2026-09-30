@@ -4,12 +4,12 @@ Baseline, 30 September 2026. Modularity is an MVP requirement. WordPress is a us
 
 | Stage | Current implementation | Next contract work |
 | --- | --- | --- |
-| Content sources | `IContentSource`, immutable snapshots, capability reporting | Persistent CMS, external adapters, migrations and scoped writes |
+| Content sources | `IContentSource`, immutable snapshots, SQLite conditional writes and capability reporting | External adapters, migrations and scoped writes; general page/media authoring contract |
 | Components | Four typed kinds and mandatory validation | Versioned component schema, validator and renderer registry |
 | Validation | Ordered `IContentValidator` extensions | Operation-specific policies and installation compatibility |
 | Rendering | Replaceable `IWebsiteRenderer` | Versioned design packages and component composition |
 | Build/export | Ordered `IArtifactContributor` extensions; sample site-index contributor | Durable worker, artifact storage and portable export packaging |
-| Preview | Development-only retained in-memory output | Protected preview provider and review hooks |
+| Preview | Retained SQLite artifacts and loopback Development delivery | Replaceable artifact store, account-protected preview provider and review hooks |
 | Delivery/cache | Prerendered pipeline, artifact source, replaceable cache and per-response header hooks | Dynamic rendering, production policies, separate host and broader request hooks |
 | Deployment | Planned | Deployment provider, promotion checks, rollback and status events |
 | AI/API | Planned | Scoped reads, change proposals/writes, build/export/preview/release operations |

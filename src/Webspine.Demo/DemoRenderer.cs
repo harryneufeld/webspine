@@ -56,7 +56,8 @@ public sealed class DemoRenderer(string stylesheet, ImmutableDictionary<string, 
                 }
                 html.Append("</section>");
             }
-            html.Append("</main><footer class=\"site-container\"><span>Northline Studio</span><p>Example website · Fictional business · No transactions or contact submissions</p></footer></body></html>");
+            var footer = inputs.Content.Source.Kind == "fixture" ? "Example website · Fictional business · No transactions or contact submissions" : "Draft preview · Not published";
+            html.Append($"</main><footer class=\"site-container\"><span>{E(website.Title)}</span><p>{E(footer)}</p></footer></body></html>");
             output.AddText(BuildPipeline.PageFile(page.Path), html.ToString());
         }
         return ValueTask.CompletedTask;
@@ -91,13 +92,19 @@ public static class DemoSite
     {
         var source = new DemoContentSource(await File.ReadAllTextAsync(Path.Combine(fixtureDirectory, "site.json"), cancellationToken));
         var snapshot = await source.ReadAsync(cancellationToken);
-        var stylesheet = await File.ReadAllTextAsync(Path.Combine(fixtureDirectory, "design", "site.css"), cancellationToken);
         var assets = ImmutableDictionary.CreateBuilder<string, ImmutableArray<byte>>(StringComparer.Ordinal);
         foreach (var asset in snapshot.Website.Assets)
             assets.Add(asset.File, ImmutableArray.Create(await File.ReadAllBytesAsync(Path.Combine(fixtureDirectory, asset.File), cancellationToken)));
+        return await BuildSnapshotAsync(snapshot, assets.ToImmutable(), basePath, cancellationToken);
+    }
+
+    public static async ValueTask<BuiltArtifact> BuildSnapshotAsync(ContentSnapshot snapshot,
+        ImmutableDictionary<string, ImmutableArray<byte>> assets, string basePath, CancellationToken cancellationToken = default)
+    {
+        var stylesheet = await File.ReadAllTextAsync(Path.Combine(FixtureDirectory, "design", "site.css"), cancellationToken);
         var assemblyDigest = BuildPipeline.Hash(await File.ReadAllBytesAsync(typeof(DemoRenderer).Assembly.Location, cancellationToken));
         var designRevision = BuildPipeline.Hash(Encoding.UTF8.GetBytes(assemblyDigest + "\n" + stylesheet + "\n" + basePath));
-        var pipeline = new BuildPipeline(new DemoRenderer(stylesheet, assets.ToImmutable(), basePath),
+        var pipeline = new BuildPipeline(new DemoRenderer(stylesheet, assets, basePath),
             contributors: [new SiteIndexContributor()]);
         return await pipeline.BuildAsync(new(snapshot, designRevision), cancellationToken);
     }

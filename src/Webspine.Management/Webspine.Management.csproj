@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <ProjectReference Include="../Webspine.Content.Sqlite/Webspine.Content.Sqlite.csproj" />
     <ProjectReference Include="../Webspine.Caching.Memory/Webspine.Caching.Memory.csproj" />
     <ProjectReference Include="../Webspine.Demo/Webspine.Demo.csproj" />
   </ItemGroup>

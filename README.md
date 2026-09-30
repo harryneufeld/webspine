@@ -4,7 +4,7 @@ An open-source, self-hosted modular web engine with a built-in content source, r
 
 ## Current state
 
-The first discovery slices implement immutable content, a replaceable source contract, validated prerendered builds and extension points for validators, renderers and export contributors. An optional fictional five-page demo now runs through a delivery module with a replaceable memory-cache package, delivery header hooks, HEAD and ETag support. Persistent editing, dynamic rendering, identity, durable jobs and publishing remain planned.
+The local authoring workflow supports Start blank or Use demo, persistent page editing, revision conflicts, retained previews and content/image export. A separate SQLite content module implements the replaceable source contract. Validated prerendered builds and delivery support extension hooks, replaceable caching, HEAD and ETags. Accounts, dynamic rendering, durable jobs and publishing remain planned.
 
 The earlier `website-poc` sibling folder is a separate experiment. Its source, generated credentials and runtime data are not part of this repository. Its successful checks are evidence about that experiment, not validation of the MVP.
 
@@ -14,6 +14,7 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 - [Architecture](docs/architecture.md): responsibilities and planned boundaries.
 - [Content contract](docs/content-contract.md) and [extensions](docs/extensions.md): current contracts and modularity roadmap.
 - [Delivery pipeline](docs/delivery.md): page modes, replaceable caching, HTTP behavior and current limits.
+- [Local management](docs/management.md): setup, editing, stored data and preview limitations.
 - [MVP plan](docs/mvp-plan.md): milestones and issue seeds with acceptance criteria.
 - [Foundation decision](docs/decisions/0001-fresh-mvp-foundation.md): what this workspace establishes.
 - [Validation](VALIDATION.md): checks performed in this workspace.
@@ -44,6 +45,14 @@ The demo's internal memory cache is enabled by default. Append `--Demo:CacheEnab
 
 ## Next implementation
 
-Continue MVP-01 by comparing a narrow C# content store with maintained CMS engines against this five-page fixture. Record the default CMS decision, then select storage and identity before implementing editing. The current model is a tested starting point; CMS discovery remains open.
+Try the local editor:
 
-The repository is [harryneufeld/webspine](https://github.com/harryneufeld/webspine), initially private while the MVP is developed. The MVP plan still contains issue seeds; GitHub issues have not yet been created.
+```text
+dotnet run --project src/Webspine.Management -- --urls http://127.0.0.1:9087 --environment Development --Management:Enabled true
+```
+
+Open `http://127.0.0.1:9087/manage`. Choose a blank site or an explicit copy of the five-page demo. Save a draft, then Build preview. Restarting preserves the site and existing preview URLs. Management is disabled by default and restricted to Development and loopback access; it has no accounts yet. See [local management](docs/management.md) for storage settings and limits.
+
+Next implement accounts and server permissions before enabling hosted management or AI access, followed by durable builds and exact-artifact publication. The [content decision](docs/decisions/0006-built-in-content-and-first-management-workflow.md) records why the first built-in engine uses a narrow C# module and SQLite.
+
+The repository is [harryneufeld/webspine](https://github.com/harryneufeld/webspine), initially private while the MVP is developed. The [MVP plan](docs/mvp-plan.md) links the first four implementation issues; GitHub owns their status.

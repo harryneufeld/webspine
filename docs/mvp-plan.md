@@ -1,6 +1,17 @@
 # MVP plan and GitHub issue seed
 
-Status: draft for discussion, 27 September 2026. Items below are proposed issues, not created GitHub issues. Dependencies are planning IDs, to be replaced or supplemented with issue links.
+Updated 30 September 2026. The first implementation issues are linked below; GitHub owns their status. The broader MVP-01–15 entries remain planning IDs, not GitHub issue numbers.
+
+## First authoring slice
+
+| GitHub issue | Scope |
+| --- | --- |
+| [#1](https://github.com/harryneufeld/webspine/issues/1) | Built-in content engine decision |
+| [#2](https://github.com/harryneufeld/webspine/issues/2) | Versioned SQLite content and atomic edits |
+| [#3](https://github.com/harryneufeld/webspine/issues/3) | Local blank/demo setup and page editor |
+| [#4](https://github.com/harryneufeld/webspine/issues/4) | Retained previews from saved drafts |
+
+This slice provides local setup, editing, preview, export and restart persistence. It does not complete M1 or M2: accounts, scoped AI access, durable jobs and publication retain their acceptance requirements. Next split account bootstrap/session/server permission work from MVP-05 into a focused issue before exposing management beyond loopback.
 
 ## Release objective
 
@@ -21,7 +32,7 @@ Do not estimate a delivery date until default CMS scope, external integration di
 
 ## Proposed issues
 
-The first discovery slice now supplies a five-page optional demo, common read-only source contract, content validation and modular static builds. MVP-01 remains open for pilot requirements and CMS selection; MVP-03 remains open for CI. See `../VALIDATION.md` for implemented evidence.
+The foundation supplies a five-page optional demo, common source contract, content validation, modular prerendered builds and a three-OS CI workflow. The first authoring slice adds the built-in engine decision and local persistent editing/preview. Pilot customer requirements, hosted identity and the wider release workflow remain open. See `../VALIDATION.md` for implemented evidence.
 
 ### MVP-15 — Carry extension contracts through every workflow
 

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Webspine.Content.Sqlite/Webspine.Content.Sqlite.csproj" />
     <Project Path="src/Webspine.Delivery/Webspine.Delivery.csproj" />
     <Project Path="src/Webspine.Caching.Memory/Webspine.Caching.Memory.csproj" />
     <Project Path="src/Webspine.Core/Webspine.Core.csproj" />

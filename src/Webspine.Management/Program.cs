@@ -2,23 +2,36 @@ using Webspine.Core;
 using Webspine.Demo;
 using Webspine.Delivery;
 using Webspine.Caching.Memory;
+using Webspine.Management;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 builder.Services.AddHealthChecks();
+builder.Services.AddAntiforgery(options => options.Cookie.SameSite = SameSiteMode.Strict);
+if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Environment.IsDevelopment())
+{
+    var dataDirectory = builder.Configuration["Management:DataDirectory"] ?? Path.Combine(builder.Environment.ContentRootPath, ".local");
+    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDirectory, "keys"))).SetApplicationName("webspine-local");
+}
 builder.Services.AddSingleton<IDeliveryCache>(services =>
     builder.Configuration.GetValue("Demo:CacheEnabled", true) ? new MemoryDeliveryCache() : new NoDeliveryCache());
 
 var app = builder.Build();
 
 var demoEnabled = app.Configuration.GetValue<bool>("Demo:Enabled");
-if (demoEnabled && !app.Environment.IsDevelopment())
+var managementEnabled = app.Configuration.GetValue<bool>("Management:Enabled");
+if ((demoEnabled || managementEnabled) && !app.Environment.IsDevelopment())
 {
-    Console.Error.WriteLine("The example website is available only in Development. It does not initialize CMS data.");
+    Console.Error.WriteLine("The example website and local management are available only in Development.");
     Environment.ExitCode = 1;
     await app.DisposeAsync();
     return;
 }
+
+if (managementEnabled) await app.MapManagementAsync();
 
 if (demoEnabled)
 {
@@ -39,10 +52,12 @@ if (demoEnabled)
 app.MapGet("/", () => Results.Ok(new
 {
     name = "webspine",
-    stage = "Content and extension discovery",
+    stage = "Local authoring workflow",
     demoEnabled,
     demoPath = demoEnabled ? "/demo/" : null,
-    message = "Five-page example and build contracts are available. Persistent CMS, identity and publishing remain planned."
+    managementEnabled,
+    managementPath = managementEnabled ? "/manage" : null,
+    message = "Local setup, persistent content and retained previews are available. Production accounts and publishing remain planned."
 }));
 
 app.MapHealthChecks("/health");

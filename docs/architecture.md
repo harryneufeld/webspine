@@ -4,7 +4,7 @@ Status: planning baseline, 27 September 2026. Future components below are propos
 
 ## Current MVP foundation
 
-The first discovery slice adds `Webspine.Core` content/source/build contracts and a separate `Webspine.Demo` fixture and renderer. The management host optionally serves a five-page artifact in Development. Builds validate immutable snapshots, run ordered extensions and finalize immutable files with digests. There is no persistent CMS, account system, worker or release workflow yet. See `../VALIDATION.md`, `content-contract.md` and `extensions.md` for current behavior and limits.
+`Webspine.Core` defines content/source/build contracts. `Webspine.Content.Sqlite` implements transactional versioned content, copied media and retained previews behind the source contract. The management host offers explicit blank/demo setup and approved page editing in a loopback-only Development workflow. `Webspine.Demo` supplies the optional fixture and first reusable renderer; `Webspine.Delivery` and `Webspine.Caching.Memory` supply delivery and replaceable caching. Builds validate immutable snapshots, run ordered extensions and finalize files with digests. Accounts, durable workers and publication remain planned. See `management.md`, `../VALIDATION.md`, `content-contract.md` and `extensions.md` for current behavior and limits.
 
 ## Evidence from the separate PoC
 
