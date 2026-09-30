@@ -65,7 +65,7 @@ Acceptance:
 Milestone M0. Priority P0. Dependencies: MVP-02.
 
 Acceptance:
-- CI builds `Webspine.slnx` and runs content and management checks on Windows, Linux and macOS with the declared SDK selection. The matrix workflow is now included; its remote runs are pending repository creation.
+- CI builds `Webspine.slnx` and runs content and management checks on Windows, Linux and macOS with the declared SDK selection. The matrix workflow is included and starts on pushes to the private `harryneufeld/webspine` repository; verify its run results for acceptance.
 - Establish a meaningful test/check project with the first implemented MVP behavior. Execute console checks with `dotnet run` or test-framework suites with `dotnet test`, according to the project type.
 - Reimplement relevant regression coverage for permissions, stale writes and exact-artifact publication as those behaviors are added; PoC passes do not count as MVP evidence.
 - Keep job data temporary and prevent credentials/runtime files appearing in uploaded artifacts.
