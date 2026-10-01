@@ -1,6 +1,6 @@
 # Local authoring workflow
 
-Updated 1 October 2026. This is a Development-only workflow for one website and one owner; hosted management remains planned.
+Updated 1 October 2026. This is a Development-only workflow for one website, its original owner and role-limited users; hosted management remains planned.
 
 From the repository root:
 
@@ -26,7 +26,7 @@ Schema version 1 stores immutable JSON content revisions, the current head, copi
 
 Management requires an explicit opt-in and refuses startup outside Development. Every management request checks loopback IP and localhost Host; state-changing forms require ASP.NET Core antiforgery validation. All management and preview responses disable browser/proxy caching. Management now requires an owner Identity session and server permissions. Initial owner setup must be completed by the operator; local filesystem access still controls the databases and keys. Do not expose it through a proxy or tunnel. Data Protection keys are stored unencrypted and require local filesystem protection, as does the database.
 
-ASP.NET Core Identity implements the owner account and cookie session. Connected apps creates separate scoped, expiring and revocable credentials for the [authoring API](authoring-api.md). Account recovery, additional users/roles, explicit upgrade migrations and hosted access remain unimplemented. Keep the owner password safe; this slice provides no password-reset UI. Existing previews are development artifacts, not reviewed or published releases.
+ASP.NET Core Identity implements the owner account and cookie session. Connected apps creates separate scoped, expiring and revocable credentials for the [authoring API](authoring-api.md). People and access supports operator/editor/reviewer accounts and access changes. Change password provides authenticated self-service, while the [account guide](accounts.md) documents local operator-assisted recovery. Hosted access and explicit schema upgrade migrations remain unimplemented. Existing previews are development artifacts, not reviewed or published releases.
 
 ## Verification
 

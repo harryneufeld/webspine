@@ -4,7 +4,7 @@ An open-source, self-hosted modular web engine with a built-in content source, r
 
 ## Current state
 
-The local authoring workflow supports owner setup/sign-in, Start blank or Use demo, persistent page editing, shared website settings, revision conflicts, retained previews and content/image export. External apps use a scoped HTTP API with expiring, revocable credentials. A separate SQLite content module implements the replaceable source contract. Validated prerendered builds and delivery support extension hooks, replaceable caching, HEAD and ETags. Additional human roles, account recovery, hosted management, dynamic rendering, durable jobs and publishing remain planned.
+The local authoring workflow supports owner setup/sign-in, Start blank or Use demo, persistent page editing, shared website settings, revision conflicts, retained previews and content/image export. External apps use a scoped HTTP API with expiring, revocable credentials. A separate SQLite content module implements the replaceable source contract. Validated prerendered builds and delivery support extension hooks, replaceable caching, HEAD and ETags. Hosted management, dynamic rendering, durable jobs and publishing remain planned.
 
 The earlier `website-poc` sibling folder is a separate experiment. Its source, generated credentials and runtime data are not part of this repository. Its successful checks are evidence about that experiment, not validation of the MVP.
 
@@ -16,6 +16,7 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 - [Delivery pipeline](docs/delivery.md): page modes, replaceable caching, HTTP behavior and current limits.
 - [Local management](docs/management.md): setup, editing, stored data and preview limitations.
 - [Authoring API](docs/authoring-api.md): external apps, permissions and conditional operations.
+- [Accounts and recovery](docs/accounts.md): human roles, password changes and local recovery.
 - [MVP plan](docs/mvp-plan.md): milestones and issue seeds with acceptance criteria.
 - [Foundation decision](docs/decisions/0001-fresh-mvp-foundation.md): what this workspace establishes.
 - [Validation](VALIDATION.md): checks performed in this workspace.
@@ -54,6 +55,6 @@ dotnet run --project src/Webspine.Management -- --urls http://127.0.0.1:9087 --e
 
 Open `http://127.0.0.1:9087/manage`. Create the owner account, then choose a blank site or an explicit copy of the five-page demo. Save a draft, then Build preview. Website settings edits the shared name/title and language; Connected apps creates scoped API credentials. Restarting preserves the site, accounts and existing preview URLs. Management is disabled by default and restricted to Development and loopback access. See [local management](docs/management.md) for storage settings and limits.
 
-Next implement owner recovery and additional human permissions, then durable builds and exact-artifact publication before hosted pilot deployment. The [content decision](docs/decisions/0006-built-in-content-and-first-management-workflow.md) records the narrow C# engine and SQLite; [decision 0007](docs/decisions/0007-owner-accounts-scoped-apps-and-shared-settings.md) records accounts, app scopes and shared metadata.
+Next implement durable builds and exact-artifact publication before hosted pilot deployment. People and access now manages human roles; see the account guide for local recovery. The [content decision](docs/decisions/0006-built-in-content-and-first-management-workflow.md) records the narrow C# engine and SQLite; [decision 0007](docs/decisions/0007-owner-accounts-scoped-apps-and-shared-settings.md) records accounts, app scopes and shared metadata.
 
 The repository is [harryneufeld/webspine](https://github.com/harryneufeld/webspine), initially private while the MVP is developed. The [MVP plan](docs/mvp-plan.md) links the first four implementation issues; GitHub owns their status.

@@ -8,6 +8,7 @@ await DeliveryChecks.RunAsync();
 await ContentStoreChecks.RunAsync();
 await AuthoringChecks.RunAsync();
 await AccountChecks.RunAsync();
+await HumanAccountChecks.RunAsync();
 
 await using (var host = CheckHost.Start("Development", true))
 {
@@ -77,6 +78,7 @@ sealed class CheckHost : IAsyncDisposable
     public Process Process { get; }
     public string Url { get; }
     public Task<string> Errors { get; }
+    public Task<string> Output => output;
     private readonly Task<string> output;
 
     private CheckHost(Process process, string url)
@@ -87,7 +89,7 @@ sealed class CheckHost : IAsyncDisposable
         output = process.StandardOutput.ReadToEndAsync();
     }
 
-    public static CheckHost Start(string environment, bool enableDemo, bool cacheEnabled = true, string? dataDirectory = null, bool managementEnabled = false)
+    public static CheckHost Start(string environment, bool enableDemo, bool cacheEnabled = true, string? dataDirectory = null, bool managementEnabled = false, string? recoveryUsername = null)
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -101,6 +103,7 @@ sealed class CheckHost : IAsyncDisposable
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
+            RedirectStandardInput = true,
             RedirectStandardError = true
         };
         // Use this check executable's runtime/dependency manifest to launch the referenced host.
@@ -114,6 +117,11 @@ sealed class CheckHost : IAsyncDisposable
         {
             start.ArgumentList.Add("--Management:DataDirectory");
             start.ArgumentList.Add(dataDirectory);
+        }
+        if (recoveryUsername is not null)
+        {
+            start.ArgumentList.Add("--Recovery:Username");
+            start.ArgumentList.Add(recoveryUsername);
         }
         return new(Process.Start(start) ?? throw new InvalidOperationException("Could not start management host."), url);
     }
