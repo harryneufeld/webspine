@@ -1,6 +1,6 @@
 # MVP plan and GitHub issue seed
 
-Updated 30 September 2026. The first implementation issues are linked below; GitHub owns their status. The broader MVP-01–15 entries remain planning IDs, not GitHub issue numbers.
+Updated 1 October 2026. Implementation issues are linked below; GitHub owns their status. The broader MVP-01–15 entries remain planning IDs, not GitHub issue numbers.
 
 ## First authoring slice
 
@@ -15,7 +15,21 @@ Updated 30 September 2026. The first implementation issues are linked below; Git
 | [#8](https://github.com/harryneufeld/webspine/issues/8) | Shared website metadata in UI and API |
 | [#12](https://github.com/harryneufeld/webspine/issues/12) | Human roles, account administration and local recovery |
 
-These slices provide local setup, editing, metadata, preview, export, owner sessions, scoped app access and restart persistence. They do not complete M1 or M2: hosted account configuration, durable jobs and publication retain their acceptance requirements. Fixed human roles and local operator recovery are now implemented; next build durable jobs and exact-artifact publication. MCP can later adapt the same authenticated operations.
+These slices provide local setup, editing, metadata, preview, export, owner sessions, scoped app access and restart persistence. They do not complete M1 or M2: hosted account configuration, durable jobs and publication retain their acceptance requirements. Fixed human roles and local operator recovery are implemented. The next authoring work is the composition contract below, followed by spinecms persistence and editing; durable jobs and exact-artifact publication remain the release objective. MCP can later adapt the same authenticated operations.
+
+## Composition and structured content
+
+[Decision 0009](decisions/0009-composition-records-and-substitutable-cms.md) records the accepted direction from [#9](https://github.com/harryneufeld/webspine/issues/9). spinecms is the default replaceable CMS, not mandatory companion storage for an external CMS. Patterns/Records follow working composition; business providers and a general schema designer are deferred.
+
+| GitHub issue | Scope | Dependencies |
+| --- | --- | --- |
+| [#14](https://github.com/harryneufeld/webspine/issues/14) | Versioned Blocks, Groups, Regions, shared references, registry and adapter capabilities | #9 decision |
+| [#15](https://github.com/harryneufeld/webspine/issues/15) | spinecms persistence and safe v1 migration | #14 |
+| [#16](https://github.com/harryneufeld/webspine/issues/16) | Composition API/editor, shared permissions and managed media | #14, #15 |
+| [#17](https://github.com/harryneufeld/webspine/issues/17) | Bounded versioned Patterns and typed content Records | #14–16 |
+| [#18](https://github.com/harryneufeld/webspine/issues/18) | Reference external CMS capabilities and migration proof | #14–17; MVP-14 release requirements |
+
+[#11](https://github.com/harryneufeld/webspine/issues/11) tracks Button target behavior separately. These are implementation tasks, not claims that contract v1 already provides composition.
 
 ## Release objective
 
