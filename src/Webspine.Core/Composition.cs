@@ -56,6 +56,16 @@ public interface ICompositionSource
     ValueTask<CapturedComposition> CaptureCompositionAsync(CompositionDesign design, CancellationToken cancellationToken = default);
 }
 
+// Trusted persistence boundary. This is not an HTTP graph-replacement operation or an authorization boundary.
+// Application operations must authorize their specific changes before committing a validated proposed draft.
+public interface ICompositionDraftPersistence : ICompositionSource
+{
+    Task<CompositionSnapshot> CreateCompositionAsync(CompositionWebsite website, CompositionDesign design,
+        ImmutableDictionary<string, ImmutableArray<byte>> assets, CancellationToken cancellationToken = default);
+    Task<CompositionSnapshot> CommitCompositionAsync(string expectedRevision, CompositionWebsite proposed, CompositionDesign design,
+        ImmutableDictionary<string, ImmutableArray<byte>>? newAssets = null, CancellationToken cancellationToken = default);
+}
+
 public static class CompositionJson
 {
     public static JsonSerializerOptions Options { get; } = CreateOptions();

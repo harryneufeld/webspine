@@ -46,7 +46,7 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
         options.AddPolicy("accounts", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 12, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     });
     builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
-    builder.Services.AddSingleton(new SqliteContentSource(Path.Combine(dataDirectory, "webspine.db")));
+    builder.Services.AddSingleton(new SqliteContentSource(Path.Combine(dataDirectory, "webspine.db"), DemoComposition.Registry()));
     builder.Services.AddSingleton<IWebsiteAuthoringSource>(services => services.GetRequiredService<SqliteContentSource>());
     builder.Services.AddSingleton<AuthoringOperations>();
 }
@@ -57,9 +57,9 @@ var app = builder.Build();
 
 var demoEnabled = app.Configuration.GetValue<bool>("Demo:Enabled");
 var managementEnabled = app.Configuration.GetValue<bool>("Management:Enabled");
-if (app.Configuration["Recovery:Username"] is not null && !managementEnabled)
+if ((app.Configuration["Recovery:Username"] is not null || app.Configuration["Content:Action"] is not null) && !managementEnabled)
 {
-    Console.Error.WriteLine("Account recovery requires explicit local management configuration.");
+    Console.Error.WriteLine("Offline recovery/migration requires explicit local management configuration.");
     Environment.ExitCode = 1;
     await app.DisposeAsync();
     return;
@@ -74,6 +74,35 @@ if ((demoEnabled || managementEnabled) && !app.Environment.IsDevelopment())
 
 if (managementEnabled)
 {
+    if (app.Configuration["Content:Action"] is not null)
+    {
+        var migrationDirectory = app.Configuration["Management:DataDirectory"] ?? Path.Combine(app.Environment.ContentRootPath, ".local");
+        if (!File.Exists(Path.Combine(migrationDirectory, "webspine.db")) || app.Configuration["Recovery:Username"] is not null)
+        {
+            Console.Error.WriteLine("Content migration requires an existing database and cannot run together with account recovery.");
+            Environment.ExitCode = 1;
+        }
+        else
+        {
+            var migrationSource = app.Services.GetRequiredService<SqliteContentSource>();
+            await migrationSource.InitializeSchemaAsync();
+            Environment.ExitCode = await ContentMigration.RunAsync(migrationSource, app.Configuration);
+        }
+        await app.DisposeAsync();
+        return;
+    }
+    if (app.Configuration["Recovery:Username"] is null)
+    {
+        var contentSource = app.Services.GetRequiredService<SqliteContentSource>();
+        await contentSource.InitializeSchemaAsync();
+        if ((await contentSource.HeadAsync())?.Version == 2)
+        {
+            Console.Error.WriteLine("Composition v2 storage is active. The composition board/API arrive in #16; restore a retained v1 revision to use this editor.");
+            Environment.ExitCode = 1;
+            await app.DisposeAsync();
+            return;
+        }
+    }
     app.UseAuthentication();
     app.UseRateLimiter();
     await app.InitializeAccountsAsync();

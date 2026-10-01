@@ -48,6 +48,9 @@ public static class CompositionContract
         ContentContract.Validate(new(snapshot.Source, snapshot.Revision, new(site.Id, site.Title, site.Language,
             site.Pages.Select(p => new PageContent(p.Id, p.Path, p.Title, p.Description,
                 [new TextSection("validation", "Validation", "Validation")])).ToImmutableArray(), site.Assets)));
+        var assetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "assets/composition.css" };
+        foreach (var asset in site.Assets)
+            if (!assetPaths.Add(asset.File)) CompositionRules.Fail("Duplicate or reserved asset path.");
         ValidateDesign(design, registry);
         if (site.LayoutId != design.Layout.Id) CompositionRules.Fail("Unavailable layout.");
         var pages = site.Pages.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);

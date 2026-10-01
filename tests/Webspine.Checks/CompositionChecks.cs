@@ -193,6 +193,7 @@ static class CompositionChecks
             Reject(() => pipeline.Build(Blocks(example, blocks.SetItem(2, blocks[2] with
                 { TypeId = "cta", Fields = Fields(new CtaFields("Heading", "Body", "Click", "javascript:alert(1)")) }))));
             Reject(() => pipeline.Build(Site(example, example.Content.Website with { Assets = [new("image", "../secret", "image/png")] })));
+            Reject(() => pipeline.Build(Site(example, example.Content.Website with { Assets = [new("image", "assets/COMPOSITION.css", "image/png")] })));
         }));
         await check("Adapter capabilities reject unsupported operations/capture without fallback", async () =>
         {

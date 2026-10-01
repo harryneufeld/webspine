@@ -1,6 +1,6 @@
 # Composition contract v2
 
-Implemented library slice for #14, 1 October 2026. `Webspine.Core.Composition` provides an opt-in v2 model, registry, validator and captured-input build path. The running management board, SQLite source and `/api/v1` still use flat v1 sections. Storage migration is #15; editing/media/shared permissions are #16; Patterns/Records are #17. No v2 HTTP endpoints or database migrations are installed by this slice.
+Implemented library slice for #14, 1 October 2026. `Webspine.Core.Composition` provides an opt-in v2 model, registry, validator and captured-input build path. The [spinecms store](spinecms-storage.md) now supports v2 capture/conditional persistence and explicit migration/recovery. The current board and `/api/v1` still edit flat v1 sections; editing/media/shared permissions are #16 and Patterns/Records are #17. No v2 HTTP endpoints exist yet.
 
 ## Objects and placement
 
@@ -60,6 +60,6 @@ All files, including the manifest/CSS, enter the final artifact digest. Standard
 
 The examples are loaded and built by the check suite. A separate test provider proves the source boundary and a Quote registration proves type extension without engine switch changes.
 
-v1 `ContentContract.Version`, JSON records, SQLite histories, retained previews and HTTP field-edit semantics are unchanged. v2 content always identifies version 2 explicitly and is read with the separate serializer/model. Future composition HTTP operations belong under `/api/v2`; none exist yet. Database schema version is separate from content-contract version: #15 must add an atomic, repeatable migration and retain a v1 history reader, identity mapping and recovery procedure. Never rewrite retained artifact bytes or silently reinterpret a v1 payload as v2.
+v1 `ContentContract.Version`, JSON records, retained previews and HTTP field-edit semantics are unchanged. v2 content identifies version 2 explicitly and uses its separate serializer/model. Future composition HTTP operations belong under `/api/v2`; none exist yet. Database schema version is separate from content version: metadata schema 2 retains v1 rows, with explicit content migration, history readers, mappings and fresh-revision recovery. No retained artifact bytes are rewritten or v1 payloads silently reinterpreted.
 
 Storage backends remain implementation details of spinecms/adapters. Multiple external business-data providers and typed Records are separate from choosing SQLite/PostgreSQL/MySQL persistence; neither additional database backends nor Record providers are introduced here.

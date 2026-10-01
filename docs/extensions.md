@@ -6,8 +6,8 @@ Accepted composition direction: [decision 0009](decisions/0009-composition-recor
 
 | Stage | Current implementation | Next contract work |
 | --- | --- | --- |
-| Content sources | `IContentSource`, `IWebsiteAuthoringSource`, shared approved fields and SQLite conditional writes | External adapters, source migrations and full component/media authoring |
-| Components | Four v1 typed kinds; opt-in v2 registry with five standard types, ownership/reference validation and custom-type checks | Storage migration and UI/API integration; module packaging/loader |
+| Content sources | v1 authoring; v2 read/capture and trusted conditional persistence contracts; SQLite histories and explicit v1/v2 migration/recovery | Typed composition/media authoring, external adapters and source migration |
+| Components | Four v1 typed kinds; v2 registry, validation and storage; demo shared-shell types | UI/API integration; module packaging/loader |
 | Validation | Ordered `IContentValidator` extensions | Operation-specific policies and installation compatibility |
 | Rendering | Replaceable `IWebsiteRenderer` | Versioned design packages and component composition |
 | Build/export | Ordered `IArtifactContributor` extensions; sample site-index contributor | Durable worker, artifact storage and portable export packaging |
