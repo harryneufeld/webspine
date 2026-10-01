@@ -18,3 +18,4 @@ jobs:
       - run: dotnet build Webspine.slnx --configuration Release
       - run: dotnet run --no-build --configuration Release --project tests/Webspine.Checks
       - run: dotnet run --no-build --configuration Release --project tests/Webspine.ManagementChecks
+      - run: dotnet run --no-build --configuration Release --project tests/Webspine.RazorChecks

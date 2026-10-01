@@ -1,0 +1,37 @@
+@using System.Text.Json
+@{ var block = Context.Resolve(Placement); }
+@switch (block.TypeId)
+{
+    case "brand":
+        <Brand Fields="@(Decode<BrandFields>(block))" Context="Context" />
+        break;
+    case "text":
+        <TextBlock Fields="@(Decode<TextFields>(block))" />
+        break;
+    case "image":
+        <ImageBlock Fields="@(Decode<ImageFields>(block))" Context="Context" />
+        break;
+    case "cta":
+        <CallToAction Fields="@(Decode<CtaFields>(block))" Context="Context" />
+        break;
+    case "faq":
+        <FrequentlyAsked Fields="@(Decode<FaqFields>(block))" Id="@block.Id" />
+        break;
+    case "group":
+        <ContentGroup Fields="@(Decode<GroupFields>(block))" Id="@block.Id">
+            @foreach (var child in block.Children)
+            {
+                <BlockView Context="Context" Placement="child" />
+            }
+        </ContentGroup>
+        break;
+    default:
+        throw new InvalidOperationException("Prototype has no component mapping for " + block.TypeId);
+}
+
+@code {
+    [Parameter, EditorRequired] public PrototypePageContext Context { get; set; } = default!;
+    [Parameter, EditorRequired] public Placement Placement { get; set; } = default!;
+    private static T Decode<T>(Block block) => block.Fields.Deserialize<T>(CompositionJson.Options)
+        ?? throw new InvalidOperationException("Missing component fields.");
+}

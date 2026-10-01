@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="740" viewBox="0 0 1000 740">
+  <rect width="1000" height="740" fill="#e9e4d8"/>
+  <path d="M0 535H1000V740H0Z" fill="#d2c4af"/>
+  <rect x="505" y="72" width="365" height="398" rx="3" fill="#f6f2e8"/>
+  <rect x="524" y="91" width="327" height="360" fill="#c8d5c5"/>
+  <path d="M524 372L646 173 851 337V451H524Z" fill="#b0c5ad"/>
+  <path d="M688 91V451M524 270H851" stroke="#f6f2e8" stroke-width="12"/>
+  <ellipse cx="353" cy="642" rx="238" ry="28" fill="#b9a98e" opacity=".35"/>
+  <path d="M168 396Q164 317 251 309H413Q493 319 499 396V548H168Z" fill="#647858"/>
+  <rect x="150" y="465" width="366" height="101" rx="30" fill="#778d69"/>
+  <path d="M174 543L160 645M480 543L496 645" stroke="#665945" stroke-width="20"/>
+  <rect x="135" y="390" width="57" height="150" rx="24" fill="#647858"/>
+  <rect x="477" y="390" width="57" height="150" rx="24" fill="#647858"/>
+  <rect x="699" y="533" width="166" height="23" rx="8" fill="#8d7458"/>
+  <path d="M716 552L705 646M849 552L860 646" stroke="#8d7458" stroke-width="15"/>
+  <path d="M758 533L748 467H818L807 533Z" fill="#b4886d"/>
+  <path d="M781 467V366" stroke="#597351" stroke-width="8"/>
+  <ellipse cx="754" cy="396" rx="15" ry="37" transform="rotate(-42 754 396)" fill="#7e9869"/>
+  <ellipse cx="806" cy="376" rx="15" ry="37" transform="rotate(42 806 376)" fill="#597351"/>
+  <ellipse cx="808" cy="431" rx="15" ry="37" transform="rotate(53 808 431)" fill="#7e9869"/>
+</svg>

@@ -31,6 +31,19 @@ These slices provide local setup, editing, metadata, preview, export, owner sess
 
 [#11](https://github.com/harryneufeld/webspine/issues/11) tracks Button target behavior separately. These are implementation tasks, not claims that contract v1 already provides composition.
 
+## Framework architecture proof
+
+[#23](https://github.com/harryneufeld/webspine/issues/23) tracks proof that independent design packages and custom content types work through the engine, board, API and retained builds. GitHub owns acceptance evidence and task status.
+
+| GitHub issue | Scope | Dependencies |
+| --- | --- | --- |
+| [#24](https://github.com/harryneufeld/webspine/issues/24) | Working Razor static-rendering prototype and architecture decision | Existing composition foundation |
+| [#25](https://github.com/harryneufeld/webspine/issues/25) | Configured design packages; rendering separate from content validation | #24 decision |
+| [#26](https://github.com/harryneufeld/webspine/issues/26) | Field metadata and registered-type editing through board/API | #25; extends #16 |
+| [#27](https://github.com/harryneufeld/webspine/issues/27) | Two independent website packages, custom block and developer quickstart | #25, #26 |
+
+Finish #16 against its existing acceptance criteria, then prioritize #24–27 before implementing #17 Patterns/Records and #18 external CMS support. Read-only connector discovery may continue. Razor is a candidate until #24 provides working evidence and records the decision. Preserve existing content, revisions, migration/recovery, permissions and retained output. Durable builds and exact-artifact publication remain the next release objective after this proof. This planning work does not claim the new package boundary is implemented.
+
 ## Release objective
 
 An operator can deploy one customer website with the built-in CMS, give an editor and an external AI client limited editing access, review a complete website candidate, publish the exact reviewed output, and restore service and data through documented procedures. A supported external CMS can replace the built-in source through a validated migration.

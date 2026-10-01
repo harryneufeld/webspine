@@ -1,0 +1,5 @@
+<a class="brand" href="@Context.Link("/")"><span class="brand-name">@Fields.Name</span><span class="brand-note">@Fields.Note</span></a>
+@code {
+    [Parameter, EditorRequired] public BrandFields Fields { get; set; } = default!;
+    [Parameter, EditorRequired] public PrototypePageContext Context { get; set; } = default!;
+}

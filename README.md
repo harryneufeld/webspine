@@ -10,6 +10,8 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 
 ## Project documents
 
+The [Razor design-package prototype](docs/razor-prototype.md) proves standalone component rendering from frozen composition with shared/nested content and captured browser assets. [Decision 0013](docs/decisions/0013-static-razor-design-package-proof.md) records the next architecture direction; configured production packages and authoring integration remain subsequent work.
+
 An opt-in [composition v2 library](docs/composition.md) adds typed Blocks, nested Groups, Regions, shared references and component registration. [spinecms storage](docs/spinecms-storage.md) persists v2 and supports explicit migration/recovery on a copy. The [composition board and v2 API](docs/composition-editing.md) now support typed editing, shared-content authority, validated PNG uploads and retained previews. Existing sites are not automatically migrated; enable composition explicitly from the overview. The default replaceable CMS is named spinecms.
 
 - [Project charter](PROJECT.md): purpose, scope and product rules.

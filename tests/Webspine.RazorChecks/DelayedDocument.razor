@@ -1,0 +1,12 @@
+<p>@message</p>
+@code {
+    [Parameter] public PrototypePageContext Context { get; set; } = default!;
+    [Parameter] public CancellationToken CancellationToken { get; set; }
+    private string message = "Not ready";
+    protected override async Task OnInitializedAsync()
+    {
+        LifecycleSignals.Started.TrySetResult();
+        await LifecycleSignals.Continue.Task.WaitAsync(CancellationToken);
+        message = "Async lifecycle completed";
+    }
+}

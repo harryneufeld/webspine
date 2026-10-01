@@ -83,14 +83,6 @@ public sealed class CompositionBuildPipeline(BlockRegistry registry)
             contentDigest = BuildPipeline.Hash(JsonSerializer.SerializeToUtf8Bytes(captured.Content, CompositionJson.Options)),
             designRevision, design = captured.Design, registrations
         }, CompositionJson.Options));
-        cancellationToken.ThrowIfCancellationRequested();
-        var files = output.Freeze().OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => new ArtifactFile(pair.Key, pair.Value, BuildPipeline.Hash(pair.Value.AsSpan()))).ToImmutableArray();
-        var digest = BuildPipeline.Hash(JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            contractVersion = CompositionContract.Version, captured.Content.Source, captured.Content.Revision, designRevision,
-            files = files.Select(f => new { f.Path, length = f.Bytes.Length, f.Digest }).ToArray()
-        }, CompositionJson.Options));
-        return new(captured.Content.Source, captured.Content.Revision, CompositionContract.Version, designRevision, files, digest);
+        return CompositionArtifactFinalizer.Complete(output, captured.Content, designRevision, cancellationToken);
     }
 }

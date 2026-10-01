@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="@Context.Website.Language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Context.Page.Title | @Context.Website.Title</title>
+    <meta name="description" content="@Context.Page.Description" />
+    <link rel="stylesheet" href="@Context.Link("/assets/prototype.css")" />
+    <script src="@Context.Link("/assets/prototype.js")" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-shell site-header">
+        @foreach (var placement in Context.Region("header"))
+        {
+            <BlockView Context="Context" Placement="placement" />
+        }
+        <a class="header-link" href="#questions">Before we begin <span aria-hidden="true">↗</span></a>
+    </header>
+    <main id="main" class="site-shell" tabindex="-1">
+        <p class="eyebrow">Independent interior design · A working WebSpine prototype</p>
+        <h1>@Context.Page.Title</h1>
+        @foreach (var placement in Context.Region("main"))
+        {
+            <BlockView Context="Context" Placement="placement" />
+        }
+    </main>
+    <footer class="site-shell site-footer">
+        @foreach (var placement in Context.Region("footer"))
+        {
+            <BlockView Context="Context" Placement="placement" />
+        }
+        <p>Design package experiment · Fictional studio</p>
+    </footer>
+</body>
+</html>
+
+@code {
+    [Parameter, EditorRequired] public PrototypePageContext Context { get; set; } = default!;
+    [Parameter] public CancellationToken CancellationToken { get; set; }
+    protected override void OnParametersSet() => CancellationToken.ThrowIfCancellationRequested();
+}

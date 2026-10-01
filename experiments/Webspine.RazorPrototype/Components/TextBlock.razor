@@ -1,0 +1,4 @@
+<section class="text-block"><h2>@Fields.Heading</h2><p>@Fields.Text</p></section>
+@code {
+    [Parameter, EditorRequired] public TextFields Fields { get; set; } = default!;
+}

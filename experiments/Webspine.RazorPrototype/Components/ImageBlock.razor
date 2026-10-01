@@ -1,0 +1,5 @@
+<figure class="image-block"><img src="@Context.Asset(Fields.AssetId)" alt="@Fields.AlternativeText" width="1000" height="740" /></figure>
+@code {
+    [Parameter, EditorRequired] public ImageFields Fields { get; set; } = default!;
+    [Parameter, EditorRequired] public PrototypePageContext Context { get; set; } = default!;
+}
