@@ -2,6 +2,8 @@
 
 Implemented for #16. Existing installations remain on v1 until an operator selects **Enable composition editing** in the overview, or runs the explicit migration described in [spinecms storage](spinecms-storage.md). This creates a v2 revision; existing revisions, images and preview bytes remain retained. `/manage` then opens the composition board. Legacy writes fail clearly; they never modify a v2 graph through v1 fields.
 
+New Fieldwork installations can start directly on composition v2 from the installed blank/service-business starter. Existing Studio setup remains v1 until explicit migration. The board consumes each package's declared Regions and definitions; it does not require Header/Main/Footer names. See the [package quickstart](package-quickstart.md). Selecting an incompatible package does not transform a stored site; old previews remain retrievable.
+
 ## Board
 
 Expand a page to inspect Header, Main and Footer, including nested Groups. Each element has its own Edit/View link, Move up/down buttons and a More disclosure with applicable actions. Shared references are marked. Successful actions reopen the current page. Page details change the page title and description; the page-title element links to these details. Focused editors use the registered type's [field metadata](field-metadata.md): readable labels, text areas for longer copy, approved choices, image references and bounded lists. Custom types with complete basic metadata are creatable/editable without adding management templates. Missing metadata or specialized editor requirements are shown explicitly as unsupported by the basic board.

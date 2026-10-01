@@ -1,0 +1,22 @@
+@inherits RazorContentComponent<BrandFields>
+<a class="business-name" href="@Context.Link("/")"><span aria-hidden="true" class="business-mark">@Monogram</span>@Context.Website.Title</a>
+<p class="service-area">@Fields.Area</p>
+<nav aria-label="Main navigation">
+    @foreach (var id in Fields.PageIds)
+    {
+        var page = Context.Website.Pages.Single(p => p.Id == id);
+        <a href="@Context.Link(page.Path)" aria-current="@(page.Id == Context.Page.Id ? "page" : null)">@(page.Title)<span aria-hidden="true">↗</span></a>
+    }
+</nav>
+<p class="business-note">@Fields.Tagline</p>
+@code {
+    private string Monogram
+    {
+        get
+        {
+            var initials = string.Concat(Context.Website.Title.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Where(word => char.IsLetter(word[0])).Take(2).Select(word => char.ToLowerInvariant(word[0])));
+            return initials.Length == 0 ? "⌂" : initials + ".";
+        }
+    }
+}

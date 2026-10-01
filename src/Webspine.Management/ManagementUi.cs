@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Antiforgery;
 using Webspine.Content.Sqlite;
 using Webspine.Core;
+using Webspine.Examples;
 
 namespace Webspine.Management;
 
@@ -55,9 +56,9 @@ internal static class ManagementUi
     }
     public static IResult Setup(HttpContext context, string? error = null, int status = 200, string title = "My website")
         => Html("Create your website", $"""
-            <div class="intro"><p class="eyebrow">A place to begin</p><h1>Create your website.</h1><p>Start with a clean Home page, or explore a five-page example. Both become your editable site.</p></div>{Alert(error)}
+            <div class="intro"><p class="eyebrow">A place to begin</p><h1>Create your website.</h1><p>Start with a clean Home page, or explore the installed design's example. Both become your editable site.</p></div>{Alert(error)}
             <form method="post" action="/manage/setup" class="panel setup">{Token(context)}{Input("title", "Website name", title)}
-            <div class="choices"><label class="choice"><input type="radio" name="mode" value="blank" checked><strong>Start blank</strong><span>A Home page, ready for your own words.</span></label><label class="choice"><input type="radio" name="mode" value="demo"><strong>Use demo</strong><span>Home, Services, Products, About and Contact.</span></label></div><button type="submit">Create website</button><p class="hint">Your site is saved on this computer. Nothing is published.</p></form>
+            <div class="choices"><label class="choice"><input type="radio" name="mode" value="blank" checked><strong>Start blank</strong><span>A Home page, ready for your own words.</span></label><label class="choice"><input type="radio" name="mode" value="demo"><strong>{E(context.RequestServices.GetRequiredService<InstalledDesign>().ExampleLabel)}</strong><span>{E(context.RequestServices.GetRequiredService<InstalledDesign>().ExampleDescription)}</span></label></div><button type="submit">Create website</button><p class="hint">Your site is saved on this computer. Nothing is published.</p></form>
             """, status);
 
     public static IResult Overview(HttpContext context, ContentSnapshot snapshot, int revisions, string? error = null, int status = 200)

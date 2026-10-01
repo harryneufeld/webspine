@@ -1,6 +1,6 @@
 # Configured design packages
 
-Composition authoring and previews select an installed trusted package. The built-in `studio` version `1` is implemented by `Webspine.Designs.Studio` using `Webspine.Rendering.Razor`. For local management:
+Composition authoring and previews select an installed trusted package. Both `studio` version `1` and `fieldwork` version `1` use `Webspine.Rendering.Razor` with independent document/layout structures and components. Studio owns Header/Main/Footer; Fieldwork owns Brand/Content/Contact with a navigation rail and shared contact panel. See the [package quickstart](package-quickstart.md) for running both and registering a new package. For local management:
 
 ```text
 dotnet run --project src/Webspine.Management -- --urls http://127.0.0.1:9087 --environment Development --Management:Enabled true --Design:Package studio --Design:Version 1
@@ -16,7 +16,7 @@ Previews retain private `build-inputs/<candidate-id>.zip` and content-addressed 
 
 Only explicit package CSS is supported; generated isolation/bundling output must be added explicitly before such features can be used. Package scripts are retained and listed in `design-package-manifest.json`. Management preview delivery validates that declaration, serves those files as JavaScript and permits same-origin scripts through CSP. Default delivery remains script-free. The manifest is build provenance, not permission for content credentials to install code.
 
-Existing v1 sites use `Webspine.Rendering.Legacy` until explicit composition migration. Old stored previews keep their exact bytes; viewing them does not load a package or rebuild them. Migration rehearses the selected renderer before committing a new head.
+Existing Studio v1 sites use `Webspine.Rendering.Legacy` until explicit composition migration. Fieldwork starters create native v2 directly and intentionally provide no automatic v1 migration mapping or v1 preview renderer. An incompatible selection fails authoring/building without reinterpreting stored values. Old stored previews keep their exact bytes; viewing them does not load a package or rebuild them. Migration rehearses the selected renderer before committing a new head.
 
 To inspect the isolated production-package verification fixture after its checks:
 
@@ -24,4 +24,4 @@ To inspect the isolated production-package verification fixture after its checks
 dotnet run --project tests/Webspine.RazorChecks -- --preview
 ```
 
-Open `http://127.0.0.1:9095/preview/fixed/`. This loopback fixture has no customer data or management accounts; stop it after review. Generic authoring metadata/UI is implemented in #26; two distinct website designs remain #27.
+Open `http://127.0.0.1:9095/preview/fixed/`. This loopback fixture has no customer data or management accounts; stop it after review. Generic authoring is implemented in #26; independent Studio/Fieldwork proof in #27 is documented in [decision 0016](decisions/0016-independent-layouts-and-installed-starters.md).

@@ -1,5 +1,5 @@
 using Webspine.Core;
-using Webspine.Demo;
+using Webspine.Examples;
 using Webspine.Delivery;
 using Webspine.Caching.Memory;
 using Webspine.Management;
@@ -12,7 +12,6 @@ using System.Text.Json.Serialization;
 using Webspine.Content.Sqlite;
 using Webspine.Core.Composition;
 using Webspine.Rendering.Razor;
-using Webspine.Designs.Studio;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -25,11 +24,13 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
     var dataDirectory = builder.Configuration["Management:DataDirectory"] ?? Path.Combine(builder.Environment.ContentRootPath, ".local");
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDirectory, "keys"))).SetApplicationName("webspine-local");
     Directory.CreateDirectory(dataDirectory);
-    var selectedDesign = new DesignPackageCatalog([StudioPackage.Create()]).Select(
+    var installation = InstalledDesigns.Select(
         builder.Configuration["Design:Package"] ?? "studio", builder.Configuration["Design:Version"]);
+    var selectedDesign = installation.Package;
+    builder.Services.AddSingleton(installation);
     builder.Services.AddSingleton<IDesignPackage>(selectedDesign);
     builder.Services.AddSingleton<ICompositionRenderer>(selectedDesign);
-    builder.Services.AddSingleton<ILegacyCompositionConverter, StudioLegacyConverter>();
+    builder.Services.AddSingleton<ILegacyCompositionConverter>(installation.LegacyConverter);
     builder.Services.AddSingleton(new FrozenInputStore(Path.Combine(dataDirectory, "build-inputs")));
     builder.Services.AddDbContext<AccountDatabase>(options => options.UseSqlite(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = Path.Combine(Path.GetFullPath(dataDirectory), "accounts.db"), Pooling = false }.ToString()));
     builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
@@ -128,7 +129,7 @@ if (managementEnabled)
 
 if (demoEnabled)
 {
-    var artifact = await DemoSite.BuildAsync(DemoSite.FixtureDirectory, "/demo");
+    var artifact = await StudioExample.BuildReadOnlyAsync("/demo");
     var delivery = new PrerenderedDelivery(new FixedArtifactSource(artifact), app.Services.GetRequiredService<IDeliveryCache>(),
         [new DemoDeliveryHeaders()], diagnostics: true);
     app.MapMethods("/demo/{**path}", ["GET", "HEAD"], async (string? path, HttpContext context) =>

@@ -3,11 +3,12 @@ using Webspine.Core;
 using Webspine.Core.Composition;
 using Webspine.Rendering.Legacy;
 using System.Text.Json;
+using Webspine.Examples;
 
 namespace Webspine.Management;
 
 internal sealed class AuthoringOperations(IWebsiteAuthoringSource source, SqliteContentSource previews,
-    IDesignPackage package, FrozenInputStore inputStore)
+    IDesignPackage package, FrozenInputStore inputStore, InstalledDesign installation)
 {
     public ValueTask<ContentSnapshot> ReadAsync(CancellationToken ct) => source.ReadAsync(ct);
     public Task<ContentSnapshot> SettingsAsync(string revision, string title, string language, CancellationToken ct) => source.UpdateWebsiteAsync(revision, title, language, ct);
@@ -15,6 +16,7 @@ internal sealed class AuthoringOperations(IWebsiteAuthoringSource source, Sqlite
     public Task<ContentSnapshot> EditPageAsync(string revision, string id, string title, string description, IReadOnlyDictionary<string, string> fields, CancellationToken ct) => source.EditPageAsync(revision, id, title, description, fields, ct);
     public async Task<(string Id, BuiltArtifact Artifact)> PreviewAsync(string revision, string prefix, CancellationToken ct)
     {
+        if (!installation.SupportsLegacy) throw new SourceOperationNotSupportedException("This design does not render v1 drafts. Select the original design; retained previews remain available without rebuilding.");
         var captured = await previews.CaptureAsync(ct);
         if (captured.Snapshot.Revision != revision) throw new RevisionConflictException();
         var id = Guid.NewGuid().ToString("N");

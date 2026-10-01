@@ -1,0 +1,4 @@
+@inherits RazorContentComponent<GroupFields>
+<div class="@($"service-group layout-{Fields.Mode} alignment-{Fields.Alignment} gap-{Fields.Spacing} count-{Fields.Columns}")">
+    @foreach (var placement in Block.Children) { <RazorBlock Context="Context" Placement="placement" /> }
+</div>

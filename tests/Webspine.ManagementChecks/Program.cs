@@ -8,6 +8,11 @@ if (args.Contains("--metadata-preview", StringComparer.Ordinal))
     await MetadataEditingChecks.RunAsync(browserReview: true);
     return;
 }
+if (args.Contains("--independent-preview", StringComparer.Ordinal))
+{
+    await IndependentDesignChecks.RunAsync(browserReview: true);
+    return;
+}
 
 using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(2) };
 await DeliveryChecks.RunAsync();
@@ -15,6 +20,7 @@ await ContentStoreChecks.RunAsync();
 await CompositionStoreChecks.RunAsync();
 await CompositionEditingChecks.RunAsync();
 await MetadataEditingChecks.RunAsync();
+await IndependentDesignChecks.RunAsync();
 await AuthoringChecks.RunAsync();
 await AccountChecks.RunAsync();
 await HumanAccountChecks.RunAsync();
