@@ -86,8 +86,9 @@ public sealed class BlockValidationContext(CompositionWebsite website, Compositi
     }
 }
 
-public sealed class BlockRenderContext(Action renderChildren, Func<string, string> assetPath, CompositionWebsite website, CompositionPage page)
+public sealed class BlockRenderContext(Action renderChildren, Func<string, string> assetPath, CompositionWebsite website, CompositionPage page, Func<string, string>? link = null)
 {
+    public string Link(string destination) => link is null ? destination : link(destination);
     public void RenderChildren() => renderChildren();
     public string AssetPath(string id) => assetPath(id);
     public string WebsiteTitle => website.Title;

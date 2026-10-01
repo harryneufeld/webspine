@@ -1,6 +1,6 @@
 # Composition contract v2
 
-Implemented library slice for #14, 1 October 2026. `Webspine.Core.Composition` provides an opt-in v2 model, registry, validator and captured-input build path. The [spinecms store](spinecms-storage.md) now supports v2 capture/conditional persistence and explicit migration/recovery. The current board and `/api/v1` still edit flat v1 sections; editing/media/shared permissions are #16 and Patterns/Records are #17. No v2 HTTP endpoints exist yet.
+Implemented library slice for #14, 1 October 2026. `Webspine.Core.Composition` provides an opt-in v2 model, registry, validator and captured-input build path. The [spinecms store](spinecms-storage.md) now supports v2 capture/conditional persistence and explicit migration/recovery. The [composition board and `/api/v2`](composition-editing.md) implement typed editing, media and shared-write permissions. Existing v1 sites continue using their flat editor until explicit migration. Patterns/Records remain #17.
 
 ## Objects and placement
 
@@ -44,13 +44,13 @@ Standard registrations cover text, image, CTA, cards and Group. A Group declares
 
 ## Sources and capture
 
-`ICompositionSource` is a storage-independent read/capture boundary. `CompositionCapabilities` declares exact type versions, operations, atomic conditional writes and consistent capture. `Require` rejects unsupported operations/types; every non-read operation requires atomic conditional writes. `RequireCapture` requires read and consistent capture. These guards do not implement authentication or prove an adapter's promises: adapter conformance and server permissions remain mandatory. #16 defines typed mutation operations instead of exposing unrestricted graph replacement.
+`ICompositionSource` is a storage-independent read/capture boundary. `CompositionCapabilities` declares exact type versions, operations, atomic conditional writes and consistent capture. `Require` rejects unsupported operations/types; every non-read operation requires atomic conditional writes. `RequireCapture` requires read and consistent capture. These guards do not implement authentication or prove an adapter's promises: adapter conformance and server permissions remain mandatory. `CompositionEditor` implements typed authorized mutation operations without exposing unrestricted graph replacement; see [editing](composition-editing.md).
 
 `CompositionBuildPipeline.BuildAsync(source, design)` checks capabilities before capture, checks source/design identity, validates captured content and requires supported captured types. It never falls back to spinecms. `Build(CapturedComposition)` supports inputs already captured by a trusted caller; it still validates them. Neither path queries mutable data while rendering.
 
 Capture includes content, selected design/CSS and immutable bytes for exactly the declared image assets. Artifact paths and collisions are validated by the common builder. The output contains all page files, assets, `assets/composition.css` and `composition-manifest.json`. Those last two paths are reserved; conflicting assets fail. The manifest captures content digest, design/layout rules, registry/schema/renderer/module versions and registration implementation digests. Implementation digests cover payload and delegate assemblies; transitive module dependency packaging remains future module-loader work. Registrations must be backed by file-based compiled assemblies.
 
-All files, including the manifest/CSS, enter the final artifact digest. Standard rendering escapes content; retained file arrays are immutable. This is a library build result, not durable job storage, preview hosting or publication. Generated links/assets currently use site-root paths; deployment under a path prefix requires explicit future routing support.
+All files, including the manifest/CSS, enter the final artifact digest. Standard rendering escapes content; retained file arrays are immutable. Management retains and privately hosts these artifacts. Standard/design renderers use `BlockRenderContext.Link` and `AssetPath` for optional path-prefix routing; custom renderers must use these helpers too. Durable jobs and publication remain future work.
 
 ## Examples and compatibility
 
@@ -60,6 +60,6 @@ All files, including the manifest/CSS, enter the final artifact digest. Standard
 
 The examples are loaded and built by the check suite. A separate test provider proves the source boundary and a Quote registration proves type extension without engine switch changes.
 
-v1 `ContentContract.Version`, JSON records, retained previews and HTTP field-edit semantics are unchanged. v2 content identifies version 2 explicitly and uses its separate serializer/model. Future composition HTTP operations belong under `/api/v2`; none exist yet. Database schema version is separate from content version: metadata schema 2 retains v1 rows, with explicit content migration, history readers, mappings and fresh-revision recovery. No retained artifact bytes are rewritten or v1 payloads silently reinterpreted.
+v1 `ContentContract.Version`, JSON records, retained previews and HTTP field-edit semantics are unchanged. v2 content identifies version 2 explicitly and uses its separate serializer/model. Typed composition HTTP operations use `/api/v2`; `/api/v1` refuses v2 content instead of reinterpreting it. Database schema version is separate from content version: metadata schema 2 retains v1 rows, with explicit content migration, history readers, mappings and fresh-revision recovery. No retained artifact bytes are rewritten or v1 payloads silently reinterpreted.
 
 Storage backends remain implementation details of spinecms/adapters. Multiple external business-data providers and typed Records are separate from choosing SQLite/PostgreSQL/MySQL persistence; neither additional database backends nor Record providers are introduced here.

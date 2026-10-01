@@ -24,9 +24,9 @@ public static class StandardBlocks
         new BlockRegistration<TextFields>(Descriptor("text"), (value, _) =>
         {
             CompositionRules.Text(value.Heading, 160); CompositionRules.Text(value.Text, 5000);
-        }, (value, _, html) =>
+        }, (value, context, html) =>
         {
-            html.Markup("<section><h2>"); html.Text(value.Heading); html.Markup("</h2><p>"); html.Text(value.Text); html.Markup("</p></section>");
+            html.Markup("<section class=\"section\"><h2>"); html.Text(value.Heading); html.Markup("</h2><p class=\"body-copy\">"); html.Text(value.Text); html.Markup("</p></section>");
         }),
         new BlockRegistration<ImageFields>(Descriptor("image"), (value, context) =>
         {
@@ -36,10 +36,10 @@ public static class StandardBlocks
         {
             CompositionRules.Text(value.Heading, 160); CompositionRules.Text(value.Text, 2000);
             CompositionRules.Text(value.Label, 70); context.Destination(value.Destination);
-        }, (value, _, html) =>
+        }, (value, context, html) =>
         {
-            html.Markup("<section><h2>"); html.Text(value.Heading); html.Markup("</h2><p>"); html.Text(value.Text);
-            html.Markup("</p><a href=\""); html.Text(value.Destination); html.Markup("\">"); html.Text(value.Label); html.Markup("</a></section>");
+            html.Markup("<section class=\"section cta\"><div><h2>"); html.Text(value.Heading); html.Markup("</h2><p>"); html.Text(value.Text);
+            html.Markup("</p></div><a class=\"button\" href=\""); html.Text(context.Link(value.Destination)); html.Markup("\">"); html.Text(value.Label); html.Markup("</a></section>");
         }),
         new BlockRegistration<CardsFields>(Descriptor("cards"), (value, context) =>
         {
@@ -54,15 +54,15 @@ public static class StandardBlocks
             }
         }, (value, context, html) =>
         {
-            html.Markup("<section><h2>"); html.Text(value.Heading); html.Markup("</h2>");
+            html.Markup("<section class=\"section\"><h2>"); html.Text(value.Heading); html.Markup("</h2><div class=\"cards\">");
             foreach (var card in value.Items)
             {
-                html.Markup("<article>");
+                html.Markup("<article class=\"card\">");
                 if (card.AssetId is not null) Image(card.AssetId, card.Title, context, html);
-                html.Markup("<h3><a href=\""); html.Text(card.Destination); html.Markup("\">"); html.Text(card.Title);
+                html.Markup("<h3><a href=\""); html.Text(context.Link(card.Destination)); html.Markup("\">"); html.Text(card.Title);
                 html.Markup("</a></h3><p>"); html.Text(card.Description); html.Markup("</p></article>");
             }
-            html.Markup("</section>");
+            html.Markup("</div></section>");
         }),
         new BlockRegistration<GroupFields>(Descriptor("group", container: true), (value, context) =>
         {
@@ -79,6 +79,6 @@ public static class StandardBlocks
 
     private static void Image(string assetId, string alternativeText, BlockRenderContext context, HtmlOutput html)
     {
-        html.Markup("<img src=\""); html.Text(context.AssetPath(assetId)); html.Markup("\" alt=\""); html.Text(alternativeText); html.Markup("\">");
+        html.Markup("<img class=\"wide-image\" src=\""); html.Text(context.AssetPath(assetId)); html.Markup("\" alt=\""); html.Text(alternativeText); html.Markup("\">");
     }
 }

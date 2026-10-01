@@ -32,7 +32,8 @@ internal static class ManagementEndpoints
                 context.Response.Headers.CacheControl = "no-store";
                 context.Response.Headers.XContentTypeOptions = "nosniff";
                 context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
-                if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = 262144;
+                if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                    limit.MaxRequestBodySize = context.Request.Path.Value is "/api/v2/media" or "/manage/composition/media" ? 2 * 1024 * 1024 + 65536 : 262144;
                 var path = context.Request.Path.Value ?? "";
                 if (isApi)
                 {
@@ -44,7 +45,7 @@ internal static class ManagementEndpoints
                 if (!publicAccount)
                 {
                     if (context.User.Identity?.IsAuthenticated != true) { context.Response.Redirect("/manage/account/login"); return; }
-                    var permission = isApi ? context.GetEndpoint()?.Metadata.GetMetadata<ApiPermission>()?.Name ?? "content:read"
+                    var permission = context.GetEndpoint()?.Metadata.GetMetadata<ApiPermission>()?.Name ?? (isApi ? "content:read"
                         : path.StartsWith("/manage/integrations", StringComparison.Ordinal) ? "integrations:manage"
                         : path.StartsWith("/manage/users", StringComparison.Ordinal) ? "accounts:manage"
                         : path == "/manage/setup" ? "settings:write"
@@ -52,7 +53,8 @@ internal static class ManagementEndpoints
                         : path.StartsWith("/manage/settings", StringComparison.Ordinal) ? "settings:write"
                         : path.StartsWith("/manage/preview/", StringComparison.Ordinal) ? "preview:read"
                         : path == "/manage/preview" ? "preview:build"
-                        : HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method) || path is "/manage/account/logout" or "/manage/account/password" ? "content:read" : "content:write";
+                        : path == "/manage/composition/settings" ? "settings:write"
+                        : HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method) || path is "/manage/account/logout" or "/manage/account/password" ? "content:read" : "content:write");
                     if (!Permissions.Has(context.User, permission)) { context.Response.StatusCode = 403; return; }
                 }
                 if (!isApi && HttpMethods.IsPost(context.Request.Method))
@@ -61,9 +63,16 @@ internal static class ManagementEndpoints
                     catch (AntiforgeryValidationException) { await ManagementUi.Problem("This form expired or could not be verified. Reopen the page and try again.", 400).ExecuteAsync(context); return; }
                 }
             }
+            var legacyPath = context.Request.Path.Value ?? "";
+            if ((legacyPath is "/manage" or "/manage/settings" or "/manage/export" or "/manage/pages" or "/manage/preview" || legacyPath.StartsWith("/manage/pages/", StringComparison.Ordinal)) && (await store.HeadAsync(context.RequestAborted))?.Version == 2)
+            {
+                if (HttpMethods.IsGet(context.Request.Method)) context.Response.Redirect("/manage/composition");
+                else await ManagementUi.Problem("This site uses composition. Reopen the composition board before editing.", 409).ExecuteAsync(context);
+                return;
+            }
             await next(context);
         });
-        app.MapGet("/manage/assets/editor.css", () => Results.Text(ManagementUi.Css, "text/css; charset=utf-8"));
+        app.MapGet("/manage/assets/editor.css", () => Results.Text(ManagementUi.Css + CompositionBoard.Css, "text/css; charset=utf-8"));
         app.MapGet("/manage", async (HttpContext context) =>
         {
             var snapshot = await store.TryReadAsync(context.RequestAborted);

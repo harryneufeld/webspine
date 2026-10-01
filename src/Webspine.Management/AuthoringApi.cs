@@ -32,6 +32,8 @@ internal static class AuthoringApi
             catch (RevisionConflictException error) { return Results.Problem(error.Message, statusCode: 409); }
             catch (ContentValidationException error) { return Results.Problem(error.Message, statusCode: 422); }
             catch (SiteNotInitializedException error) { return Results.Problem(error.Message, statusCode: 409); }
+            catch (CompositionSiteException error) { return Results.Problem(error.Message, statusCode: 409); }
+            catch (SourceOperationNotSupportedException error) { return Results.Problem(error.Message, statusCode: 501); }
         });
         api.MapGet("/site", async (AuthoringOperations operations, HttpContext context) => Results.Ok(await operations.ReadAsync(context.RequestAborted)))
             .WithMetadata(new ApiPermission("content:read"));

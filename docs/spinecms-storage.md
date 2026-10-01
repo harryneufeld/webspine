@@ -8,11 +8,11 @@ Database schema version 2 adds `revisions.contract_version` and `content_transit
 
 An explicit content migration creates a new v2 revision and switches the same head. Historical rows, media and preview JSON are retained. A transition records original/new revisions and section identity mappings. This is recovery metadata, not a complete authenticated audit trail. Newer unsupported database versions refuse initialization.
 
-`ICompositionSource` reads and captures the v2 head. `ICompositionDraftPersistence` defines trusted create/conditional-commit operations on proposed validated drafts; it is not an HTTP graph-replacement endpoint or permission boundary. #16 must authorize typed application operations before using this persistence boundary. Capability reporting exposes read/capture and atomic-write guarantees; it does not yet advertise the future typed editing operations. UI/API remain v1 for now.
+`ICompositionSource` reads and captures the v2 head. `ICompositionDraftPersistence` defines trusted create/conditional-commit operations on proposed validated drafts; it is not an HTTP graph-replacement endpoint or permission boundary. The typed `CompositionEditor` authorizes application operations before using this persistence boundary. Capability reporting advertises the implemented editing operations and atomic/capture guarantees. The composition board/API use v2 after explicit migration.
 
 Commits take an expected opaque revision, validate the whole graph and required media, insert one immutable snapshot and move the head in one immediate SQLite transaction. Conflicts and validation failures leave no partial head/revision/media changes. Site identity cannot be replaced. Capture reads head/content/media in one read transaction with an immutable captured design supplied by the caller. Snapshots must fit the v2 reader bounds before insertion.
 
-Media paths are immutable: replacement bytes require a new path. Removed references do not delete media required by history. Upload sanitization, retention/garbage collection and quota policy remain #16/release work. Existing trusted media and proposed byte maps are not an upload endpoint.
+Media paths are immutable: replacement bytes require a new path. Removed references do not delete media required by history. Validated PNG upload is implemented through the [composition application operations](composition-editing.md). Retention/garbage collection and quota policy remain release work. Trusted persistence byte maps alone are not an upload authorization boundary.
 
 ## Migration mapping and design
 
@@ -22,11 +22,11 @@ The demo design package supplies registered `site-header`, `site-footer` and `pa
 
 Migration checks the identity map and every original section's type/values, validates composition, captures stored media and rehearses a complete build before inserting the revision/head transition. Renderer failure, missing media, reserved/colliding paths, incompatible design or v2 bounds reject migration with the v1 head intact. Previously generated output is not rebuilt or rewritten; newly generated v2 markup need not be byte-identical to v1. Repeating migration with the current v2 revision validates it and changes nothing. Stale expected revisions fail.
 
-`CompositionCopies` supplies pure helpers for detaching a shared reference and deleting an unreferenced definition. Detach expands its subtree into independent Blocks/placements with new IDs and preserved fields/media references; the selected outer placement keeps its ID. Remaining references stay shared. Persistence also refuses deleting a shared definition referenced by the current draft, even when a proposed commit removes the references simultaneously: detach/remove first, then delete in a later commit. Browser/API commands and shared-write permissions arrive in #16.
+`CompositionCopies` supplies pure helpers for detaching a shared reference and deleting an unreferenced definition. Detach expands its subtree into independent Blocks/placements with new IDs and preserved fields/media references; the selected outer placement keeps its ID. Remaining references stay shared. Persistence also refuses deleting a shared definition referenced by the current draft, even when a proposed commit removes the references simultaneously: detach/remove first, then delete in a later commit. Browser/API typed commands and separate shared-write permissions are implemented; see [composition editing](composition-editing.md).
 
 ## Operator workflow on a copy
 
-The board/API cannot edit v2 yet. Use this migration slice on a copied installation for verification; keep the working v1 site until #16 provides editing. A normally started management host refuses a v2 head clearly instead of misreading it. Retained preview bytes remain stored/readable through the library, but the current v1 HTTP preview host is unavailable while that guard is active.
+Try migration on a copied installation first. A v2 head now opens the composition board; legacy API writes return a contract conflict. Retained v1 and v2 previews remain readable through their authenticated delivery routes. The overview also offers an explicit Enable composition editing action; startup never migrates content automatically.
 
 Stop the host and copy its private data directory, including the database and any SQLite journal/WAL sidecars if present. Keep the original intact. Use the same absolute copy directory for every command. These commands run through the .NET host but exit without binding HTTP ports, initializing accounts or changing account credentials. Development and explicit management configuration are still required. The commands initialize content-schema metadata, including `inspect`; inspection does not migrate content.
 
@@ -54,6 +54,6 @@ The current code can then start the v1 editor on the recovered copy. Full instal
 
 ## Verification
 
-The management checks reconstruct the previously shipped schema, reopen/upgrade it, compare original JSON/preview records, test failed/lossy/stale migration, convert all demo section types, persist mappings and shared shell, commit nested/shared objects, race two writers, detach nested shared Groups, reject referenced deletion/media replacement, preserve old artifacts, restore with a fresh revision, and exercise the real offline commands/startup guard. Tests use isolated temporary directories and clean up their hosts.
+The management checks reconstruct the previously shipped schema, reopen/upgrade it, compare original JSON/preview records, test failed/lossy/stale migration, convert all demo section types, persist mappings and shared shell, commit nested/shared objects, race two writers, detach nested shared Groups, reject referenced deletion/media replacement, preserve old artifacts, restore with a fresh revision, and exercise the real offline commands and authenticated composition hosting. Tests use isolated temporary directories and clean up their hosts.
 
 SQLite remains the only persistence implementation. Another backend must provide these transactional/revision/capture guarantees; external business-data providers and Records remain separate from backend selection.

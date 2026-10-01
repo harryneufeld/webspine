@@ -31,6 +31,17 @@ internal sealed class AccountAdministration(AccountDatabase db, UserManager<Iden
             }
             else if (owners.Count != 1) throw new InvalidOperationException("Multiple original owners are invalid.");
         }
+        // Named administrative profiles receive the new permission; stored app scopes never expand.
+        foreach (var user in await users.Users.ToListAsync())
+        {
+            var claims = await users.GetClaimsAsync(user);
+            if (claims.Any(c => c.Type == RoleClaim && c.Value is "Owner" or "Operator") &&
+                !claims.Any(c => c.Type == Permissions.Claim && c.Value == "content:shared:write"))
+            {
+                await Ensure(users.AddClaimAsync(user, new(Permissions.Claim, "content:shared:write")));
+                await Ensure(users.UpdateSecurityStampAsync(user));
+            }
+        }
         await transaction.CommitAsync();
     }
     public async Task<List<ManagedAccount>> ListAsync()

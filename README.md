@@ -10,7 +10,7 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 
 ## Project documents
 
-An opt-in [composition v2 library](docs/composition.md) adds typed Blocks, nested Groups, Regions, shared references and component registration. [spinecms storage](docs/spinecms-storage.md) persists v2 and supports explicit migration/recovery on a copy. The current board/API still edit v1 until #16; existing sites are not automatically migrated. The default replaceable CMS is named spinecms.
+An opt-in [composition v2 library](docs/composition.md) adds typed Blocks, nested Groups, Regions, shared references and component registration. [spinecms storage](docs/spinecms-storage.md) persists v2 and supports explicit migration/recovery on a copy. The [composition board and v2 API](docs/composition-editing.md) now support typed editing, shared-content authority, validated PNG uploads and retained previews. Existing sites are not automatically migrated; enable composition explicitly from the overview. The default replaceable CMS is named spinecms.
 
 - [Project charter](PROJECT.md): purpose, scope and product rules.
 - [Architecture](docs/architecture.md): responsibilities and planned boundaries.
