@@ -110,7 +110,7 @@ static class CompositionEditingChecks
             var entries = form.Where(p => p.Key != "affected").ToList(); entries.AddRange(impact.Select(id => KeyValuePair.Create("affected", id)));
             using var boardSave = await browser.PostAsync(host.Url + "/manage/composition/blocks/" + footer.Id, new FormUrlEncodedContent(entries)); Require(boardSave.StatusCode == HttpStatusCode.Found, "Board shared save failed: " + await boardSave.Content.ReadAsStringAsync());
             snapshot = await Read(); Require(snapshot.Website.Blocks.Single(b => b.Id == footer.Id).Fields.GetProperty("message").GetString() == "Changed through board", "Board and API disagree.");
-            using var noCsrf = await browser.PostAsync(host.Url + "/manage/composition/arrange", new FormUrlEncodedContent(new Dictionary<string, string> { ["revision"] = snapshot.Revision })); Require(noCsrf.StatusCode == HttpStatusCode.BadRequest, "Composition board lost CSRF protection.");
+            using var noCsrf = await browser.PostAsync(host.Url + "/manage/composition/add", new FormUrlEncodedContent(new Dictionary<string, string> { ["revision"] = snapshot.Revision })); Require(noCsrf.StatusCode == HttpStatusCode.BadRequest, "Composition board lost CSRF protection.");
             Console.WriteLine("PASS: Board and bearer API use equivalent edits, exact shared impact, scoped credentials, CSRF and conditional revisions.");
 
             var cardBlock = snapshot.Website.Blocks.First(b => b.TypeId == "cards"); var oldCount = cardBlock.Fields.GetProperty("items").GetArrayLength();
@@ -122,14 +122,64 @@ static class CompositionEditingChecks
             var selected = snapshot.Website.Pages.Single(p => p.Id == "home").Regions.Single(r => r.Id == "main").Placements.First(p => p.Kind == TargetKind.Block && snapshot.Website.Blocks.Single(b => b.Id == p.TargetId).TypeId == "text");
             var overviewForm = Form(await browser.GetStringAsync(host.Url + "/manage/composition"));
             form = new() { ["__RequestVerificationToken"] = overviewForm["__RequestVerificationToken"], ["revision"] = snapshot.Revision, ["operation"] = "promote", ["placement"] = selected.Id, ["location"] = "page:home:main", ["index"] = "1" };
-            using var confirmation = await browser.PostAsync(host.Url + "/manage/composition/arrange", new FormUrlEncodedContent(form));
+            using var confirmation = await browser.PostAsync(host.Url + "/manage/composition/placements/" + selected.Id + "/promote", new FormUrlEncodedContent(form));
             Require(confirmation.StatusCode == HttpStatusCode.OK && (await confirmation.Content.ReadAsStringAsync()).Contains("Review shared change") && (await Read()).Revision == snapshot.Revision, "Shared arrangement committed before review.");
             form = Form(await confirmation.Content.ReadAsStringAsync()); form["acknowledge"] = "true";
-            using var confirmed = await browser.PostAsync(host.Url + "/manage/composition/arrange", new FormUrlEncodedContent(form)); Require(confirmed.StatusCode == HttpStatusCode.Found, "Shared arrangement confirmation failed.");
+            using var confirmed = await browser.PostAsync(host.Url + "/manage/composition/confirm", new FormUrlEncodedContent(form)); Require(confirmed.StatusCode == HttpStatusCode.Found, "Shared arrangement confirmation failed.");
             snapshot = await Read(); Require(snapshot.Website.Blocks.Single(b => b.Id == selected.TargetId).Owner.Kind == OwnerKind.Shared, "Confirmed promotion did not persist.");
             using var export = await browser.GetAsync(host.Url + "/manage/composition/export");
             using var zip = new ZipArchive(new MemoryStream(await export.Content.ReadAsByteArrayAsync())); Require(zip.GetEntry("content.json") is not null && zip.GetEntry("assets/studio.svg") is not null, "Composition export omitted content/media.");
             Console.WriteLine("PASS: Board list editing, pre-save shared-arrangement review and composition export use validated drafts.");
+
+            html = await browser.GetStringAsync(host.Url + "/manage/composition?page=home");
+            Require(html.Contains("Move up") && html.Contains("Move down") && html.Contains("Add after this element") && html.Contains("Group selected") && !html.Contains("Arrange content"), "Page structure did not expose contextual controls.");
+            var addUrl = host.Url + "/manage/composition/add?page=home&location=page%3Ahome%3Amain&type=text&after=" + selected.Id;
+            html = await browser.GetStringAsync(addUrl);
+            Require(html.Contains("field.heading") && html.Contains("field.text") && !html.Contains("field.assetId") && !html.Contains("field.mode"), "Text creation exposed fields belonging to other types.");
+            form = Form(html); form["field.heading"] = "Contextual addition"; form["field.text"] = "Created beside the selected element";
+            using var contextualAdd = await browser.PostAsync(host.Url + "/manage/composition/add", new FormUrlEncodedContent(form));
+            Require(contextualAdd.StatusCode == HttpStatusCode.Found && contextualAdd.Headers.Location!.ToString().EndsWith("?page=home"), "Contextual addition lost the current page.");
+            snapshot = await Read();
+            var uiBlock = snapshot.Website.Blocks.Single(b => b.TypeId == "text" && b.Fields.GetProperty("heading").GetString() == "Contextual addition");
+            var uiMain = snapshot.Website.Pages.Single(p => p.Id == "home").Regions.Single(r => r.Id == "main");
+            var uiPlacement = uiMain.Placements.Single(p => p.TargetId == uiBlock.Id);
+            var uiIndex = Array.FindIndex(uiMain.Placements.ToArray(), p => p.Id == uiPlacement.Id);
+            Require(uiIndex > 0 && uiMain.Placements[uiIndex - 1].Id == selected.Id, "Add-after ignored its insertion point.");
+            form = new() { ["__RequestVerificationToken"] = overviewForm["__RequestVerificationToken"], ["revision"] = snapshot.Revision, ["page"] = "home", ["direction"] = "up" };
+            using var movedUp = await browser.PostAsync(host.Url + "/manage/composition/placements/" + uiPlacement.Id + "/reorder", new FormUrlEncodedContent(form));
+            Require(movedUp.StatusCode == HttpStatusCode.Found, "Inline move up failed.");
+            using var staleMove = await browser.PostAsync(host.Url + "/manage/composition/placements/" + uiPlacement.Id + "/reorder", new FormUrlEncodedContent(form));
+            Require(staleMove.StatusCode == HttpStatusCode.Conflict, "Inline reorder accepted a stale revision.");
+            snapshot = await Read(); uiMain = snapshot.Website.Pages.Single(p => p.Id == "home").Regions.Single(r => r.Id == "main");
+            Require(uiMain.Placements[uiIndex - 1].Id == uiPlacement.Id && uiMain.Placements[uiIndex].Id == selected.Id, "Move up changed identity or order incorrectly.");
+            form["revision"] = snapshot.Revision; form["direction"] = "down";
+            using var movedDown = await browser.PostAsync(host.Url + "/manage/composition/placements/" + uiPlacement.Id + "/reorder", new FormUrlEncodedContent(form));
+            Require(movedDown.StatusCode == HttpStatusCode.Found, "Inline move down failed."); snapshot = await Read();
+            using var invalidType = await browser.GetAsync(host.Url + "/manage/composition/add?page=home&location=page%3Ahome%3Aheader&type=text");
+            Require(invalidType.StatusCode == HttpStatusCode.UnprocessableEntity, "Creation offered a type forbidden in this area.");
+            Console.WriteLine("PASS: Contextual add-after and inline reorder preserve placement identity/current page and reject stale or forbidden changes.");
+
+            form = new() { ["__RequestVerificationToken"] = overviewForm["__RequestVerificationToken"], ["revision"] = snapshot.Revision, ["page"] = "home", ["location"] = "page:home:main", ["selection"] = uiPlacement.Id };
+            using var groupScreen = await browser.PostAsync(host.Url + "/manage/composition/group", new FormUrlEncodedContent(form));
+            html = await groupScreen.Content.ReadAsStringAsync();
+            Require(groupScreen.IsSuccessStatusCode && html.Contains("<select name=\"field.mode\"") && !html.Contains("field.text") && (await Read()).Revision == snapshot.Revision, "Grouping did not offer focused approved fields before saving.");
+            form = Form(html); form["field.mode"] = "stack"; form["field.alignment"] = "start"; form["field.spacing"] = "medium"; form["field.columns"] = "1";
+            using var boardGroup = await browser.PostAsync(host.Url + "/manage/composition/group/commit", new FormUrlEncodedContent(form)); Require(boardGroup.StatusCode == HttpStatusCode.Found, "Contextual grouping failed.");
+            snapshot = await Read(); var uiGroup = snapshot.Website.Blocks.Single(b => b.TypeId == "group");
+            Require(uiGroup.Children.Single().Id == uiPlacement.Id, "Grouping lost selected placement identity.");
+            html = await browser.GetStringAsync(host.Url + "/manage/composition/placements/" + uiPlacement.Id + "/move?page=home");
+            Require(html.Contains("page:home:main") && !html.Contains("page:services:main") && !html.Contains("field.text"), "Move dialog offered another owner or unrelated fields.");
+            form = Form(html); form["location"] = "page:home:main";
+            using var outOfGroup = await browser.PostAsync(host.Url + "/manage/composition/placements/" + uiPlacement.Id + "/move", new FormUrlEncodedContent(form)); Require(outOfGroup.StatusCode == HttpStatusCode.Found, "Move from nested Group failed."); snapshot = await Read();
+            foreach (var removeId in new[] { uiPlacement.Id, snapshot.Website.Pages.Single(p => p.Id == "home").Regions.Single(r => r.Id == "main").Placements.Single(p => p.TargetId == uiGroup.Id).Id })
+            {
+                form = new() { ["__RequestVerificationToken"] = overviewForm["__RequestVerificationToken"], ["revision"] = snapshot.Revision, ["page"] = "home" };
+                using var removeReview = await browser.PostAsync(host.Url + "/manage/composition/placements/" + removeId + "/remove", new FormUrlEncodedContent(form));
+                html = await removeReview.Content.ReadAsStringAsync(); Require(removeReview.IsSuccessStatusCode && html.Contains("Confirm removal") && (await Read()).Revision == snapshot.Revision, "Remove committed before its focused confirmation.");
+                using var remove = await browser.PostAsync(host.Url + "/manage/composition/confirm", new FormUrlEncodedContent(Form(html))); Require(remove.StatusCode == HttpStatusCode.Found, "Confirmed removal failed."); snapshot = await Read();
+            }
+            Require(!snapshot.Website.Blocks.Any(b => b.Id == uiBlock.Id || b.Id == uiGroup.Id), "Board removal left owned content behind.");
+            Console.WriteLine("PASS: Focused grouping, same-owner movement and removal confirmation persist through the board without exposing unrelated options.");
 
             using var uploadRequest = new HttpRequestMessage(HttpMethod.Post, host.Url + "/api/v2/media") { Content = new ByteArrayContent(png) }; uploadRequest.Content.Headers.ContentType = new("image/png"); uploadRequest.Headers.IfMatch.Add(new EntityTagHeaderValue('"' + snapshot.Revision + '"'));
             using var uploaded = await api.SendAsync(uploadRequest); Require(uploaded.IsSuccessStatusCode, "API media upload failed: " + (int)uploaded.StatusCode + " " + await uploaded.Content.ReadAsStringAsync()); snapshot = await Read();

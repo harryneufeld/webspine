@@ -11,7 +11,7 @@ using Webspine.Demo;
 
 namespace Webspine.Management;
 
-internal static class CompositionBoard
+internal static partial class CompositionBoard
 {
     private static string E(string? s) => WebUtility.HtmlEncode(s ?? "");
     private static string Input(string name, string label, string value) => $"<label>{E(label)}<input name=\"{E(name)}\" value=\"{E(value)}\"></label>";
@@ -31,7 +31,8 @@ internal static class CompositionBoard
             try { return await next(invocation); }
             catch (Exception e) when (CompositionApi.ExpectedError(e)) { return ManagementUi.Problem(e.Message, CompositionApi.ErrorStatus(e)); }
         });
-        board.MapGet("", async (CompositionOperations operations, HttpContext c) => Overview(c, await operations.ReadAsync(c.RequestAborted), operations.Source.CompositionCapabilities));
+        MapStructureRoutes(board);
+        board.MapGet("", async (CompositionOperations operations, HttpContext c) => Overview(c, await operations.ReadAsync(c.RequestAborted), operations.Source.CompositionCapabilities, await DemoComposition.DesignAsync(c.RequestAborted)));
         board.MapGet("/export", async (CompositionOperations operations, HttpContext c) =>
         {
             operations.Source.CompositionCapabilities.RequireCapture();
@@ -55,52 +56,24 @@ internal static class CompositionBoard
         {
             var snapshot = await operations.ReadAsync(c.RequestAborted);
             var block = snapshot.Website.Blocks.FirstOrDefault(b => b.Id == id);
-            return block is null ? Results.NotFound() : Edit(c, snapshot, block);
+            return block is null ? Results.NotFound() : Edit(c, snapshot, block, await DemoComposition.DesignAsync(c.RequestAborted), operations.Source.CompositionCapabilities);
         });
         board.MapPost("/blocks/{id}", async (string id, CompositionOperations operations, HttpContext c) =>
         {
             var form = await c.Request.ReadFormAsync(c.RequestAborted);
             var snapshot = await operations.ReadAsync(c.RequestAborted);
+            Current(snapshot, form);
             var block = snapshot.Website.Blocks.FirstOrDefault(b => b.Id == id) ?? throw new ContentValidationException("Block does not exist.");
             var fields = JsonNode.Parse(block.Fields.GetRawText())!;
             SetFields(fields, "field", form);
             await operations.EditAsync(form["revision"].ToString(), new UpdateBlock(id, JsonSerializer.SerializeToElement(fields, CompositionJson.Options)), c.User, Acknowledged(form), c.RequestAborted);
-            return Results.Redirect("/manage/composition");
-        });
-        board.MapPost("/arrange", async (CompositionOperations operations, HttpContext c) =>
-        {
-            var f = await c.Request.ReadFormAsync(c.RequestAborted);
-            var snapshot = await operations.ReadAsync(c.RequestAborted);
-            var location = ParseLocation(f["location"].ToString());
-            if (!int.TryParse(f["index"], out var index) || index < 1) throw new ContentValidationException("Position must be a whole number starting at 1.");
-            index--;
-            var placement = f["placement"].ToString(); var shared = f["shared"].ToString();
-            var group = JsonSerializer.SerializeToElement(new GroupFields(f["mode"].ToString(), f["alignment"].ToString(), f["spacing"].ToString(), int.TryParse(f["columns"], out var cols) ? cols : 1), CompositionJson.Options);
-            CompositionEdit change = f["operation"].ToString() switch
-            {
-                "create" => new CreateBlock(location, index, f["type"].ToString(), 1, f["type"] == "group" ? group : SeedFields(f["type"].ToString(), snapshot.Website)),
-                "move" => new MovePlacement(placement, location, index),
-                "group" => new GroupPlacements(location, f["selection"].Select(s => s!).ToImmutableArray(), group),
-                "reference" => new ReferenceShared(shared, location, index),
-                "promote" => new PromoteShared(placement), "detach" => new DetachPlacement(placement), "delete" => new DeletePlacement(placement),
-                "deleteShared" => new DeleteShared(shared), _ => throw new ContentValidationException("Choose a supported action.")
-            };
-            var impact = ArrangementImpact(snapshot.Website, change);
-            if (impact.SharedChange && f["acknowledge"] != "true")
-            {
-                var hidden = string.Join("", f.Where(p => p.Key is not "affected" and not "acknowledge" and not "revision" && !p.Key.StartsWith("__", StringComparison.Ordinal)).SelectMany(p => p.Value.Select(v => $"<input type=\"hidden\" name=\"{E(p.Key)}\" value=\"{E(v)}\">")));
-                var pages = string.Join(", ", impact.Pages.Select(id => snapshot.Website.Pages.Single(p => p.Id == id).Title));
-                var ack = "<h1>Review shared change</h1><p>Affects: " + E(pages) + ". Existing previews stay unchanged.</p>" + string.Join("", impact.Pages.Select(id => $"<input type=\"hidden\" name=\"affected\" value=\"{E(id)}\">")) + "<label class=\"scope\"><input type=\"checkbox\" name=\"acknowledge\" value=\"true\" required>I reviewed these pages.</label>";
-                return ManagementUi.Html("Review shared change", Form(c, f["revision"].ToString(), "/manage/composition/arrange", hidden + ack, "Confirm shared change"));
-            }
-            await operations.EditAsync(f["revision"].ToString(), change, c.User, Acknowledged(f), c.RequestAborted);
-            return Results.Redirect("/manage/composition");
+            return Results.Redirect(BoardUrl(snapshot.Website, form["page"].ToString()));
         });
         board.MapPost("/page/{id}", async (string id, CompositionOperations operations, HttpContext c) =>
         {
             var f = await c.Request.ReadFormAsync(c.RequestAborted);
             await operations.EditAsync(f["revision"].ToString(), new EditCompositionPage(id, f["title"].ToString(), f["description"].ToString()), c.User, [], c.RequestAborted);
-            return Results.Redirect("/manage/composition");
+            return Results.Redirect("/manage/composition?page=" + Q(id));
         });
         board.MapPost("/settings", async (CompositionOperations operations, HttpContext c) =>
         {
@@ -177,70 +150,28 @@ internal static class CompositionBoard
         };
         return JsonSerializer.SerializeToElement(fields, fields.GetType(), CompositionJson.Options);
     }
-    private static IResult Overview(HttpContext c, CompositionSnapshot snapshot, CompositionCapabilities capabilities)
+    private static IResult Edit(HttpContext c, CompositionSnapshot snapshot, Block b, CompositionDesign design, CompositionCapabilities caps)
     {
-        var site = snapshot.Website; var html = new StringBuilder("<div class=\"actions\"><a href=\"/manage/integrations\">Connected apps</a><a href=\"/manage/users\">People and access</a><a href=\"/manage/account/password\">Change password</a><a href=\"/manage/composition/export\">Download content and images</a></div><div class=\"intro\"><h1>" + E(site.Title) + "</h1><p>Arrange Blocks in page regions and Groups. Shared Blocks reuse the same content across pages.</p></div>");
-        var blocks = site.Blocks.ToDictionary(b => b.Id); var shared = site.SharedBlocks.ToDictionary(s => s.Id);
-        var choices = new List<(string Value, string Label)>(); var destinations = new List<(string Value, string Label)>();
-        void Tree(Placement p, string label)
-        {
-            var b = blocks[p.Kind == TargetKind.Shared ? shared[p.TargetId].RootBlockId : p.TargetId];
-            choices.Add((p.Id, label + " / " + BlockLabel(b) + (p.Kind == TargetKind.Shared ? " (Shared)" : "")));
-            html.Append("<li><a href=\"/manage/composition/blocks/" + E(b.Id) + "\">" + E(BlockLabel(b)) + "</a>" + (p.Kind == TargetKind.Shared ? " · Shared Block" : ""));
-            if (!b.Children.IsEmpty) { html.Append("<ul>"); foreach (var child in b.Children) Tree(child, label + " / Group"); html.Append("</ul>"); }
-            html.Append("</li>");
-        }
-        foreach (var p in site.Pages)
-        {
-            html.Append("<details class=\"panel composition-page\"" + (p == site.Pages[0] ? " open" : "") + "><summary>" + E(p.Title) + " <small>" + E(p.Path) + "</small></summary>");
-            foreach (var r in p.Regions)
-            {
-                destinations.Add(($"page:{p.Id}:{r.Id}", p.Title + " / " + r.Id));
-                html.Append("<h3>" + E(r.Id) + "</h3><ol>"); foreach (var item in r.Placements) Tree(item, p.Title + " / " + r.Id); html.Append("</ol>");
-            }
-            if (Permissions.Has(c.User, "content:write")) html.Append(Form(c, snapshot.Revision, "/manage/composition/page/" + p.Id, Input("title", "Page title", p.Title) + Input("description", "Page description", p.Description), "Save page details")); html.Append("</details>");
-        }
-        foreach (var b in site.Blocks.Where(b => DemoComposition.Registry().Resolve(b.TypeId, b.TypeVersion).Descriptor.Container)) destinations.Add(("block:" + b.Id, (b.Owner.Kind == OwnerKind.Shared ? "Shared" : site.Pages.Single(p => p.Id == b.Owner.Id).Title) + " / Group " + b.Id[^6..]));
-        if (Permissions.Has(c.User, "content:write"))
-        {
-            var body = "<h2>Arrange content</h2><p>Choose an action, then its content and destination. Positions start at 1. Group selections must belong to the selected destination. Moves preserve page or Shared Block ownership.</p>" +
-                Select("operation", "Action", new[] { ("create", "Add Block"), ("move", "Move placement"), ("group", "Group selected placements"), ("reference", "Reference Shared Block"), ("promote", "Make placement shared"), ("detach", "Detach shared placement"), ("delete", "Delete placement"), ("deleteShared", "Delete unused Shared Block") }) +
-                Select("placement", "Placement to move, share, detach or delete", choices.DistinctBy(i => i.Value)) + Select("location", "Destination for add, move, group or reference", destinations) + Input("index", "Position for add, move or reference", "1") +
-                Select("type", "Block type to add", capabilities.Types.Select(t => (t.Id, t.Id))) + Select("shared", "Shared Block to reference or delete", site.SharedBlocks.Select(s => (s.Id, blocks[s.RootBlockId].TypeId + " · " + s.Id))) +
-                "<fieldset><legend>Placements to group</legend>" + string.Join("", choices.DistinctBy(i => i.Value).Select(i => $"<label class=\"scope\"><input type=\"checkbox\" name=\"selection\" value=\"{E(i.Value)}\">{E(i.Label)}</label>")) + "</fieldset>" +
-                Select("mode", "Group layout", new[] { ("stack", "Stack"), ("row", "Row"), ("grid", "Grid") }) + Select("alignment", "Alignment", new[] { ("start", "Start"), ("center", "Center") }) + Select("spacing", "Spacing", new[] { ("small", "Small"), ("medium", "Medium") }) + Input("columns", "Columns", "1");
-            body += "<p>Shared arrangements show affected pages for confirmation before saving.</p>";
-            html.Append(Form(c, snapshot.Revision, "/manage/composition/arrange", body, "Apply action"));
-            html.Append($"<form class=\"panel editor\" enctype=\"multipart/form-data\" method=\"post\" action=\"/manage/composition/media\">{ManagementUi.Token(c)}<input type=\"hidden\" name=\"revision\" value=\"{E(snapshot.Revision)}\"><h2>Images</h2><p>PNG upload: at most 2 MiB and 4 million pixels. Saved images remain available to older revisions.</p><label for=\"image\">PNG image</label><input id=\"image\" name=\"image\" type=\"file\" accept=\"image/png\" required><button>Upload image</button></form>");
-        }
-        html.Append("<section class=\"panel\"><h2>Media library</h2><div class=\"media-library\">" + string.Join("", site.Assets.Select((a, i) => "<figure><img src=\"/manage/composition/media/" + E(a.Id) + "\" alt=\"Image " + (i + 1) + "\" loading=\"lazy\"><figcaption>Image " + (i + 1) + "</figcaption></figure>")) + "</div></section>");
-        html.Append("<section class=\"panel\"><h2>Shared Blocks</h2><ul>" + string.Join("", site.SharedBlocks.Select(s => "<li><a href=\"/manage/composition/blocks/" + E(s.RootBlockId) + "\">" + E(BlockLabel(blocks[s.RootBlockId])) + "</a></li>")) + "</ul></section>");
-        if (Permissions.Has(c.User, "settings:write")) html.Append(Form(c, snapshot.Revision, "/manage/composition/settings", "<h2>Website settings</h2>" + Input("title", "Website name / title", site.Title) + Input("language", "Language", site.Language), "Save website settings"));
-        if (Permissions.Has(c.User, "preview:build")) html.Append(Form(c, snapshot.Revision, "/manage/composition/preview", "<h2>Review your draft</h2><p>Capture this revision in a retained preview.</p>", "Build preview"));
-        return ManagementUi.Html(site.Title, html.ToString());
-    }
-    private static IResult Edit(HttpContext c, CompositionSnapshot snapshot, Block b)
-    {
-        var fields = new StringBuilder(); DescribeFields(JsonNode.Parse(b.Fields.GetRawText())!, "field", fields, snapshot.Website);
-        var body = "<a href=\"/manage/composition\">← Website</a><div class=\"intro\"><h1>Edit " + E(b.TypeId.Replace('-', ' ')) + "</h1>" + (b.TypeId == "page-title" ? "<p>This Block displays the page title and description. Edit those in the page's details on the board.</p>" : "") + "</div>";
+        var fields = new StringBuilder(); DescribeFields(JsonNode.Parse(b.Fields.GetRawText())!, "field", fields, snapshot.Website, design);
+        var page = c.Request.Query["page"].ToString();
+        var body = ScreenHeader(snapshot.Website, page, "Edit " + TypeLabel(b.TypeId).ToLowerInvariant(), "Change the fields for this element.");
         var impact = b.Owner.Kind == OwnerKind.Shared ? Acknowledgement(snapshot, [b.Owner.Id]) : "";
-        if (!Permissions.Has(c.User, "content:write")) return ManagementUi.Html("View Block", body + "<p>You have read-only access.</p>" + fields + impact);
-        if (b.Owner.Kind == OwnerKind.Shared && !Permissions.Has(c.User, "content:shared:write")) return ManagementUi.Html("Shared Block", body + "<p>You can view shared content but need shared-content permission to change it. Detach a page reference to edit an independent copy.</p>" + impact);
-        return ManagementUi.Html("Edit Block", body + Form(c, snapshot.Revision, "/manage/composition/blocks/" + b.Id, fields + impact, "Save Block"));
+        if (!Editable(c, b.Owner) || !Supported(caps, CompositionOperation.Update, b.TypeId, b.TypeVersion)) return ManagementUi.Html("View Block", body + "<p>This content is read-only for your account or content source. Shared content needs shared-content permission; detach a page reference to edit an independent copy.</p><fieldset disabled>" + fields + "</fieldset>");
+        return ManagementUi.Html("Edit Block", body + Form(c, snapshot.Revision, "/manage/composition/blocks/" + b.Id, Hidden("page", page) + fields + impact, "Save Block"));
     }
     private static string BlockLabel(Block b)
     {
-        var name = b.TypeId.Replace('-', ' ');
+        var name = TypeLabel(b.TypeId);
         if (b.Fields.TryGetProperty("heading", out var heading) && heading.ValueKind == JsonValueKind.String) name += " · " + heading.GetString();
         return name.Length <= 100 ? name : name[..97] + "…";
     }
-    private static void DescribeFields(JsonNode node, string path, StringBuilder output, CompositionWebsite site)
+    private static void DescribeFields(JsonNode node, string path, StringBuilder output, CompositionWebsite site, CompositionDesign? design = null)
     {
         if (node is JsonObject obj)
         {
             foreach (var pair in obj)
             {
-                if (pair.Value is not null) DescribeFields(pair.Value, path + "." + pair.Key, output, site);
+                if (pair.Value is not null) DescribeFields(pair.Value, path + "." + pair.Key, output, site, design);
                 else if (pair.Key == "assetId") output.Append(Select(path + "." + pair.Key, "Optional image", new[] { ("", "No image") }.Concat(site.Assets.Select((a, i) => (a.Id, "Image " + (i + 1))))));
                 else output.Append(Input(path + "." + pair.Key, pair.Key, ""));
             }
@@ -250,8 +181,10 @@ internal static class CompositionBoard
             output.Append("<fieldset><legend>" + (path.EndsWith("pageIds", StringComparison.Ordinal) ? "Navigation pages" : "Cards") + "</legend>");
             for (var i = 0; i < array.Count; i++) if (array[i] is { } item)
             {
-                DescribeFields(item, path + "." + i, output, site);
+                if (item is JsonObject) output.Append("<fieldset><legend>Card " + (i + 1) + "</legend>");
+                DescribeFields(item, path + "." + i, output, site, design);
                 output.Append($"<label class=\"scope\"><input type=\"checkbox\" name=\"remove.{E(path)}\" value=\"{i}\">Remove item {i + 1}</label>");
+                if (item is JsonObject) output.Append("</fieldset>");
             }
             if (path.EndsWith("pageIds", StringComparison.Ordinal)) output.Append(Select("append." + path, "Add navigation page", new[] { ("", "Keep current list") }.Concat(site.Pages.Select(p => (p.Id, p.Title)))));
             else if (path.EndsWith("items", StringComparison.Ordinal)) output.Append($"<label class=\"scope\"><input type=\"checkbox\" name=\"append.{E(path)}\" value=\"true\">Add a card (save, then edit its fields)</label>");
@@ -259,7 +192,16 @@ internal static class CompositionBoard
         }
         else if (path.EndsWith("assetId", StringComparison.Ordinal)) output.Append(Select(path, "Image", new[] { (node.ToString(), "Current image") }.Concat(site.Assets.Select((a, i) => (a.Id, "Image " + (i + 1))))));
         else if (path.Contains(".pageIds.", StringComparison.Ordinal)) output.Append(Select(path, "Navigation page", new[] { (node.ToString(), site.Pages.Single(p => p.Id == node.ToString()).Title) }.Concat(site.Pages.Select(p => (p.Id, p.Title)))));
-        else output.Append(Input(path, path[6..].Replace('.', ' '), node.ToString()));
+        else
+        {
+            var key = path.Split('.').Last();
+            var label = key switch { "alternativeText" => "Image description", "destination" => "Link destination", "label" => "Button label", "text" => "Text", "mode" => "Layout", "alignment" => "Alignment", "spacing" => "Spacing", "columns" => "Columns", _ => char.ToUpperInvariant(key[0]) + key[1..] };
+            IEnumerable<string>? choices = key switch { "mode" => design?.Groups.Modes, "alignment" => design?.Groups.Alignments, "spacing" => design?.Groups.Spacing, _ => null };
+            if (choices is not null) output.Append(Select(path, label, new[] { node.ToString() }.Concat(choices).Distinct().Select(v => (v, TypeLabel(v)))));
+            else if (key == "columns" && design is not null) output.Append(Select(path, label, new[] { node.ToString() }.Concat(Enumerable.Range(1, design.Groups.MaximumColumns).Select(n => n.ToString())).Distinct().Select(v => (v, v))));
+            else if (key is "text" or "description" or "message") output.Append($"<label>{E(label)}<textarea name=\"{E(path)}\" rows=\"4\">{E(node.ToString())}</textarea></label>");
+            else output.Append(Input(path, label, node.ToString()));
+        }
     }
     private static void SetFields(JsonNode node, string path, IFormCollection f)
     {

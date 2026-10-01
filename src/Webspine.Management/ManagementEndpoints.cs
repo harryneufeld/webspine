@@ -72,7 +72,7 @@ internal static class ManagementEndpoints
             }
             await next(context);
         });
-        app.MapGet("/manage/assets/editor.css", () => Results.Text(ManagementUi.Css, "text/css; charset=utf-8"));
+        app.MapGet("/manage/assets/editor.css", () => Results.Text(ManagementUi.Css + CompositionBoard.Css, "text/css; charset=utf-8"));
         app.MapGet("/manage", async (HttpContext context) =>
         {
             var snapshot = await store.TryReadAsync(context.RequestAborted);
