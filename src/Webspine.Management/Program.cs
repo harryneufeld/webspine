@@ -11,6 +11,8 @@ using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 using Webspine.Content.Sqlite;
 using Webspine.Core.Composition;
+using Webspine.Rendering.Razor;
+using Webspine.Designs.Studio;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -23,6 +25,12 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
     var dataDirectory = builder.Configuration["Management:DataDirectory"] ?? Path.Combine(builder.Environment.ContentRootPath, ".local");
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDirectory, "keys"))).SetApplicationName("webspine-local");
     Directory.CreateDirectory(dataDirectory);
+    var selectedDesign = new DesignPackageCatalog([StudioPackage.Create()]).Select(
+        builder.Configuration["Design:Package"] ?? "studio", builder.Configuration["Design:Version"]);
+    builder.Services.AddSingleton<IDesignPackage>(selectedDesign);
+    builder.Services.AddSingleton<ICompositionRenderer>(selectedDesign);
+    builder.Services.AddSingleton<ILegacyCompositionConverter, StudioLegacyConverter>();
+    builder.Services.AddSingleton(new FrozenInputStore(Path.Combine(dataDirectory, "build-inputs")));
     builder.Services.AddDbContext<AccountDatabase>(options => options.UseSqlite(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = Path.Combine(Path.GetFullPath(dataDirectory), "accounts.db"), Pooling = false }.ToString()));
     builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
     {
@@ -47,7 +55,7 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
         options.AddPolicy("accounts", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 12, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     });
     builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
-    builder.Services.AddSingleton(new SqliteContentSource(Path.Combine(dataDirectory, "webspine.db"), DemoComposition.Registry()));
+    builder.Services.AddSingleton(new SqliteContentSource(Path.Combine(dataDirectory, "webspine.db"), selectedDesign.ContentTypes));
     builder.Services.AddSingleton<IWebsiteAuthoringSource>(services => services.GetRequiredService<SqliteContentSource>());
     builder.Services.AddSingleton<AuthoringOperations>();
     builder.Services.AddSingleton<ICompositionDraftPersistence>(services => services.GetRequiredService<SqliteContentSource>());
@@ -89,7 +97,8 @@ if (managementEnabled)
         {
             var migrationSource = app.Services.GetRequiredService<SqliteContentSource>();
             await migrationSource.InitializeSchemaAsync();
-            Environment.ExitCode = await ContentMigration.RunAsync(migrationSource, app.Configuration);
+            Environment.ExitCode = await ContentMigration.RunAsync(migrationSource, app.Configuration,
+                app.Services.GetRequiredService<CompositionOperations>());
         }
         await app.DisposeAsync();
         return;

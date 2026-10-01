@@ -141,7 +141,7 @@ public static class CompositionContract
         foreach (var root in roots) { var count = 0; Expand(root, 0, ref count); }
     }
 
-    private static void ValidateDesign(CompositionDesign design, BlockRegistry registry)
+    public static void ValidateDesign(CompositionDesign design, BlockRegistry registry)
     {
         if (design is null || design.Layout is null || design.Groups is null) CompositionRules.Fail("Captured design is required.");
         CompositionRules.Identifier(design.Id); CompositionRules.Text(design.Revision, 256);

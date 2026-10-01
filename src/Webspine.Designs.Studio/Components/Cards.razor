@@ -1,0 +1,10 @@
+@inherits RazorContentComponent<CardsFields>
+<section class="section"><h2>@Fields.Heading</h2><div class="cards">
+    @foreach (var card in Fields.Items)
+    {
+        <article class="card">
+            @if (card.AssetId is not null) { <img class="wide-image" src="@Context.Asset(card.AssetId)" alt="@card.Title" /> }
+            <h3><a href="@Context.Link(card.Destination)">@card.Title</a></h3><p>@card.Description</p>
+        </article>
+    }
+</div></section>

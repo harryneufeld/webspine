@@ -1,0 +1,9 @@
+@using Microsoft.AspNetCore.Components
+@using Webspine.Core.Composition
+@namespace Webspine.Rendering.Razor
+@{ var block = Context.Resolve(Placement); }
+<DynamicComponent Type="@Context.Component(block)" Parameters="@Context.Parameters(block)" />
+@code {
+    [Parameter, EditorRequired] public RazorPageContext Context { get; set; } = default!;
+    [Parameter, EditorRequired] public Placement Placement { get; set; } = default!;
+}

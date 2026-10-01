@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Webspine.Core;
 using Webspine.Core.Composition;
-using Webspine.Demo;
+using Webspine.Designs.Studio;
 
 namespace Webspine.Management;
 
@@ -39,12 +39,12 @@ internal static partial class CompositionBoard
         }
         throw new ContentValidationException("This element no longer exists. Reopen the page structure.");
     }
-    private static (BlockOwner Owner, ImmutableArray<Placement> Items, ImmutableArray<string> Types, int Minimum, int Maximum) Destination(CompositionWebsite site, CompositionDesign design, CompositionLocation l)
+    private static (BlockOwner Owner, ImmutableArray<Placement> Items, ImmutableArray<string> Types, int Minimum, int Maximum) Destination(HttpContext c, CompositionWebsite site, CompositionDesign design, CompositionLocation l)
     {
         if (l.ParentBlockId is not null)
         {
             var b = site.Blocks.FirstOrDefault(b => b.Id == l.ParentBlockId) ?? throw new ContentValidationException("Group does not exist.");
-            if (!DemoComposition.Registry().Resolve(b.TypeId, b.TypeVersion).Descriptor.Container) throw new ContentValidationException("This element cannot contain other elements.");
+            if (!SelectedDefinitions(c).Resolve(b.TypeId, b.TypeVersion).Descriptor.Container) throw new ContentValidationException("This element cannot contain other elements.");
             return (b.Owner, b.Children, design.Groups.AllowedTypes, 0, 1000);
         }
         var page = site.Pages.FirstOrDefault(p => p.Id == l.PageId) ?? throw new ContentValidationException("Page does not exist.");
@@ -68,9 +68,9 @@ internal static partial class CompositionBoard
     {
         board.MapGet("/add", async (CompositionOperations operations, HttpContext c) =>
         {
-            var snapshot = await operations.ReadAsync(c.RequestAborted); var design = await DemoComposition.DesignAsync(c.RequestAborted);
+            var snapshot = await operations.ReadAsync(c.RequestAborted); var design = SelectedDesign(c);
             var page = c.Request.Query["page"].ToString(); var location = ParseLocation(c.Request.Query["location"].ToString()); var after = c.Request.Query["after"].ToString();
-            var destination = Destination(snapshot.Website, design, location); InsertionIndex(destination.Items, after);
+            var destination = Destination(c, snapshot.Website, design, location); InsertionIndex(destination.Items, after);
             if (!Editable(c, destination.Owner)) throw new CompositionPermissionException("You cannot add content to this area.");
             operations.Source.CompositionCapabilities.Require(CompositionOperation.Create);
             var types = operations.Source.CompositionCapabilities.Types.Where(t => destination.Types.Contains(t.Id) && BoardTemplates.Contains(t.Id) && (t.Id != "image" || !snapshot.Website.Assets.IsEmpty)).ToArray();
@@ -91,7 +91,7 @@ internal static partial class CompositionBoard
         board.MapPost("/add", async (CompositionOperations operations, HttpContext c) =>
         {
             var f = await c.Request.ReadFormAsync(c.RequestAborted); var snapshot = await operations.ReadAsync(c.RequestAborted); Current(snapshot, f);
-            var location = ParseLocation(f["location"].ToString()); var destination = Destination(snapshot.Website, await DemoComposition.DesignAsync(c.RequestAborted), location);
+            var location = ParseLocation(f["location"].ToString()); var destination = Destination(c, snapshot.Website, SelectedDesign(c), location);
             var type = f["type"].ToString(); if (!destination.Types.Contains(type) || !BoardTemplates.Contains(type)) throw new ContentValidationException("This element type is not allowed here.");
             var fields = JsonNode.Parse(SeedFields(type, snapshot.Website).GetRawText())!; SetFields(fields, "field", f);
             var change = new CreateBlock(location, InsertionIndex(destination.Items, f["after"].ToString()), type, 1, JsonSerializer.SerializeToElement(fields, CompositionJson.Options));
@@ -100,7 +100,7 @@ internal static partial class CompositionBoard
         board.MapGet("/reference", async (CompositionOperations operations, HttpContext c) =>
         {
             var snapshot = await operations.ReadAsync(c.RequestAborted); var page = c.Request.Query["page"].ToString(); var location = ParseLocation(c.Request.Query["location"].ToString()); var after = c.Request.Query["after"].ToString();
-            var destination = Destination(snapshot.Website, await DemoComposition.DesignAsync(c.RequestAborted), location); InsertionIndex(destination.Items, after);
+            var destination = Destination(c, snapshot.Website, SelectedDesign(c), location); InsertionIndex(destination.Items, after);
             if (!Editable(c, destination.Owner)) throw new CompositionPermissionException("You cannot add a shared reference here.");
             operations.Source.CompositionCapabilities.Require(CompositionOperation.Share);
             var body = ScreenHeader(snapshot.Website, page, "Reuse shared content", "This adds a reference. Edits to the shared content affect every page that uses it.");
@@ -111,7 +111,7 @@ internal static partial class CompositionBoard
         board.MapPost("/reference", async (CompositionOperations operations, HttpContext c) =>
         {
             var f = await c.Request.ReadFormAsync(c.RequestAborted); var snapshot = await operations.ReadAsync(c.RequestAborted); Current(snapshot, f);
-            var l = ParseLocation(f["location"].ToString()); var d = Destination(snapshot.Website, await DemoComposition.DesignAsync(c.RequestAborted), l);
+            var l = ParseLocation(f["location"].ToString()); var d = Destination(c, snapshot.Website, SelectedDesign(c), l);
             return await ApplyFromBoard(operations, c, snapshot, new ReferenceShared(f["shared"].ToString(), l, InsertionIndex(d.Items, f["after"].ToString())), f);
         });
         board.MapPost("/placements/{id}/reorder", async (string id, CompositionOperations operations, HttpContext c) =>
@@ -126,7 +126,7 @@ internal static partial class CompositionBoard
             var snapshot = await operations.ReadAsync(c.RequestAborted); var element = Locate(snapshot.Website, id); var page = c.Request.Query["page"].ToString();
             if (!Editable(c, element.Owner)) throw new CompositionPermissionException("You cannot move this element.");
             operations.Source.CompositionCapabilities.Require(CompositionOperation.Move);
-            var target = Target(snapshot.Website, element.Placement); var design = await DemoComposition.DesignAsync(c.RequestAborted);
+            var target = Target(snapshot.Website, element.Placement); var design = SelectedDesign(c);
             var excluded = new HashSet<string>();
             void Subtree(Block b) { if (!excluded.Add(b.Id)) return; foreach (var p in b.Children.Where(p => p.Kind == TargetKind.Block)) Subtree(Target(snapshot.Website, p)); }
             if (element.Placement.Kind == TargetKind.Block) Subtree(target);
@@ -137,14 +137,14 @@ internal static partial class CompositionBoard
                 foreach (var r in ownerPage.Regions.Where(r => design.Layout.Regions.Single(d => d.Id == r.Id).AllowedTypes.Contains(target.TypeId))) choices.Add((LocationKey(new(ownerPage.Id, r.Id, null)), "End of " + TypeLabel(r.Id)));
             }
             if (design.Groups.AllowedTypes.Contains(target.TypeId))
-                foreach (var b in snapshot.Website.Blocks.Where(b => b.Owner == element.Owner && !excluded.Contains(b.Id) && DemoComposition.Registry().Resolve(b.TypeId, b.TypeVersion).Descriptor.Container)) choices.Add(("block:" + b.Id, "End of " + GroupLabel(snapshot.Website, b)));
+                foreach (var b in snapshot.Website.Blocks.Where(b => b.Owner == element.Owner && !excluded.Contains(b.Id) && SelectedDefinitions(c).Resolve(b.TypeId, b.TypeVersion).Descriptor.Container)) choices.Add(("block:" + b.Id, "End of " + GroupLabel(snapshot.Website, b)));
             var body = ScreenHeader(snapshot.Website, page, "Move " + TypeLabel(target.TypeId).ToLowerInvariant(), "Choose an area in the same page or shared content. Move up/down adjusts its position afterward.");
             return ManagementUi.Html("Move element", body + Form(c, snapshot.Revision, "/manage/composition/placements/" + id + "/move", Hidden("page", page) + Select("location", "Move to", choices), "Move element"));
         });
         board.MapPost("/placements/{id}/move", async (string id, CompositionOperations operations, HttpContext c) =>
         {
             var f = await c.Request.ReadFormAsync(c.RequestAborted); var snapshot = await operations.ReadAsync(c.RequestAborted); Current(snapshot, f); var element = Locate(snapshot.Website, id);
-            var l = ParseLocation(f["location"].ToString()); var d = Destination(snapshot.Website, await DemoComposition.DesignAsync(c.RequestAborted), l);
+            var l = ParseLocation(f["location"].ToString()); var d = Destination(c, snapshot.Website, SelectedDesign(c), l);
             return await ApplyFromBoard(operations, c, snapshot, new MovePlacement(id, l, d.Items.Length - (l == element.Location ? 1 : 0)), f);
         });
         foreach (var action in new[] { "promote", "detach", "remove" })
@@ -160,7 +160,7 @@ internal static partial class CompositionBoard
         board.MapPost("/group", async (CompositionOperations operations, HttpContext c) =>
         {
             var f = await c.Request.ReadFormAsync(c.RequestAborted); var snapshot = await operations.ReadAsync(c.RequestAborted); Current(snapshot, f);
-            var l = ParseLocation(f["location"].ToString()); var design = await DemoComposition.DesignAsync(c.RequestAborted); var d = Destination(snapshot.Website, design, l);
+            var l = ParseLocation(f["location"].ToString()); var design = SelectedDesign(c); var d = Destination(c, snapshot.Website, design, l);
             if (!Editable(c, d.Owner)) throw new CompositionPermissionException("You cannot group content in this area.");
             operations.Source.CompositionCapabilities.Require(CompositionOperation.Group, "group");
             var selected = f["selection"].Select(s => s!).ToImmutableArray();
@@ -235,11 +235,11 @@ internal static partial class CompositionBoard
         if (Permissions.Has(c.User, "accounts:manage")) html.Append("<a href=\"/manage/users\">People and access</a>");
         html.Append("<a href=\"/manage/composition/export\">Download content</a><a href=\"/manage/account/password\">Your account</a></nav><div class=\"intro\"><p class=\"eyebrow\">Your website</p><h1>" + E(site.Title) + "</h1><p>Open a page to edit its content. Add and arrange elements directly in each area.</p></div>");
         if (Permissions.Has(c.User, "preview:build")) html.Append(Form(c, snapshot.Revision, "/manage/composition/preview", "<h2>Review your draft</h2><p>Build a preview of the saved pages. Later edits keep this preview unchanged.</p>", "Build preview"));
-        var registry = DemoComposition.Registry();
+        var registry = SelectedDefinitions(c);
         string Quick(Placement p, string action, string label, string page, string extra = "", bool disabled = false) => $"<form method=\"post\" action=\"/manage/composition/placements/{E(p.Id)}/{E(action)}\">{ManagementUi.Token(c)}{Hidden("revision", snapshot.Revision)}{Hidden("page", page)}{extra}<button class=\"small-button\"{(disabled ? " disabled" : "")}>{E(label)}</button></form>";
         void List(CompositionLocation location, string page, string occurrence)
         {
-            var d = Destination(site, design, location); var groupForm = "group-" + BuildPipeline.Hash(Encoding.UTF8.GetBytes(occurrence))[..16];
+            var d = Destination(c, site, design, location); var groupForm = "group-" + BuildPipeline.Hash(Encoding.UTF8.GetBytes(occurrence))[..16];
             var canEdit = Editable(c, d.Owner); var canGroup = canEdit && d.Types.Contains("group") && Supported(caps, CompositionOperation.Group, "group");
             html.Append("<ol class=\"structure-list\">");
             for (var i = 0; i < d.Items.Length; i++)

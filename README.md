@@ -10,12 +10,15 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 
 ## Project documents
 
+The [Razor prototype](docs/razor-prototype.md) led to [configured static design packages](docs/decisions/0014-configured-static-design-packages.md). Composition previews now use the selected Studio Razor package; Core content definitions/validation are separate from website presentation. Private build inputs retain content, design/assets and executable dependency bytes. Generic editing metadata and two independent website proofs remain #26–27.
+
 An opt-in [composition v2 library](docs/composition.md) adds typed Blocks, nested Groups, Regions, shared references and component registration. [spinecms storage](docs/spinecms-storage.md) persists v2 and supports explicit migration/recovery on a copy. The [composition board and v2 API](docs/composition-editing.md) now support typed editing, shared-content authority, validated PNG uploads and retained previews. Existing sites are not automatically migrated; enable composition explicitly from the overview. The default replaceable CMS is named spinecms.
 
 - [Project charter](PROJECT.md): purpose, scope and product rules.
 - [Architecture](docs/architecture.md): responsibilities and planned boundaries.
 - [Content contract](docs/content-contract.md) and [extensions](docs/extensions.md): current contracts and modularity roadmap.
 - [Composition v2](docs/composition.md): registered types, source capabilities, examples and compatibility.
+- [Design packages](docs/design-packages.md): configured Razor presentation, capture and compatibility limits.
 - [Delivery pipeline](docs/delivery.md): page modes, replaceable caching, HTTP behavior and current limits.
 - [Local management](docs/management.md): setup, editing, stored data and preview limitations.
 - [Authoring API](docs/authoring-api.md): external apps, permissions and conditional operations.

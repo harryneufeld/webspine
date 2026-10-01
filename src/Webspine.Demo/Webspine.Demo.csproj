@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="../Webspine.Rendering.Legacy/Webspine.Rendering.Legacy.csproj" />
     <ProjectReference Include="../Webspine.Core/Webspine.Core.csproj" />
     <Content Include="../../samples/five-page/**/*" Link="Samples/five-page/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

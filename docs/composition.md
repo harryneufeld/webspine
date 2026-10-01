@@ -20,37 +20,31 @@ Use `CompositionJson.Read` for content. Property names are exact camelCase; unkn
 
 ## Register a type
 
-Each `BlockRegistration<T>` binds a typed .NET payload schema to its validator and renderer. `JsonRequired` declares required serialized members; validator code declares field bounds and semantic rules. The descriptor supplies type/schema/renderer versions, module identity/version, compatible contract version and whether children are permitted. Schema IDs identify these registered payload contracts; no general JSON Schema editor/generator is implemented.
+Each Core `BlockDefinition<T>` binds a typed .NET payload to validation independently of presentation. `JsonRequired` declares required serialized members; validators declare bounds and semantic rules. The descriptor supplies type/schema/module versions, compatible contract version and whether children are permitted. Its legacy `RendererVersion` remains compatibility metadata (`none` for new pure definitions). A configured package separately maps each type/version to a compatible typed Razor component. Generic editing metadata remains #26.
 
 ```csharp
 public sealed record QuoteFields([property: JsonRequired] string Quote);
 
-var quote = new BlockRegistration<QuoteFields>(
-    new("quote", 1, 2, "my-quotes", "1", "quote-fields-v1", "1", false),
-    (value, context) => CompositionRules.Text(value.Quote, 1000),
-    (value, context, html) =>
-    {
-        html.Markup("<blockquote>"); // Installed, trusted markup.
-        html.Text(value.Quote);      // Escaped content.
-        html.Markup("</blockquote>");
-    });
+var quote = new BlockDefinition<QuoteFields>(
+    new("quote", 1, 2, "my-quotes", "1", "quote-fields-v1", "none", false),
+    (value, context) => CompositionRules.Text(value.Quote, 1000));
 
-var registry = new BlockRegistry(StandardBlocks.Registrations.Add(quote));
+var registry = new BlockRegistry(StandardContentTypes.Definitions.Add(quote));
 ```
 
 Imports: `Webspine.Core.Composition`, `System.Text.Json.Serialization`; use immutable collections for registrations/inputs. Add quote to the design's permitted types where it may appear. Registry construction sorts type IDs ordinally and rejects duplicate type IDs, incompatible contract versions and conflicting module versions. Only one version of each type is installed per registry. Breaking payload changes require a new version and explicit content migration, not opportunistic coercion.
 
-Standard registrations cover text, image, CTA, cards and Group. A Group declares approved mode/alignment/spacing tokens and columns; design CSS interprets their emitted classes. CSS belongs to captured design, never Block fields. Image/link validation helpers verify assets and destinations. `HtmlOutput.Text` escapes text and attributes; `Markup` is for trusted installed code. Compiled registrations are not a sandbox. Keep executable implementations out of CMS data and record code dependencies through future module packaging.
+Standard definitions cover text, image, CTA, cards and Group. A Group declares approved mode/alignment/spacing tokens and columns; package components interpret these choices. CSS belongs to captured design, never Block fields. Image/link helpers verify assets and destinations. Ordinary Razor expressions escape fields; compiled packages are trusted code, not a sandbox. See [configured packages](design-packages.md). The old combined `BlockRegistration<T>` and `HtmlOutput` are isolated in `Webspine.Rendering.Legacy` for compatibility.
 
 ## Sources and capture
 
 `ICompositionSource` is a storage-independent read/capture boundary. `CompositionCapabilities` declares exact type versions, operations, atomic conditional writes and consistent capture. `Require` rejects unsupported operations/types; every non-read operation requires atomic conditional writes. `RequireCapture` requires read and consistent capture. These guards do not implement authentication or prove an adapter's promises: adapter conformance and server permissions remain mandatory. `CompositionEditor` implements typed authorized mutation operations without exposing unrestricted graph replacement; see [editing](composition-editing.md).
 
-`CompositionBuildPipeline.BuildAsync(source, design)` checks capabilities before capture, checks source/design identity, validates captured content and requires supported captured types. It never falls back to spinecms. `Build(CapturedComposition)` supports inputs already captured by a trusted caller; it still validates them. Neither path queries mutable data while rendering.
+Management checks source capabilities/identity and expected revision, captures the selected design/content, then calls `ICompositionRenderer.BuildAsync` with frozen inputs. `RazorDesignPackage` checks package/design identity and mandatory Core validation before rendering. It never queries mutable CMS data or falls back to spinecms. Compatibility `CompositionBuildPipeline` retains the established example/test build path in `Webspine.Rendering.Legacy`.
 
-Capture includes content, selected design/CSS and immutable bytes for exactly the declared image assets. Artifact paths and collisions are validated by the common builder. The output contains all page files, assets, `assets/composition.css` and `composition-manifest.json`. Those last two paths are reserved; conflicting assets fail. The manifest captures content digest, design/layout rules, registry/schema/renderer/module versions and registration implementation digests. Implementation digests cover payload and delegate assemblies; transitive module dependency packaging remains future module-loader work. Registrations must be backed by file-based compiled assemblies.
+Capture includes content, selected design/configuration, typed mappings and immutable media/package asset bytes. The common builder validates paths/collisions. Studio output contains every page, CSS/script/media assets and `design-package-manifest.json`, identifying content/design/package and executable inventory. Private candidate ZIPs retain content/configuration/assets; a content-addressed executable ZIP retains application/dependency/shared-runtime/native bytes. No executable ZIP enters website output. File-based framework-dependent installation is required; OS/container pinning and historical replay remain future hosting/job work. See [decision 0014](decisions/0014-configured-static-design-packages.md).
 
-All files, including the manifest/CSS, enter the final artifact digest. Standard rendering escapes content; retained file arrays are immutable. Management retains and privately hosts these artifacts. Standard/design renderers use `BlockRenderContext.Link` and `AssetPath` for optional path-prefix routing; custom renderers must use these helpers too. Durable jobs and publication remain future work.
+All files, including manifest/CSS/scripts, enter the artifact digest. Razor escapes content; retained file arrays are immutable. Management retains and privately hosts these artifacts. Package components use `RazorPageContext.Link`, `Asset` and `DesignAsset` for prefix-safe routing. JavaScript delivery requires explicit verified package provenance. The unchanged shared v2 finalizer preserves the established digest format; compatibility builds still emit `composition-manifest.json`. Durable jobs and publication remain future work.
 
 ## Examples and compatibility
 

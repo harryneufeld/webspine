@@ -6,6 +6,8 @@ Use a short feature branch for a focused change. A pull request should explain t
 
 Before submitting code, run `dotnet build Webspine.slnx`, `dotnet run --project tests/Webspine.Checks` and `dotnet run --project tests/Webspine.ManagementChecks`. These commands are the same on Windows, Linux and macOS. Add meaningful checks as behaviors are implemented. The three-platform workflow runs in [GitHub Actions](https://github.com/harryneufeld/webspine/actions); inspect its results before merging changes.
 
+Also run `dotnet run --project tests/Webspine.RazorChecks` for the prototype, production package contracts, executable capture, script delivery and shared artifact finalizer. CI includes this suite in the same three-OS matrix. See `docs/design-packages.md` for the integrated package fixture preview.
+
 An issue is complete when its acceptance criteria have evidence, relevant checks pass, and the API/operation documentation matches the implementation. Decisions that affect source ownership, permissions, storage or release guarantees belong in a short decision record.
 
 Do not include credentials, runtime data or generated output in a commit or an issue. Report a security issue privately to the maintainer once a contact channel has been established; avoid posting credentials or exploit details in a public issue.

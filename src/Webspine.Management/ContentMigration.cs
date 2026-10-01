@@ -2,13 +2,12 @@ using System.Text.Json;
 using Webspine.Content.Sqlite;
 using Webspine.Core;
 using Webspine.Core.Composition;
-using Webspine.Demo;
 
 namespace Webspine.Management;
 
 internal static class ContentMigration
 {
-    public static async Task<int> RunAsync(SqliteContentSource source, IConfiguration configuration)
+    public static async Task<int> RunAsync(SqliteContentSource source, IConfiguration configuration, CompositionOperations operations)
     {
         try
         {
@@ -29,12 +28,13 @@ internal static class ContentMigration
                 Console.WriteLine(JsonSerializer.Serialize(new { restored.Revision, contractVersion = 1, originalRevision = original }, CompositionJson.Options));
                 return 0;
             }
-            var design = await DemoComposition.DesignAsync();
+            var design = operations.Design;
             var legacy = await source.ReadLegacyRevisionAsync(expected);
             var mappings = legacy is null ? [] : LegacyCompositionMapping.Identities(legacy);
             var bySection = mappings.ToDictionary(m => (m.PageId, m.SectionId));
-            var result = await source.MigrateToCompositionAsync(expected, design, current => DemoComposition.Convert(current,
-                LegacyCompositionMapping.Blocks(current), (page, section) => { var m = bySection[(page, section)]; return (m.BlockId, m.PlacementId); }), mappings);
+            var result = await source.MigrateToCompositionAsync(expected, design, current => operations.ConvertLegacy(current,
+                LegacyCompositionMapping.Blocks(current), (page, section) => { var m = bySection[(page, section)]; return (m.BlockId, m.PlacementId); }),
+                mappings, rehearse: operations.RehearseAsync);
             Console.WriteLine(JsonSerializer.Serialize(result, CompositionJson.Options));
             return 0;
         }

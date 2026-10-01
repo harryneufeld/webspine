@@ -57,7 +57,7 @@ internal static class AuthoringApi
         {
             var artifact = await store.ReadPreviewAsync(id, context.RequestAborted);
             if (artifact is null) { context.Response.StatusCode = 404; return; }
-            await new PrerenderedDelivery(new FixedArtifactSource(artifact), new NoDeliveryCache()).DeliverAsync(context, path);
+            await new PrerenderedDelivery(new FixedArtifactSource(artifact), new NoDeliveryCache(), scripts: DesignScriptPolicy.FromArtifact(artifact)).DeliverAsync(context, path);
         }).WithMetadata(new ApiPermission("preview:read"));
     }
 }

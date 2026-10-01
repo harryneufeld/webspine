@@ -1,6 +1,8 @@
 # Delivery pipeline: first implemented slice
 
-30 September 2026. This module is currently mounted on the optional, loopback-only Development demo. It is not a deployed production public host or authenticated customer preview system.
+Updated 1 October 2026. This module serves the optional loopback Development demo and account-protected retained management previews. It is not a deployed production public host.
+
+Configured package previews explicitly opt into `DesignScriptPolicy.FromArtifact`: the retained trusted manifest must declare each script with its exact file digest. Only declared intact `.js` assets receive JavaScript MIME, and only that candidate gets `script-src 'self'`. Inline scripts remain blocked. Default delivery stays script-free. Private executable/input ZIPs never enter delivery; see [design packages](design-packages.md).
 
 ## Page terminology
 

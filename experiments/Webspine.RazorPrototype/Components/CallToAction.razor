@@ -1,0 +1,5 @@
+<section class="invitation"><div><h2>@Fields.Heading</h2><p>@Fields.Text</p></div><a class="button" href="@Context.Link(Fields.Destination)">@Fields.Label <span aria-hidden="true">↑</span></a></section>
+@code {
+    [Parameter, EditorRequired] public CtaFields Fields { get; set; } = default!;
+    [Parameter, EditorRequired] public PrototypePageContext Context { get; set; } = default!;
+}

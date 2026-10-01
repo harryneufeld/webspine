@@ -1,0 +1,13 @@
+<section id="@Id" class="faq" aria-labelledby="@(Id + "-heading")">
+    <div class="section-heading"><h2 id="@(Id + "-heading")">@Fields.Heading</h2><button type="button" class="text-button" data-faq-toggle hidden aria-expanded="false" aria-controls="@(Id + "-items")">Expand all answers</button></div>
+    <div id="@(Id + "-items")">
+        @foreach (var item in Fields.Items)
+        {
+            <details><summary>@item.Question<span aria-hidden="true">+</span></summary><p>@item.Answer</p></details>
+        }
+    </div>
+</section>
+@code {
+    [Parameter, EditorRequired] public FaqFields Fields { get; set; } = default!;
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+}

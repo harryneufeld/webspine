@@ -1,0 +1,8 @@
+@inherits RazorContentComponent<HeaderFields>
+<a class="skip" href="#main">Skip to content</a>
+<a class="brand" href="@Context.Link("/")">@Context.Website.Title<span>@Fields.Subtitle</span></a>
+<nav aria-label="Main navigation">@foreach (var id in Fields.PageIds)
+{
+    var page = Context.Website.Pages.Single(p => p.Id == id);
+    <a href="@Context.Link(page.Path)" aria-current="@(page.Id == Context.Page.Id ? "page" : null)">@(page.Title)</a>
+}</nav>

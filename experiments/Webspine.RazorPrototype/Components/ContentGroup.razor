@@ -1,0 +1,6 @@
+<div id="@Id" class="@($"content-group mode-{Fields.Mode} align-{Fields.Alignment} spacing-{Fields.Spacing} columns-{Fields.Columns}")">@ChildContent</div>
+@code {
+    [Parameter, EditorRequired] public GroupFields Fields { get; set; } = default!;
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
+}

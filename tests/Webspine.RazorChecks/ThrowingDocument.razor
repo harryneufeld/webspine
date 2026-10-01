@@ -1,0 +1,6 @@
+<p>A partial document must never become an artifact.</p>
+@code {
+    [Parameter] public PrototypePageContext Context { get; set; } = default!;
+    [Parameter] public CancellationToken CancellationToken { get; set; }
+    protected override void OnInitialized() => throw new InvalidOperationException("Deliberate render failure.");
+}
