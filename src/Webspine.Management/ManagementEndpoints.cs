@@ -46,10 +46,13 @@ internal static class ManagementEndpoints
                     if (context.User.Identity?.IsAuthenticated != true) { context.Response.Redirect("/manage/account/login"); return; }
                     var permission = isApi ? context.GetEndpoint()?.Metadata.GetMetadata<ApiPermission>()?.Name ?? "content:read"
                         : path.StartsWith("/manage/integrations", StringComparison.Ordinal) ? "integrations:manage"
+                        : path.StartsWith("/manage/users", StringComparison.Ordinal) ? "accounts:manage"
+                        : path == "/manage/setup" ? "settings:write"
+                        : path.StartsWith("/manage/pages/", StringComparison.Ordinal) ? "content:write"
                         : path.StartsWith("/manage/settings", StringComparison.Ordinal) ? "settings:write"
                         : path.StartsWith("/manage/preview/", StringComparison.Ordinal) ? "preview:read"
                         : path == "/manage/preview" ? "preview:build"
-                        : HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method) || path == "/manage/account/logout" ? "content:read" : "content:write";
+                        : HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method) || path is "/manage/account/logout" or "/manage/account/password" ? "content:read" : "content:write";
                     if (!Permissions.Has(context.User, permission)) { context.Response.StatusCode = 403; return; }
                 }
                 if (!isApi && HttpMethods.IsPost(context.Request.Method))
@@ -64,6 +67,7 @@ internal static class ManagementEndpoints
         app.MapGet("/manage", async (HttpContext context) =>
         {
             var snapshot = await store.TryReadAsync(context.RequestAborted);
+            if (snapshot is null && !Permissions.Has(context.User, "settings:write")) return ManagementUi.Problem("An operator must create the website first.", 403);
             return snapshot is null ? ManagementUi.Setup(context) : ManagementUi.Overview(context, snapshot, (await store.HistoryAsync(context.RequestAborted)).Length);
         });
         app.MapPost("/manage/setup", async (HttpContext context) =>

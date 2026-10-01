@@ -13,7 +13,8 @@ namespace Webspine.Management;
 internal static class Permissions
 {
     public const string Claim = "webspine:permission";
-    public static readonly string[] All = ["content:read", "content:write", "settings:write", "preview:read", "preview:build", "integrations:manage"];
+    public static readonly string[] App = ["content:read", "content:write", "settings:write", "preview:read", "preview:build"];
+    public static readonly string[] All = [..App, "integrations:manage", "accounts:manage"];
     public static bool Has(ClaimsPrincipal user, string permission) => user.HasClaim(Claim, permission);
     public static string Label(string permission) => permission switch
     {
@@ -70,7 +71,7 @@ internal sealed class IntegrationAuthentication(IOptionsMonitor<AuthenticationSc
         if (user is null || user.SecurityStamp != credential.SecurityStamp || await users.IsLockedOutAsync(user)) return AuthenticateResult.Fail("Account unavailable.");
         var current = (await users.GetClaimsAsync(user)).Where(c => c.Type == Permissions.Claim).Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, user.Id), new(ClaimTypes.Name, credential.Label), new("webspine:credential", credential.Id) };
-        claims.AddRange(credential.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(current.Contains).Select(scope => new Claim(Permissions.Claim, scope)));
+        claims.AddRange(credential.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(scope => Permissions.App.Contains(scope) && current.Contains(scope)).Select(scope => new Claim(Permissions.Claim, scope)));
         return AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName)), SchemeName));
     }
 }
@@ -83,6 +84,7 @@ internal static class AccountEndpoints
         var database = scope.ServiceProvider.GetRequiredService<AccountDatabase>();
         // Separate fresh identity database. Upgrade migrations are required before altering this schema.
         await database.Database.EnsureCreatedAsync();
+        await scope.ServiceProvider.GetRequiredService<AccountAdministration>().UpgradeOwnerAsync();
     }
 
     public static void MapAccounts(this WebApplication app)
@@ -97,7 +99,7 @@ internal static class AccountEndpoints
             var user = new IdentityUser { UserName = form["username"].ToString() };
             var created = await users.CreateAsync(user, form["password"].ToString());
             if (!created.Succeeded) return ManagementUi.AccountForm(context, true, string.Join(" ", created.Errors.Select(e => e.Description)), 422);
-            var granted = await users.AddClaimsAsync(user, Permissions.All.Select(p => new Claim(Permissions.Claim, p)));
+            var granted = await users.AddClaimsAsync(user, Permissions.All.Select(p => new Claim(Permissions.Claim, p)).Append(new(AccountAdministration.OwnerClaim, "true")).Append(new(AccountAdministration.RoleClaim, "Owner")));
             if (!granted.Succeeded) throw new InvalidOperationException("Could not grant owner permissions.");
             db.Bootstrap.Add(new() { Id = 1 });
             await db.SaveChangesAsync(context.RequestAborted);
@@ -121,7 +123,7 @@ internal static class AccountEndpoints
             var form = await context.Request.ReadFormAsync(context.RequestAborted);
             var scopes = form["scope"].Distinct(StringComparer.Ordinal).ToArray();
             var label = form["label"].ToString();
-            if (string.IsNullOrWhiteSpace(label) || label.Length > 80 || scopes.Length == 0 || scopes.Any(s => s is null || s == "integrations:manage" || !Permissions.Has(context.User, s)) || !int.TryParse(form["days"], out var days) || days is < 1 or > 30)
+            if (string.IsNullOrWhiteSpace(label) || label.Length > 80 || scopes.Length == 0 || scopes.Any(s => s is null || !Permissions.App.Contains(s) || !Permissions.Has(context.User, s)) || !int.TryParse(form["days"], out var days) || days is < 1 or > 30)
                 return ManagementUi.Problem("Choose a name, permitted scopes and an expiry of 1–30 days.", 422);
             var user = await users.GetUserAsync(context.User) ?? throw new InvalidOperationException("Account unavailable.");
             var raw = "wsp_" + Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();

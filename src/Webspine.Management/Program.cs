@@ -28,7 +28,8 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
         options.Password.RequiredLength = 12;
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-    }).AddEntityFrameworkStores<AccountDatabase>();
+    }).AddEntityFrameworkStores<AccountDatabase>().AddDefaultTokenProviders();
+    builder.Services.AddScoped<AccountAdministration>();
     builder.Services.ConfigureApplicationCookie(options =>
     {
         options.Cookie.Name = "webspine.session";
@@ -56,6 +57,13 @@ var app = builder.Build();
 
 var demoEnabled = app.Configuration.GetValue<bool>("Demo:Enabled");
 var managementEnabled = app.Configuration.GetValue<bool>("Management:Enabled");
+if (app.Configuration["Recovery:Username"] is not null && !managementEnabled)
+{
+    Console.Error.WriteLine("Account recovery requires explicit local management configuration.");
+    Environment.ExitCode = 1;
+    await app.DisposeAsync();
+    return;
+}
 if ((demoEnabled || managementEnabled) && !app.Environment.IsDevelopment())
 {
     Console.Error.WriteLine("The example website and local management are available only in Development.");
@@ -69,8 +77,16 @@ if (managementEnabled)
     app.UseAuthentication();
     app.UseRateLimiter();
     await app.InitializeAccountsAsync();
+    if (app.Configuration["Recovery:Username"] is { } recoveryUsername)
+    {
+        using var scope = app.Services.CreateScope();
+        Environment.ExitCode = await AccountRecovery.RunAsync(scope.ServiceProvider.GetRequiredService<AccountAdministration>(), recoveryUsername);
+        await app.DisposeAsync();
+        return;
+    }
     await app.MapManagementAsync();
     app.MapAccounts();
+    app.MapAccountAdministration();
     app.MapAuthoringApi();
 }
 
