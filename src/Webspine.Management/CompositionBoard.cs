@@ -66,9 +66,8 @@ internal static partial class CompositionBoard
             var snapshot = await operations.ReadAsync(c.RequestAborted);
             Current(snapshot, form);
             var block = snapshot.Website.Blocks.FirstOrDefault(b => b.Id == id) ?? throw new ContentValidationException("Block does not exist.");
-            var fields = JsonNode.Parse(block.Fields.GetRawText())!;
-            SetFields(fields, "field", form);
-            await operations.EditAsync(form["revision"].ToString(), new UpdateBlock(id, JsonSerializer.SerializeToElement(fields, CompositionJson.Options)), c.User, Acknowledged(form), c.RequestAborted);
+            var fields = ContentFieldForms.Apply(SelectedEditor(c, block.TypeId, block.TypeVersion), block.Fields, form, snapshot.Website, SelectedDesign(c));
+            await operations.EditAsync(form["revision"].ToString(), new UpdateBlock(id, fields), c.User, Acknowledged(form), c.RequestAborted);
             return Results.Redirect(BoardUrl(snapshot.Website, form["page"].ToString()));
         });
         board.MapPost("/page/{id}", async (string id, CompositionOperations operations, HttpContext c) =>
@@ -138,99 +137,5 @@ internal static partial class CompositionBoard
         if (parts.Length == 2 && parts[0] == "block") return new(null, null, parts[1]);
         if (parts.Length == 3 && parts[0] == "page") return new(parts[1], parts[2], null);
         throw new ContentValidationException("Choose a destination.");
-    }
-    private static JsonElement SeedFields(string type, CompositionWebsite site)
-    {
-        object fields = type switch
-        {
-            "text" => new TextFields("New heading", "Your text"), "image" => new ImageFields(site.Assets.FirstOrDefault()?.Id ?? "", "Describe this image"),
-            "cta" => new CtaFields("Take the next step", "Your invitation", "Learn more", "/"),
-            "cards" => new CardsFields("Explore", [new("New card", "Your description", null, "/")]),
-            "group" => new GroupFields("stack", "start", "medium", 1), "page-title" => new PageTitleFields(),
-            "site-header" => new HeaderFields("Your website", site.Pages.Select(p => p.Id).ToImmutableArray()), "site-footer" => new FooterFields("Get in touch"),
-            _ => throw new SourceOperationNotSupportedException("This design has no board field template for that registered type. Use its typed API fields.")
-        };
-        return JsonSerializer.SerializeToElement(fields, fields.GetType(), CompositionJson.Options);
-    }
-    private static IResult Edit(HttpContext c, CompositionSnapshot snapshot, Block b, CompositionDesign design, CompositionCapabilities caps)
-    {
-        var fields = new StringBuilder(); DescribeFields(JsonNode.Parse(b.Fields.GetRawText())!, "field", fields, snapshot.Website, design);
-        var page = c.Request.Query["page"].ToString();
-        var body = ScreenHeader(snapshot.Website, page, "Edit " + TypeLabel(b.TypeId).ToLowerInvariant(), "Change the fields for this element.");
-        var impact = b.Owner.Kind == OwnerKind.Shared ? Acknowledgement(snapshot, [b.Owner.Id]) : "";
-        if (!Editable(c, b.Owner) || !Supported(caps, CompositionOperation.Update, b.TypeId, b.TypeVersion)) return ManagementUi.Html("View Block", body + "<p>This content is read-only for your account or content source. Shared content needs shared-content permission; detach a page reference to edit an independent copy.</p><fieldset disabled>" + fields + "</fieldset>");
-        return ManagementUi.Html("Edit Block", body + Form(c, snapshot.Revision, "/manage/composition/blocks/" + b.Id, Hidden("page", page) + fields + impact, "Save Block"));
-    }
-    private static string BlockLabel(Block b)
-    {
-        var name = TypeLabel(b.TypeId);
-        if (b.Fields.TryGetProperty("heading", out var heading) && heading.ValueKind == JsonValueKind.String) name += " · " + heading.GetString();
-        return name.Length <= 100 ? name : name[..97] + "…";
-    }
-    private static void DescribeFields(JsonNode node, string path, StringBuilder output, CompositionWebsite site, CompositionDesign? design = null)
-    {
-        if (node is JsonObject obj)
-        {
-            foreach (var pair in obj)
-            {
-                if (pair.Value is not null) DescribeFields(pair.Value, path + "." + pair.Key, output, site, design);
-                else if (pair.Key == "assetId") output.Append(Select(path + "." + pair.Key, "Optional image", new[] { ("", "No image") }.Concat(site.Assets.Select((a, i) => (a.Id, "Image " + (i + 1))))));
-                else output.Append(Input(path + "." + pair.Key, pair.Key, ""));
-            }
-        }
-        else if (node is JsonArray array)
-        {
-            output.Append("<fieldset><legend>" + (path.EndsWith("pageIds", StringComparison.Ordinal) ? "Navigation pages" : "Cards") + "</legend>");
-            for (var i = 0; i < array.Count; i++) if (array[i] is { } item)
-            {
-                if (item is JsonObject) output.Append("<fieldset><legend>Card " + (i + 1) + "</legend>");
-                DescribeFields(item, path + "." + i, output, site, design);
-                output.Append($"<label class=\"scope\"><input type=\"checkbox\" name=\"remove.{E(path)}\" value=\"{i}\">Remove item {i + 1}</label>");
-                if (item is JsonObject) output.Append("</fieldset>");
-            }
-            if (path.EndsWith("pageIds", StringComparison.Ordinal)) output.Append(Select("append." + path, "Add navigation page", new[] { ("", "Keep current list") }.Concat(site.Pages.Select(p => (p.Id, p.Title)))));
-            else if (path.EndsWith("items", StringComparison.Ordinal)) output.Append($"<label class=\"scope\"><input type=\"checkbox\" name=\"append.{E(path)}\" value=\"true\">Add a card (save, then edit its fields)</label>");
-            output.Append("</fieldset>");
-        }
-        else if (path.EndsWith("assetId", StringComparison.Ordinal)) output.Append(Select(path, "Image", new[] { (node.ToString(), "Current image") }.Concat(site.Assets.Select((a, i) => (a.Id, "Image " + (i + 1))))));
-        else if (path.Contains(".pageIds.", StringComparison.Ordinal)) output.Append(Select(path, "Navigation page", new[] { (node.ToString(), site.Pages.Single(p => p.Id == node.ToString()).Title) }.Concat(site.Pages.Select(p => (p.Id, p.Title)))));
-        else
-        {
-            var key = path.Split('.').Last();
-            var label = key switch { "alternativeText" => "Image description", "destination" => "Link destination", "label" => "Button label", "text" => "Text", "mode" => "Layout", "alignment" => "Alignment", "spacing" => "Spacing", "columns" => "Columns", _ => char.ToUpperInvariant(key[0]) + key[1..] };
-            IEnumerable<string>? choices = key switch { "mode" => design?.Groups.Modes, "alignment" => design?.Groups.Alignments, "spacing" => design?.Groups.Spacing, _ => null };
-            if (choices is not null) output.Append(Select(path, label, new[] { node.ToString() }.Concat(choices).Distinct().Select(v => (v, TypeLabel(v)))));
-            else if (key == "columns" && design is not null) output.Append(Select(path, label, new[] { node.ToString() }.Concat(Enumerable.Range(1, design.Groups.MaximumColumns).Select(n => n.ToString())).Distinct().Select(v => (v, v))));
-            else if (key is "text" or "description" or "message") output.Append($"<label>{E(label)}<textarea name=\"{E(path)}\" rows=\"4\">{E(node.ToString())}</textarea></label>");
-            else output.Append(Input(path, label, node.ToString()));
-        }
-    }
-    private static void SetFields(JsonNode node, string path, IFormCollection f)
-    {
-        if (node is JsonObject obj) foreach (var pair in obj.ToArray())
-        {
-            var key = path + "." + pair.Key;
-            if (pair.Value is JsonObject or JsonArray) SetFields(pair.Value, key, f);
-            else if (f.ContainsKey(key)) obj[pair.Key] = ConvertValue(pair.Value, f[key].ToString());
-        }
-        else if (node is JsonArray array)
-        {
-            for (var i = 0; i < array.Count; i++)
-            {
-                if (array[i] is JsonObject or JsonArray) SetFields(array[i]!, path + "." + i, f);
-                else if (f.ContainsKey(path + "." + i)) array[i] = ConvertValue(array[i], f[path + "." + i].ToString());
-            }
-            var removals = f["remove." + path].Select(v => int.TryParse(v, out var index) && index >= 0 && index < array.Count ? index : throw new ContentValidationException("Unknown list item.")).Distinct().OrderDescending().ToArray();
-            foreach (var index in removals) array.RemoveAt(index);
-            var append = f["append." + path].ToString();
-            if (append.Length > 0 && path.EndsWith("pageIds", StringComparison.Ordinal)) array.Add(append);
-            else if (append == "true" && path.EndsWith("items", StringComparison.Ordinal)) array.Add(JsonSerializer.SerializeToNode(new CardFields("New card", "Your description", null, "/"), CompositionJson.Options));
-        }
-    }
-    private static JsonNode? ConvertValue(JsonNode? previous, string value)
-    {
-        if (previous is null && value.Length == 0) return null;
-        if (previous?.GetValueKind() == JsonValueKind.Number) return int.TryParse(value, out var n) ? JsonValue.Create(n) : throw new ContentValidationException("Enter a whole number.");
-        return JsonValue.Create(value);
     }
 }

@@ -4,7 +4,7 @@ Implemented for #16. Existing installations remain on v1 until an operator selec
 
 ## Board
 
-Expand a page to inspect Header, Main and Footer, including nested Groups. Each element has its own Edit/View link, Move up/down buttons and a More disclosure with applicable actions. Shared references are marked. Successful actions reopen the current page. Page details change the page title and description; the page-title element links to these details. Focused editors show only the selected type's fields: text areas for longer copy, approved layout choices for Groups, image selections and card/navigation lists. Field templates belong to this first design package; a newly registered custom type can use the API immediately but needs a board template for creation.
+Expand a page to inspect Header, Main and Footer, including nested Groups. Each element has its own Edit/View link, Move up/down buttons and a More disclosure with applicable actions. Shared references are marked. Successful actions reopen the current page. Page details change the page title and description; the page-title element links to these details. Focused editors use the registered type's [field metadata](field-metadata.md): readable labels, text areas for longer copy, approved choices, image references and bounded lists. Custom types with complete basic metadata are creatable/editable without adding management templates. Missing metadata or specialized editor requirements are shown explicitly as unsupported by the basic board.
 
 Each area offers **Add element**, **Reuse shared content** and **Group selected** when supported. Add opens a choice of types allowed in that area, then that type's fields before saving. **Add after this element** preserves the insertion point without entering a numeric position. Grouping uses checkboxes within one area and a focused Group setup screen. **Move to another area** offers destinations within the same owner; up/down adjusts position. More also offers Make shared, Detach and Remove where applicable. Removal requires a confirmation. Moves preserve ownership; cross-page reuse goes through sharing/reference/detach instead of implicitly reparenting content. Shared Groups remain structurally editable in their library, including when unused.
 
@@ -18,7 +18,7 @@ Ordinary page composition requires `content:write`. Creating shared content and 
 
 Owner/Operator profiles have shared-write authority; Editor/Reviewer profiles do not. Startup adds this permission only to existing named Owner/Operator profiles and updates their security stamp: old sessions and app credentials for those upgraded accounts must be renewed. Stored app scopes never expand. Newly issued credentials must explicitly include shared-write scope when needed. The upgrade is transactional and idempotent; it does not alter the content database.
 
-`CompositionEditor` lives in Core and accepts typed commands, caller authority, the expected revision and acknowledged page IDs. The board and API call it through the same application service. It validates the entire proposed graph before the selected `ICompositionDraftPersistence` commits atomically. Providers explicitly advertise type versions and supported operations; unsupported operations return a capability error and never fall back to spinecms. The current host selects the demo design and spinecms in dependency injection; configuring an external provider and its conformance/migration remains #18. Preview storage still uses SQLite and will become a separate release contract.
+`CompositionEditor` lives in Core and accepts typed commands, caller authority, the expected revision and acknowledged page IDs. The board and API call it through the same application service. It validates metadata bounds, typed validators and the entire proposed graph before the selected `ICompositionDraftPersistence` commits atomically. Providers explicitly advertise type versions and supported operations; unsupported operations return a capability error and never fall back to spinecms. The host consumes the configured design package and spinecms; configuring an external provider and its conformance/migration remains #18. Preview storage still uses SQLite and will become a separate release contract.
 
 ## HTTP API v2
 
@@ -28,6 +28,7 @@ Bearer authentication is required; cookies cannot authenticate API requests. Man
 | --- | --- |
 | `GET /api/v2/site` | Read the validated composition snapshot |
 | `GET /api/v2/capabilities` | Supported type versions, operations and capture guarantees |
+| `GET /api/v2/schema` | Data-only field metadata, resolved choices/defaults and caller-permitted operations (`content:read`) |
 | `GET /api/v2/shared/{id}/impact` | Current revision and affected page IDs |
 | `POST /api/v2/changes` | Apply one typed conditional operation |
 | `POST /api/v2/media` | Upload raw `image/png` bytes; `If-Match: "revision"` is mandatory |

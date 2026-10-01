@@ -27,6 +27,8 @@ internal static class CompositionApi
         });
         api.MapGet("/site", async (CompositionOperations operations, HttpContext c) => Results.Json(await operations.ReadAsync(c.RequestAborted), CompositionJson.Options)).WithMetadata(new ApiPermission("content:read"));
         api.MapGet("/capabilities", (CompositionOperations operations) => Results.Json(operations.Source.CompositionCapabilities, CompositionJson.Options)).WithMetadata(new ApiPermission("content:read"));
+        api.MapGet("/schema", async (CompositionOperations operations, HttpContext c) =>
+            Results.Json(await operations.SchemaAsync(c.User, c.RequestAborted), CompositionJson.Options)).WithMetadata(new ApiPermission("content:read"));
         api.MapGet("/shared/{id}/impact", async (string id, CompositionOperations operations, HttpContext c) =>
         {
             var snapshot = await operations.ReadAsync(c.RequestAborted);

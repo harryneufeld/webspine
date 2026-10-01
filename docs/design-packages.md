@@ -8,7 +8,7 @@ dotnet run --project src/Webspine.Management -- --urls http://127.0.0.1:9087 --e
 
 Selection defaults to `studio`; an omitted version selects its registered version. Unknown IDs/versions fail startup. Packages are explicitly compiled/registered, not uploaded through management. Existing content must validate against the selected layout/definitions. There is no automatic content migration when configuration changes.
 
-Core definitions supply payload types and validators. A Razor package supplies its document component, compatible typed content components, allowed Regions/Group choices, and immutable `assets/` bytes. Components derive from `RazorDocumentComponent` or `RazorContentComponent<T>`. Use `RazorPageContext.Link`, `Asset` and `DesignAsset` so preview navigation stays within its prefix; recursive dispatch uses `RazorBlock`. Ordinary Razor expressions escape CMS text. Do not turn content into `MarkupString`, query mutable sources, or assume a Blazor browser runtime.
+Core definitions supply payload types, validators and optional [data-only editor metadata](field-metadata.md). Metadata is captured with each definition identity and contributes to candidate provenance/digests. A Razor package supplies its document component, compatible typed content components, allowed Regions/Group choices, and immutable `assets/` bytes. Components derive from `RazorDocumentComponent` or `RazorContentComponent<T>`. Use `RazorPageContext.Link`, `Asset` and `DesignAsset` so preview navigation stays within its prefix; recursive dispatch uses `RazorBlock`. Ordinary Razor expressions escape CMS text. Do not turn content into `MarkupString`, query mutable sources, or assume a Blazor browser runtime.
 
 The selected package and captured content are validated before rendering. Asset collisions, undeclared component assets and missing media fail. Static rendering awaits asynchronous lifecycle work; cancellation is cooperative. Core finalization returns immutable files and a digest binding all output. A package's changed script, stylesheet, definition or executable environment creates a different candidate identity.
 
@@ -24,4 +24,4 @@ To inspect the isolated production-package verification fixture after its checks
 dotnet run --project tests/Webspine.RazorChecks -- --preview
 ```
 
-Open `http://127.0.0.1:9095/preview/fixed/`. This loopback fixture has no customer data or management accounts; stop it after review. Generic authoring metadata/UI remains #26, and two distinct website designs remain #27.
+Open `http://127.0.0.1:9095/preview/fixed/`. This loopback fixture has no customer data or management accounts; stop it after review. Generic authoring metadata/UI is implemented in #26; two distinct website designs remain #27.

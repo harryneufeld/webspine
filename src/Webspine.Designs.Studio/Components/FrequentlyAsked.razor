@@ -1,0 +1,7 @@
+@inherits RazorContentComponent<Webspine.Content.Faq.FaqFields>
+<section class="faq"><h2>@Fields.Heading</h2>
+@foreach (var item in Fields.Items)
+{
+    <details><summary>@item.Question</summary><p>@item.Answer</p></details>
+}
+</section>
