@@ -2,12 +2,12 @@
 
 Baseline, 30 September 2026. Modularity is an MVP requirement. WordPress is a useful ambition for extensibility; plugin parity is not a claim about the current implementation.
 
-Accepted composition direction: [decision 0009](decisions/0009-composition-records-and-substitutable-cms.md). Add versioned type/schema/validator/renderer registration and operation-specific adapter capabilities before expanding beyond current sections. CMS-managed composition and optional external business-data providers have separate authority. These registrations/providers are planned, not implemented.
+Accepted composition direction: [decision 0009](decisions/0009-composition-records-and-substitutable-cms.md). The opt-in [v2 composition library](composition.md) implements type/schema/validator/renderer registration and adapter capabilities; existing v1 management still uses four section types. CMS-managed composition and optional external business-data providers have separate authority. Provider and editing integrations remain planned.
 
 | Stage | Current implementation | Next contract work |
 | --- | --- | --- |
 | Content sources | `IContentSource`, `IWebsiteAuthoringSource`, shared approved fields and SQLite conditional writes | External adapters, source migrations and full component/media authoring |
-| Components | Four typed kinds and mandatory validation | Versioned component schema, validator and renderer registry |
+| Components | Four v1 typed kinds; opt-in v2 registry with five standard types, ownership/reference validation and custom-type checks | Storage migration and UI/API integration; module packaging/loader |
 | Validation | Ordered `IContentValidator` extensions | Operation-specific policies and installation compatibility |
 | Rendering | Replaceable `IWebsiteRenderer` | Versioned design packages and component composition |
 | Build/export | Ordered `IArtifactContributor` extensions; sample site-index contributor | Durable worker, artifact storage and portable export packaging |

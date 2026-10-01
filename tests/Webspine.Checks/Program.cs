@@ -139,6 +139,7 @@ await Check("Cancelled work does not start rendering", async () =>
     Assert(renderer.LastOutput is null, "Cancelled work reached the renderer.");
 });
 
+await CompositionChecks.RunAsync(Check);
 Console.WriteLine($"All {passed} MVP checks passed.");
 
 sealed class StubRenderer : IWebsiteRenderer
