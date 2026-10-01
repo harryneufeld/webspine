@@ -1,5 +1,7 @@
 # Local authoring workflow
 
+Composition previews use the configured [static design package](design-packages.md), default `studio` version `1`. Validation/editing use its pure content definitions and layout rules. Private `build-inputs/` holds frozen candidate inputs and executable dependency archives; it is not served by HTTP. Existing v1 content keeps a compatibility renderer until explicit migration. The management frontend has not been redesigned; shared editing metadata and improved usability remain #26.
+
 Updated 1 October 2026. This is a Development-only workflow for one website, its original owner and role-limited users; hosted management remains planned.
 
 From the repository root:

@@ -1,0 +1,17 @@
+@inherits RazorDocumentComponent
+<!DOCTYPE html>
+<html lang="@Context.Website.Language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Context.Page.Title | @Context.Website.Title</title>
+    <meta name="description" content="@Context.Page.Description" />
+    <link rel="stylesheet" href="@Context.DesignAsset("assets/composition.css")" />
+    <script src="@Context.DesignAsset("assets/site.js")" defer></script>
+</head>
+<body>
+    <header class="site-container">@foreach (var placement in Context.Region("header")) { <RazorBlock Context="Context" Placement="placement" /> }</header>
+    <main id="main" class="site-container" tabindex="-1">@foreach (var placement in Context.Region("main")) { <RazorBlock Context="Context" Placement="placement" /> }</main>
+    <footer class="site-container">@foreach (var placement in Context.Region("footer")) { <RazorBlock Context="Context" Placement="placement" /> }<button type="button" class="back-to-top" data-back-to-top hidden>Back to top ↑</button></footer>
+</body>
+</html>

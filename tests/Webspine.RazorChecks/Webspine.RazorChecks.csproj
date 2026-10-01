@@ -3,5 +3,10 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../../experiments/Webspine.RazorPrototype/Webspine.RazorPrototype.csproj" />
+    <ProjectReference Include="../../src/Webspine.Designs.Studio/Webspine.Designs.Studio.csproj" />
+    <ProjectReference Include="../../src/Webspine.Content.Sqlite/Webspine.Content.Sqlite.csproj" />
+    <ProjectReference Include="../../src/Webspine.Delivery/Webspine.Delivery.csproj" />
+    <ProjectReference Include="../../src/Webspine.Demo/Webspine.Demo.csproj" />
+    <ProjectReference Include="../../src/Webspine.Caching.Memory/Webspine.Caching.Memory.csproj" />
   </ItemGroup>
 </Project>

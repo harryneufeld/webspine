@@ -7,12 +7,14 @@ using System.Text.Json.Nodes;
 using Webspine.Content.Sqlite;
 using Webspine.Core;
 using Webspine.Core.Composition;
-using Webspine.Demo;
+using Webspine.Designs.Studio;
 
 namespace Webspine.Management;
 
 internal static partial class CompositionBoard
 {
+    private static CompositionDesign SelectedDesign(HttpContext c) => c.RequestServices.GetRequiredService<CompositionOperations>().Design;
+    private static BlockRegistry SelectedDefinitions(HttpContext c) => c.RequestServices.GetRequiredService<CompositionOperations>().Registry;
     private static string E(string? s) => WebUtility.HtmlEncode(s ?? "");
     private static string Input(string name, string label, string value) => $"<label>{E(label)}<input name=\"{E(name)}\" value=\"{E(value)}\"></label>";
     private static string Select(string name, string label, IEnumerable<(string Value, string Label)> items) => $"<label>{E(label)}<select name=\"{E(name)}\">{string.Join("", items.Select(i => $"<option value=\"{E(i.Value)}\">{E(i.Label)}</option>"))}</select></label>";
@@ -32,11 +34,11 @@ internal static partial class CompositionBoard
             catch (Exception e) when (CompositionApi.ExpectedError(e)) { return ManagementUi.Problem(e.Message, CompositionApi.ErrorStatus(e)); }
         });
         MapStructureRoutes(board);
-        board.MapGet("", async (CompositionOperations operations, HttpContext c) => Overview(c, await operations.ReadAsync(c.RequestAborted), operations.Source.CompositionCapabilities, await DemoComposition.DesignAsync(c.RequestAborted)));
+        board.MapGet("", async (CompositionOperations operations, HttpContext c) => Overview(c, await operations.ReadAsync(c.RequestAborted), operations.Source.CompositionCapabilities, SelectedDesign(c)));
         board.MapGet("/export", async (CompositionOperations operations, HttpContext c) =>
         {
             operations.Source.CompositionCapabilities.RequireCapture();
-            var capture = await operations.Source.CaptureCompositionAsync(await DemoComposition.DesignAsync(c.RequestAborted), c.RequestAborted);
+            var capture = await operations.Source.CaptureCompositionAsync(SelectedDesign(c), c.RequestAborted);
             using var stream = new MemoryStream();
             using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, true))
             {
@@ -48,7 +50,7 @@ internal static partial class CompositionBoard
         board.MapGet("/media/{id}", async (string id, CompositionOperations operations, HttpContext c) =>
         {
             operations.Source.CompositionCapabilities.RequireCapture();
-            var capture = await operations.Source.CaptureCompositionAsync(await DemoComposition.DesignAsync(c.RequestAborted), c.RequestAborted);
+            var capture = await operations.Source.CaptureCompositionAsync(SelectedDesign(c), c.RequestAborted);
             var asset = capture.Content.Website.Assets.FirstOrDefault(a => a.Id == id);
             return asset is null ? Results.NotFound() : Results.File(capture.AssetFiles[asset.File].ToArray(), asset.ContentType);
         });
@@ -56,7 +58,7 @@ internal static partial class CompositionBoard
         {
             var snapshot = await operations.ReadAsync(c.RequestAborted);
             var block = snapshot.Website.Blocks.FirstOrDefault(b => b.Id == id);
-            return block is null ? Results.NotFound() : Edit(c, snapshot, block, await DemoComposition.DesignAsync(c.RequestAborted), operations.Source.CompositionCapabilities);
+            return block is null ? Results.NotFound() : Edit(c, snapshot, block, SelectedDesign(c), operations.Source.CompositionCapabilities);
         });
         board.MapPost("/blocks/{id}", async (string id, CompositionOperations operations, HttpContext c) =>
         {
@@ -104,8 +106,8 @@ internal static partial class CompositionBoard
                 var legacy = await store.ReadAsync(c.RequestAborted);
                 var mappings = LegacyCompositionMapping.Identities(legacy);
                 var bySection = mappings.ToDictionary(m => (m.PageId, m.SectionId));
-                await store.MigrateToCompositionAsync(f["revision"].ToString(), await DemoComposition.DesignAsync(c.RequestAborted),
-                    old => DemoComposition.Convert(old, LegacyCompositionMapping.Blocks(old), (page, section) => { var m = bySection[(page, section)]; return (m.BlockId, m.PlacementId); }), mappings, c.RequestAborted);
+                await store.MigrateToCompositionAsync(f["revision"].ToString(), SelectedDesign(c),
+                    old => c.RequestServices.GetRequiredService<CompositionOperations>().ConvertLegacy(old, LegacyCompositionMapping.Blocks(old), (page, section) => { var m = bySection[(page, section)]; return (m.BlockId, m.PlacementId); }), mappings, c.RequestAborted, c.RequestServices.GetRequiredService<CompositionOperations>().RehearseAsync);
                 return Results.Redirect("/manage/composition");
             }
             catch (Exception e) when (CompositionApi.ExpectedError(e)) { return ManagementUi.Problem(e.Message, CompositionApi.ErrorStatus(e)); }

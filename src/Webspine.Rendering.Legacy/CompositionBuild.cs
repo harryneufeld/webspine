@@ -55,7 +55,7 @@ public sealed class CompositionBuildPipeline(BlockRegistry registry)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var block = blocks[placement.Kind == TargetKind.Shared ? shared[placement.TargetId].RootBlockId : placement.TargetId];
-                registry.Resolve(block.TypeId, block.TypeVersion).Render(block,
+                ((IBlockRegistration)registry.Resolve(block.TypeId, block.TypeVersion)).Render(block,
                     new(() => { foreach (var child in block.Children) RenderPlacement(child); }, id => Link("/" + assets[id].File), site, page, Link), html);
             }
             html.Markup("<!doctype html><html lang=\""); html.Text(site.Language); html.Markup("\"><head><meta charset=\"utf-8\"><title>");

@@ -146,3 +146,4 @@ await Check("Shared finalizer preserves the established v2 digest and refuses in
     Assert(completed.Files.Length == 2, "Finalized artifact changed.");
 });
 Console.WriteLine($"{passed} Razor prototype check groups passed.");
+await DesignPackageChecks.RunAsync(args.Contains("--preview", StringComparer.Ordinal));

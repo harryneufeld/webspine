@@ -1,0 +1,11 @@
+@inherits Webspine.Rendering.Razor.RazorDocumentComponent
+<p>@message</p>
+@code {
+    private string message = "Not ready";
+    protected override async Task OnInitializedAsync()
+    {
+        LifecycleSignals.Started.TrySetResult();
+        await LifecycleSignals.Continue.Task.WaitAsync(CancellationToken);
+        message = "Package lifecycle completed";
+    }
+}

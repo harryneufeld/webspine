@@ -10,7 +10,8 @@ public sealed partial class SqliteContentSource
 {
     public async Task<CompositionMigrationResult> MigrateToCompositionAsync(string expectedRevision,
         CompositionDesign design, Func<ContentSnapshot, CompositionWebsite> convert,
-        ImmutableArray<SectionIdentityMapping> identityMap, CancellationToken ct = default)
+        ImmutableArray<SectionIdentityMapping> identityMap, CancellationToken ct = default,
+        Func<CapturedComposition, CancellationToken, ValueTask<BuiltArtifact>>? rehearse = null)
     {
         await using var connection = await Open(ct);
         using var transaction = connection.BeginTransaction(deferred: false);
@@ -60,7 +61,10 @@ public sealed partial class SqliteContentSource
         }
         var assets = await CaptureAssets(connection, transaction, website.Assets, ct);
         // Rehearse a full build, including media/path/renderer failures, before writing the new head.
-        new CompositionBuildPipeline(compositionRegistry).Build(new(snapshot, design, assets), ct);
+        if (rehearse is null)
+            new CompositionBuildPipeline(compositionRegistry).Build(new(snapshot, design, assets), ct);
+        else
+            await rehearse(new(snapshot, design, assets), ct);
         await InsertComposition(connection, transaction, snapshot, ct);
         using var transition = Command(connection, transaction, "INSERT INTO content_transitions(revision,from_revision,original_revision,operation,identity_map) VALUES($new,$old,$old,'migrate',$map)");
         transition.Parameters.AddWithValue("$new", snapshot.Revision); transition.Parameters.AddWithValue("$old", legacy.Revision);

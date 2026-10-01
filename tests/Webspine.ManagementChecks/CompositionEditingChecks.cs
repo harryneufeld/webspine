@@ -193,12 +193,31 @@ static class CompositionEditingChecks
             using var preview = await api.PostAsJsonAsync(host.Url + "/api/v2/previews", new { expectedRevision = snapshot.Revision }); Require(preview.StatusCode == HttpStatusCode.Created, "Composition preview failed: " + await preview.Content.ReadAsStringAsync());
             using var info = JsonDocument.Parse(await preview.Content.ReadAsStringAsync()); var previewUrl = info.RootElement.GetProperty("url").GetString()!;
             var before = await api.GetByteArrayAsync(host.Url + previewUrl); html = Encoding.UTF8.GetString(before);
+            Require(html.Contains(previewUrl + "assets/site.js") && !html.Contains("_framework/"), "Configured static package script missing or assumed a browser .NET runtime.");
+            using var script = await api.GetAsync(host.Url + previewUrl + "assets/site.js");
+            Require(script.IsSuccessStatusCode && script.Content.Headers.ContentType?.MediaType == "text/javascript", "Package JavaScript was not delivered with executable MIME.");
+            using var pageResponse = await api.GetAsync(host.Url + previewUrl);
+            Require(pageResponse.Headers.GetValues("Content-Security-Policy").Single().Contains("script-src 'self'"), "Declared package script policy missing.");
+            using var manifest = JsonDocument.Parse(await api.GetStringAsync(host.Url + previewUrl + "design-package-manifest.json"));
+            Require(manifest.RootElement.GetProperty("package").GetProperty("id").GetString() == "studio", "Preview did not use configured package.");
+            var executableDigest = manifest.RootElement.GetProperty("executable").GetProperty("digest").GetString()!;
+            var previewId = previewUrl.Split('/', StringSplitOptions.RemoveEmptyEntries).Last();
+            var inputsDirectory = Path.Combine(httpDirectory, "build-inputs");
+            var bundlePath = Path.Combine(inputsDirectory, executableDigest + ".runtime.zip");
+            Require(File.Exists(bundlePath) && BuildPipeline.Hash(await File.ReadAllBytesAsync(bundlePath)) == executableDigest, "Private executable environment not retained intact.");
+            using var candidateInputs = ZipFile.OpenRead(Path.Combine(inputsDirectory, previewId + ".zip"));
+            Require(candidateInputs.GetEntry("content.json") is not null && candidateInputs.GetEntry("design.json") is not null && candidateInputs.GetEntry("assets/site.js") is not null && candidateInputs.GetEntry(media.Asset.File) is not null, "Candidate omitted frozen content/configuration/assets.");
+            using var privateInput = await api.GetAsync(host.Url + previewUrl + executableDigest + ".runtime.zip");
+            Require(privateInput.StatusCode == HttpStatusCode.NotFound, "Private executable environment was publicly delivered.");
             Require(html.Contains(previewUrl + "assets/composition.css") && html.Contains(previewUrl + "services/") && html.Contains(previewUrl + media.Asset.File), "Private preview assets/navigation escaped their prefix.");
             foreach (var route in new[] { "", "services/", "products/", "about/", "contact/", "assets/composition.css", media.Asset.File })
             { using var response = await api.GetAsync(host.Url + previewUrl + route); Require(response.IsSuccessStatusCode, "Preview missing " + route); }
             using var later = await Change(snapshot, new EditCompositionSettings("Changed after capture", "en"), []); Require(later.IsSuccessStatusCode, "Composition settings update failed.");
             var retained = await api.GetByteArrayAsync(host.Url + previewUrl);
             Require(before.SequenceEqual(retained), "Later composition edit changed retained bytes.");
+            var reopenedStore = new SqliteContentSource(Path.Combine(httpDirectory, "webspine.db"));
+            var restoredArtifact = await reopenedStore.ReadPreviewAsync(previewId);
+            Require(restoredArtifact is not null && restoredArtifact.Files.Single(f => f.Path == "index.html").Bytes.AsSpan().SequenceEqual(before), "Reopening lost retained Razor output.");
             using var privateDenied = await browser.GetAsync(host.Url + previewUrl); Require(privateDenied.StatusCode == HttpStatusCode.Unauthorized, "API preview lost authentication separation.");
             Console.WriteLine("PASS: API upload/selection and five-page composition preview retain exact bytes with private navigation/assets.");
         }

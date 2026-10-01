@@ -12,6 +12,22 @@ await AuthoringChecks.RunAsync();
 await AccountChecks.RunAsync();
 await HumanAccountChecks.RunAsync();
 
+foreach (var selection in new[] { (Package: "missing", Version: "1"), (Package: "studio", Version: "999") })
+{
+    var directory = Path.Combine(Path.GetTempPath(), "webspine-invalid-package-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        await using var host = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true,
+            designPackage: selection.Package, designVersion: selection.Version);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        await host.Process.WaitForExitAsync(timeout.Token);
+        Require(host.Process.ExitCode != 0 && (await host.Errors).Contains("configured design package/version is not installed"), "Unknown package/version did not fail startup explicitly.");
+        Require(!File.Exists(Path.Combine(directory, "webspine.db")), "Invalid package initialized authoring storage.");
+    }
+    finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+}
+Console.WriteLine("PASS: Unknown configured package/version fail startup before authoring storage is initialized.");
+
 await using (var host = CheckHost.Start("Development", true))
 {
     await host.WaitHealthyAsync(client);
@@ -92,7 +108,8 @@ sealed class CheckHost : IAsyncDisposable
     }
 
     public static CheckHost Start(string environment, bool enableDemo, bool cacheEnabled = true, string? dataDirectory = null, bool managementEnabled = false, string? recoveryUsername = null,
-        string? contentAction = null, string? expectedRevision = null, string? legacyRevision = null)
+        string? contentAction = null, string? expectedRevision = null, string? legacyRevision = null,
+        string? designPackage = null, string? designVersion = null)
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -126,7 +143,8 @@ sealed class CheckHost : IAsyncDisposable
             start.ArgumentList.Add("--Recovery:Username");
             start.ArgumentList.Add(recoveryUsername);
         }
-        foreach (var option in new[] { ("--Content:Action", contentAction), ("--Content:ExpectedRevision", expectedRevision), ("--Content:LegacyRevision", legacyRevision) })
+        foreach (var option in new[] { ("--Content:Action", contentAction), ("--Content:ExpectedRevision", expectedRevision), ("--Content:LegacyRevision", legacyRevision),
+            ("--Design:Package", designPackage), ("--Design:Version", designVersion) })
         {
             if (option.Item2 is null) continue;
             start.ArgumentList.Add(option.Item1); start.ArgumentList.Add(option.Item2);

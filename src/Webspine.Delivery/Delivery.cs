@@ -40,14 +40,16 @@ public sealed class PrerenderedDelivery
     private readonly IDeliveryCache cache;
     private readonly ImmutableArray<IDeliveryHeaders> hooks;
     private readonly bool diagnostics;
+    private readonly DesignScriptPolicy? scripts;
 
     public PrerenderedDelivery(IPublishedArtifactSource source, IDeliveryCache cache,
-        IEnumerable<IDeliveryHeaders>? hooks = null, bool diagnostics = false)
+        IEnumerable<IDeliveryHeaders>? hooks = null, bool diagnostics = false, DesignScriptPolicy? scripts = null)
     {
         this.source = source;
         this.cache = cache;
         this.hooks = hooks?.ToImmutableArray() ?? [];
         this.diagnostics = diagnostics;
+        this.scripts = scripts;
         if (this.hooks.Any(h => string.IsNullOrWhiteSpace(h.Id)) || this.hooks.Select(h => h.Id).Distinct().Count() != this.hooks.Length)
             throw new ArgumentException("Delivery hook IDs must be nonempty and unique.");
     }
@@ -68,6 +70,8 @@ public sealed class PrerenderedDelivery
         catch (ContentValidationException) { context.Response.StatusCode = 404; return; }
         // Resolve once per request: concurrent promotion cannot mix files/revision within a response.
         var release = await source.ReadAsync(ct);
+        if (filePath.EndsWith(".js", StringComparison.Ordinal) && scripts?.Allows(release, filePath) != true)
+        { context.Response.StatusCode = 404; return; }
         var file = release.Files.FirstOrDefault(f => f.Path == filePath);
         if (file is null) { context.Response.StatusCode = 404; return; }
         var key = new DeliveryCacheKey(release.Digest, file.Path, file.Digest);
@@ -96,6 +100,7 @@ public sealed class PrerenderedDelivery
         // This first delivery host is a development demo, never a shared customer preview cache.
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
+        if (scripts?.Enabled(release) == true) context.Response.Headers.ContentSecurityPolicy += "; script-src 'self'";
         context.Response.Headers.XContentTypeOptions = "nosniff";
         if (diagnostics) context.Response.Headers["X-Webspine-Cache"] = eligible ? hit ? "hit" : "miss" : "bypass";
         var matches = context.Request.Headers.IfNoneMatch.ToString().Split(',').Select(v => v.Trim())
@@ -107,7 +112,7 @@ public sealed class PrerenderedDelivery
 
     private static string ContentType(string path) => Path.GetExtension(path) switch
     {
-        ".html" => "text/html; charset=utf-8", ".css" => "text/css; charset=utf-8",
+        ".html" => "text/html; charset=utf-8", ".css" => "text/css; charset=utf-8", ".js" => "text/javascript; charset=utf-8",
         ".svg" => "image/svg+xml", ".json" => "application/json", ".png" => "image/png",
         ".jpg" or ".jpeg" => "image/jpeg", ".webp" => "image/webp", _ => "application/octet-stream"
     };
