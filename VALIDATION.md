@@ -78,3 +78,11 @@ Windows Release build passed with zero warnings/errors. All 12 core checks and 2
 Browser inspected an isolated owner/editor/reviewer fixture, account controls, protected owner row and role descriptions; 390px mobile had no horizontal overflow. Saved `.local/verification/people-and-access.png`, reset the viewport and stopped the owned verification host. Synthetic fixture/runtime files remain ignored. Linux/macOS results are recorded by the pull request CI checks.
 
 Limits remain: Development/loopback only; no public/email recovery, MFA, invitations, arbitrary permission profiles, per-page grants, durable audit or hosted schema upgrade/deployment workflow. Reviewer is not a publisher. Composition proposal #9 and button-target issue #11 remain separate work.
+
+## Composition contract v2, 1 October 2026
+
+Added an opt-in composition library with stable object/placement IDs, explicit ownership/shared references, typed registration, graph validation, adapter capabilities and captured-input builds. The existing v1 management/storage/API remain unchanged; this is #14, not the storage/editor migration.
+
+Windows Release build passed with zero warnings/errors. All 26 core check groups and 20 management groups passed. Fourteen new composition groups cover published JSON examples, shared/nested expansion, strict fields, missing references/ownership/orphans, disconnected/shared cycles, eight/nine-level nesting, exact 1,000/1,001 occurrence bounds, Region/type/layout rules, custom Quote extension, registration conflicts/order, design/CSS/content/media digests, immutable prior output, escaping, unsafe paths/links, independent source capture, capability denial, source/design substitution and cancellation. The first test compilation needed explicit Placement constructor types and a fixture constructor warning fix; final checks run the newly built assemblies.
+
+No browser workflow changes: v2 is not wired into the board/API. CI verifies the library and existing suite on Windows/Linux/macOS in this implementation PR. The composition guide distinguishes the library from planned migration, editing, Records/Patterns, hosted builds and publication.

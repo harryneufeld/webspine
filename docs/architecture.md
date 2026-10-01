@@ -62,7 +62,7 @@ CMS-native edits bypass the platform API. Validate every release snapshot agains
 
 ## Accepted composition and data direction
 
-[Decision 0009](decisions/0009-composition-records-and-substitutable-cms.md) defines planned Block trees, Groups, named Regions, layouts (Spines), site-owned Shared Blocks, Patterns and typed Records. Current storage/API still use contract v1 flat sections; the decision is not an implementation claim.
+[Decision 0009](decisions/0009-composition-records-and-substitutable-cms.md) defines Block trees, Groups, named Regions, layouts (Spines), site-owned Shared Blocks, Patterns and typed Records. The opt-in [composition v2 library](composition.md) implements the first contract/registry/validation/build slice; current storage/API still use v1 flat sections. Migration/editing and Patterns/Records remain follow-ups. [Decision 0010](decisions/0010-additive-composition-v2-and-registration.md) records compatibility and registration choices.
 
 Design packages own layout/Region definitions, styles, Pattern structures and rendering. The active CMS owns page composition, Block values, shared instances, Pattern inputs, media references and content Records. Editors and AI use structured, authorized operations within registered type/placement rules. Alternative editing UIs use the same API guarantees as the default board. Application services enforce rules; spinecms persistence initially uses SQLite without exposing it as the common contract.
 

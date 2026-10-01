@@ -10,9 +10,12 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 
 ## Project documents
 
+An opt-in [composition v2 library](docs/composition.md) adds typed Blocks, nested Groups, Regions, shared references and component registration. The current board/API/storage still use v1 until migration and editor follow-ups. The default replaceable CMS is named spinecms.
+
 - [Project charter](PROJECT.md): purpose, scope and product rules.
 - [Architecture](docs/architecture.md): responsibilities and planned boundaries.
 - [Content contract](docs/content-contract.md) and [extensions](docs/extensions.md): current contracts and modularity roadmap.
+- [Composition v2](docs/composition.md): registered types, source capabilities, examples and compatibility.
 - [Delivery pipeline](docs/delivery.md): page modes, replaceable caching, HTTP behavior and current limits.
 - [Local management](docs/management.md): setup, editing, stored data and preview limitations.
 - [Authoring API](docs/authoring-api.md): external apps, permissions and conditional operations.

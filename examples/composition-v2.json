@@ -1,0 +1,38 @@
+{
+  "contractVersion": 2,
+  "source": { "id": "sample-source", "kind": "fixture" },
+  "revision": "r1",
+  "website": {
+    "id": "sample",
+    "title": "Website",
+    "language": "en",
+    "layoutId": "standard",
+    "pages": [
+      {
+        "id": "home", "path": "/", "title": "Home", "description": "Description",
+        "regions": [
+          { "id": "header", "placements": [{ "id": "header-placement", "kind": "shared", "targetId": "branding" }] },
+          { "id": "main", "placements": [{ "id": "main-placement", "kind": "block", "targetId": "body-group" }] },
+          { "id": "footer", "placements": [{ "id": "footer-placement", "kind": "shared", "targetId": "branding" }] }
+        ]
+      }
+    ],
+    "blocks": [
+      {
+        "id": "branding-text", "owner": { "kind": "shared", "id": "branding" }, "typeId": "text", "typeVersion": 1,
+        "fields": { "heading": "Shared branding", "text": "Body" }, "children": []
+      },
+      {
+        "id": "body-group", "owner": { "kind": "page", "id": "home" }, "typeId": "group", "typeVersion": 1,
+        "fields": { "mode": "stack", "alignment": "start", "spacing": "medium", "columns": 1 },
+        "children": [{ "id": "intro-placement", "kind": "block", "targetId": "intro" }]
+      },
+      {
+        "id": "intro", "owner": { "kind": "page", "id": "home" }, "typeId": "text", "typeVersion": 1,
+        "fields": { "heading": "Heading", "text": "Body" }, "children": []
+      }
+    ],
+    "sharedBlocks": [{ "id": "branding", "rootBlockId": "branding-text" }],
+    "assets": []
+  }
+}
