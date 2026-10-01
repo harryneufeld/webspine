@@ -77,6 +77,7 @@ static class CompositionEditingChecks
             var png = Png(); var media = CompositionMedia.Png(png); Require(media.Asset.ContentType == "image/png" && CompositionMedia.Png(png).Asset == media.Asset, "Media IDs are not content-addressed.");
             var bad = png.ToArray(); bad[^1] ^= 1;
             await Fails<ContentValidationException>(() => Task.Run(() => CompositionMedia.Png(bad)));
+            await Fails<ContentValidationException>(() => Task.Run(() => CompositionMedia.Png(Png(truncateCompression: true))));
             await Fails<ContentValidationException>(() => Task.Run(() => CompositionMedia.Png("<svg onload='evil()'/>"u8.ToArray())));
             await Fails<ContentValidationException>(() => Task.Run(() => CompositionMedia.Png(new byte[CompositionMedia.MaximumBytes + 1])));
             Console.WriteLine("PASS: Media validates PNG structure/CRC/decompression and rejects corrupt, executable and oversized uploads.");
@@ -153,7 +154,7 @@ static class CompositionEditingChecks
         }
         finally { Directory.Delete(directory, true); }
     }
-    private static byte[] Png()
+    private static byte[] Png(bool truncateCompression = false)
     {
         using var stream = new MemoryStream(); stream.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
         void Chunk(string type, byte[] data)
@@ -164,7 +165,8 @@ static class CompositionEditingChecks
             BinaryPrimitives.WriteUInt32BigEndian(length, ~crc); stream.Write(length);
         }
         var header = new byte[13]; BinaryPrimitives.WriteUInt32BigEndian(header, 1); BinaryPrimitives.WriteUInt32BigEndian(header.AsSpan(4), 1); header[8] = 8; header[9] = 6; Chunk("IHDR", header);
-        using var pixels = new MemoryStream(); using (var z = new ZLibStream(pixels, CompressionLevel.SmallestSize, true)) z.Write(new byte[] { 0, 20, 50, 80, 255 }); Chunk("IDAT", pixels.ToArray()); Chunk("IEND", []); return stream.ToArray();
+        using var pixels = new MemoryStream(); using (var z = new ZLibStream(pixels, CompressionLevel.SmallestSize, true)) z.Write(new byte[] { 0, 20, 50, 80, 255 });
+        var compressed = pixels.ToArray(); Chunk("IDAT", truncateCompression ? compressed[..^4] : compressed); Chunk("IEND", []); return stream.ToArray();
     }
     private sealed class LimitedSource(ICompositionDraftPersistence inner) : ICompositionDraftPersistence
     {

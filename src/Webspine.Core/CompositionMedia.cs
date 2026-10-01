@@ -53,13 +53,21 @@ public static class CompositionMedia
             position += chunk.Length;
         }
         if (!ended) Fail();
+        if (compressed.Length < 6) Fail();
         compressed.Position = 0;
         try
         {
             using var pixels = new ZLibStream(compressed, CompressionMode.Decompress);
             var row = new byte[checked(width * channels + 1)];
-            for (var y = 0; y < height; y++) { pixels.ReadExactly(row); if (row[0] > 4) Fail(); }
+            uint a = 1, b = 0;
+            for (var y = 0; y < height; y++)
+            {
+                pixels.ReadExactly(row); if (row[0] > 4) Fail();
+                foreach (var pixel in row) { a = (a + pixel) % 65521; b = (b + a) % 65521; }
+            }
             if (pixels.ReadByte() != -1) Fail();
+            // Streams can return EOF on a missing trailer; require the complete zlib checksum explicitly.
+            if (BinaryPrimitives.ReadUInt32BigEndian(compressed.GetBuffer().AsSpan((int)compressed.Length - 4, 4)) != (b << 16 | a)) Fail();
         }
         catch (Exception e) when (e is InvalidDataException or EndOfStreamException) { Fail(); }
         var bytes = stored.ToArray().ToImmutableArray();
