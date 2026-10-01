@@ -79,7 +79,7 @@ public sealed class RazorDesignPackage : IDesignPackage, ICompositionRenderer
             var mappings = Bindings.Values.OrderBy(b => b.TypeId, StringComparer.Ordinal)
                 .Select(b => new ComponentBinding(b.TypeId, b.TypeVersion, b.Component.FullName!, b.Version)).ToImmutableArray();
             var definitions = ContentTypes.Descriptors.Select(d => new ContentDefinitionIdentity(d,
-                ContentTypes.Resolve(d.Id, d.Version).ImplementationDigest)).ToImmutableArray();
+                ContentTypes.Resolve(d.Id, d.Version).ImplementationDigest, ContentTypes.Resolve(d.Id, d.Version).Editor)).ToImmutableArray();
             var digest = BuildPipeline.Hash(JsonSerializer.SerializeToUtf8Bytes(new
             {
                 Descriptor, Design, document = DocumentComponent.FullName, components = mappings,

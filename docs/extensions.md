@@ -2,12 +2,12 @@
 
 Baseline, 30 September 2026. Modularity is an MVP requirement. WordPress is a useful ambition for extensibility; plugin parity is not a claim about the current implementation.
 
-Accepted composition direction: [decision 0009](decisions/0009-composition-records-and-substitutable-cms.md). The [v2 composition library](composition.md) implements typed definitions/validation and adapter capabilities; the board/API supply composition operations, while configured Razor packages supply presentation. Existing v1 management still uses four section types until explicit migration. CMS-managed composition and optional external business-data providers have separate authority. Generic editing metadata and provider integrations remain planned.
+Accepted composition direction: [decision 0009](decisions/0009-composition-records-and-substitutable-cms.md). The [v2 composition library](composition.md) implements typed definitions/validation and adapter capabilities; the board/API supply composition operations, while configured Razor packages supply presentation. [Field metadata](field-metadata.md) makes registered basic types editable without central management switches. Existing v1 management still uses four section types until explicit migration. CMS-managed composition and optional external business-data providers have separate authority. Provider integrations remain planned.
 
 | Stage | Current implementation | Next contract work |
 | --- | --- | --- |
 | Content sources | v1 authoring; v2 read/capture and trusted conditional persistence contracts; SQLite histories and explicit v1/v2 migration/recovery | Typed composition/media authoring, external adapters and source migration |
-| Components | Four v1 typed kinds; v2 registry, validation and storage; demo shared-shell types | UI/API integration; module packaging/loader |
+| Components | Four v1 typed kinds; v2 typed registration/validation/storage; metadata-driven board and schema discovery; independent FAQ module | Specialized editor integration; module packaging/loader |
 | Validation | Ordered `IContentValidator` extensions | Operation-specific policies and installation compatibility |
 | Rendering | Core `IDesignPackage`/`ICompositionRenderer`; configured Studio package and typed static Razor mappings; separate content definitions; v1 compatibility renderer | Additional designs, historical replay worker and installation tooling |
 | Build/export | Ordered `IArtifactContributor` extensions; sample site-index contributor | Durable worker, artifact storage and portable export packaging |

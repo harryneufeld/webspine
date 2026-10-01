@@ -13,6 +13,53 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
     public ICompositionDraftPersistence Source => source;
     public CompositionDesign Design => package.Design;
     public BlockRegistry Registry => package.ContentTypes;
+    public async Task<object> SchemaAsync(ClaimsPrincipal user, CancellationToken ct)
+    {
+        var snapshot = await ReadAsync(ct); var caps = source.CompositionCapabilities;
+        bool Allowed(CompositionOperation operation, string? type = null, int version = 1)
+        {
+            if (operation != CompositionOperation.Read && !Permissions.Has(user, "content:write")) return false;
+            if (operation == CompositionOperation.Share && !Permissions.Has(user, "content:shared:write")) return false;
+            try { caps.Require(operation, type, version); return true; }
+            catch (SourceOperationNotSupportedException) { return false; }
+        }
+        object Type(BlockTypeDescriptor descriptor)
+        {
+            var definition = Registry.Resolve(descriptor.Id, descriptor.Version); var editor = definition.Editor;
+            System.Text.Json.JsonElement? defaults = null; string? unavailable = null;
+            var choices = new Dictionary<string, ImmutableArray<EditorChoice>>(StringComparer.Ordinal);
+            void Fields(ImmutableArray<EditorField> fields, string path)
+            {
+                foreach (var field in fields)
+                {
+                    var key = path.Length == 0 ? field.Name : path + "." + field.Name;
+                    var values = ContentEditorContract.Choices(field, snapshot.Website, Design);
+                    if (field.ChoiceSource != EditorChoiceSource.None || !values.IsEmpty) choices.Add(key, values);
+                    if (field.Kind == EditorFieldKind.Repeat)
+                    {
+                        if (field.Item is null) Fields(field.ItemFields, key + "[]");
+                        else choices.Add(key + "[]", ContentEditorContract.Choices(field.Item, snapshot.Website, Design));
+                    }
+                }
+            }
+            if (ContentEditorContract.Generic(editor))
+            {
+                Fields(editor!.Fields, "");
+                try { defaults = ContentEditorContract.Defaults(editor, snapshot.Website, Design); }
+                catch (ContentValidationException e) { unavailable = e.Message; }
+            }
+            else unavailable = "The basic board requires editing metadata or a specialized editor. Typed clients must supply the registered schema.";
+            return new { descriptor.Id, descriptor.Version, descriptor.SchemaId, descriptor.Container, editor, defaults,
+                resolvedChoices = choices, boardEditable = ContentEditorContract.Generic(editor) && Allowed(CompositionOperation.Update, descriptor.Id, descriptor.Version),
+                boardCreatable = defaults is not null && Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
+                unavailable, canCreate = Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
+                canUpdate = Allowed(CompositionOperation.Update, descriptor.Id, descriptor.Version) };
+        }
+        return new { contractVersion = 2, metadataVersion = 1, snapshot.Revision, package = package.Descriptor,
+            Design.Layout, Design.Groups, operations = caps.Operations.Where(op => Allowed(op)).ToArray(),
+            canWriteShared = Permissions.Has(user, "content:write") && Permissions.Has(user, "content:shared:write"),
+            types = Registry.Descriptors.Select(Type).ToArray() };
+    }
     public CompositionWebsite ConvertLegacy(ContentSnapshot legacy, ImmutableArray<Block> sections,
         Func<string, string, (string BlockId, string PlacementId)> identities) => converter.Convert(legacy, sections, identities);
     public async ValueTask<BuiltArtifact> RehearseAsync(CapturedComposition captured, CancellationToken ct) =>

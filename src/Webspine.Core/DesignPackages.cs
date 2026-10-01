@@ -4,7 +4,8 @@ namespace Webspine.Core.Composition;
 
 public sealed record DesignPackageDescriptor(string Id, string Version, int ContractVersion, string RendererId, string RendererVersion);
 public sealed record ComponentBinding(string TypeId, int TypeVersion, string ComponentId, string Version);
-public sealed record ContentDefinitionIdentity(BlockTypeDescriptor Descriptor, string ImplementationDigest);
+public sealed record ContentDefinitionIdentity(BlockTypeDescriptor Descriptor, string ImplementationDigest,
+    ContentEditorMetadata? Editor = null);
 public sealed record ExecutableFile(string Path, string Digest, long Length);
 public sealed record ExecutableEnvironmentSnapshot(string Runtime, string RuntimeIdentifier, string OperatingSystem,
     ImmutableArray<ExecutableFile> Files, ImmutableArray<byte> Archive, string Digest);

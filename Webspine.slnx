@@ -6,6 +6,7 @@
     <Project Path="src/Webspine.Rendering.Legacy/Webspine.Rendering.Legacy.csproj" />
     <Project Path="src/Webspine.Rendering.Razor/Webspine.Rendering.Razor.csproj" />
     <Project Path="src/Webspine.Designs.Studio/Webspine.Designs.Studio.csproj" />
+    <Project Path="src/Webspine.Content.Faq/Webspine.Content.Faq.csproj" />
     <Project Path="src/Webspine.Content.Sqlite/Webspine.Content.Sqlite.csproj" />
     <Project Path="src/Webspine.Delivery/Webspine.Delivery.csproj" />
     <Project Path="src/Webspine.Caching.Memory/Webspine.Caching.Memory.csproj" />

@@ -21,6 +21,7 @@ public sealed class BlockRegistry
         foreach (var item in items)
         {
             var descriptor = item.Descriptor;
+            if (item.Editor is not null) ContentEditorContract.ValidateRegistration(item.Editor, item.PayloadType);
             CompositionRules.Identifier(descriptor.Id); CompositionRules.Identifier(descriptor.ModuleId);
             CompositionRules.Text(descriptor.ModuleVersion, 80); CompositionRules.Text(descriptor.SchemaId, 120);
             CompositionRules.Text(descriptor.RendererVersion, 80);
@@ -46,6 +47,7 @@ public sealed class BlockRegistry
 
 public sealed class BlockValidationContext(CompositionWebsite website, CompositionDesign design)
 {
+    public CompositionWebsite Website => website;
     public CompositionDesign Design { get; } = design;
     public void Asset(string id)
     {

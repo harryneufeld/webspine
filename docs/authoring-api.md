@@ -6,6 +6,8 @@ The owner or an operator creates a named credential under `/manage/integrations`
 
 ## Operations
 
+Composition v2 operations and `GET /api/v2/schema` discovery are documented in [composition editing](composition-editing.md) and [field metadata](field-metadata.md). Existing v1 sites require explicit migration before v2 authoring; API discovery does not perform a migration.
+
 | Method and path | Required scope | Body / result |
 | --- | --- | --- |
 | GET `/api/v1/site` | `content:read` | Complete content snapshot, source identity and opaque `revision` |
