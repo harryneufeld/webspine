@@ -13,13 +13,13 @@ namespace Webspine.Management;
 internal static class Permissions
 {
     public const string Claim = "webspine:permission";
-    public static readonly string[] App = ["content:read", "content:write", "settings:write", "preview:read", "preview:build"];
+    public static readonly string[] App = ["content:read", "content:write", "content:shared:write", "settings:write", "preview:read", "preview:build"];
     public static readonly string[] All = [..App, "integrations:manage", "accounts:manage"];
     public static bool Has(ClaimsPrincipal user, string permission) => user.HasClaim(Claim, permission);
     public static string Label(string permission) => permission switch
     {
         "content:read" => "Read pages and website settings", "content:write" => "Create and edit pages",
-        "settings:write" => "Change shared website settings", "preview:read" => "View retained previews",
+        "content:shared:write" => "Edit shared blocks across pages", "settings:write" => "Change shared website settings", "preview:read" => "View retained previews",
         "preview:build" => "Build previews", _ => permission
     };
 }

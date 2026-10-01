@@ -81,11 +81,18 @@ static class HumanAccountChecks
             await using (var database = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(directory, "accounts.db"), Pooling = false }.ToString()))
             {
                 await database.OpenAsync(); using var legacy = database.CreateCommand();
-                legacy.CommandText = "DELETE FROM AspNetUserClaims WHERE UserId=(SELECT Id FROM AspNetUsers WHERE UserName='owner') AND (ClaimType IN ('webspine:owner','webspine:role') OR ClaimValue='accounts:manage'); DELETE FROM AspNetUserClaims WHERE UserId=(SELECT Id FROM AspNetUsers WHERE UserName='operator') AND ClaimValue='integrations:manage'";
+                legacy.CommandText = "DELETE FROM AspNetUserClaims WHERE UserId=(SELECT Id FROM AspNetUsers WHERE UserName='owner') AND (ClaimType IN ('webspine:owner','webspine:role') OR ClaimValue IN ('accounts:manage','content:shared:write')); DELETE FROM AspNetUserClaims WHERE UserId=(SELECT Id FROM AspNetUsers WHERE UserName='operator') AND ClaimValue='integrations:manage'";
                 await legacy.ExecuteNonQueryAsync();
             }
             await using (var upgraded = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
-            { await upgraded.WaitHealthyAsync(owner); Require((await owner.GetStringAsync(upgraded.Url + "/manage/users")).Contains("Owner"), "Legacy owner was not upgraded."); }
+            {
+                await upgraded.WaitHealthyAsync(owner);
+                using var oldSession = await owner.GetAsync(upgraded.Url + "/manage/users"); Require(oldSession.StatusCode == HttpStatusCode.Found, "Shared permission upgrade kept an old administrative session.");
+                using var api = new HttpClient(new HttpClientHandler { UseProxy = false }); api.DefaultRequestHeaders.Authorization = new("Bearer", recoveryToken);
+                using var oldCredential = await api.GetAsync(upgraded.Url + "/api/v1/site"); Require(oldCredential.StatusCode == HttpStatusCode.Unauthorized, "Shared permission upgrade retained old credentials.");
+                await Login(owner, upgraded.Url, "owner");
+                Require((await owner.GetStringAsync(upgraded.Url + "/manage/users")).Contains("Owner") && (await owner.GetStringAsync(upgraded.Url + "/manage/integrations")).Contains("content:shared:write"), "Legacy owner shared authority was not upgraded.");
+            }
             await using (var recovery = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true, recoveryUsername: "owner"))
             {
                 await recovery.Process.StandardInput.WriteLineAsync(NewPassword); await recovery.Process.StandardInput.WriteLineAsync(NewPassword); recovery.Process.StandardInput.Close();

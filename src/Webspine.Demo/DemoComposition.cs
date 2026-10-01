@@ -25,12 +25,12 @@ public static class DemoComposition
             foreach (var id in fields.PageIds) context.Page(id);
         }, (fields, context, html) =>
         {
-            html.Markup("<a class=\"skip\" href=\"#main\">Skip to content</a><a class=\"brand\" href=\"/\">");
+            html.Markup("<a class=\"skip\" href=\"#main\">Skip to content</a><a class=\"brand\" href=\""); html.Text(context.Link("/")); html.Markup("\">");
             html.Text(context.WebsiteTitle); html.Markup("<span>"); html.Text(fields.Subtitle); html.Markup("</span></a><nav aria-label=\"Main navigation\">");
             foreach (var id in fields.PageIds)
             {
                 var page = context.PageById(id);
-                html.Markup("<a href=\""); html.Text(page.Path); html.Markup("\"");
+                html.Markup("<a href=\""); html.Text(context.Link(page.Path)); html.Markup("\"");
                 if (id == context.Page.Id) html.Markup(" aria-current=\"page\"");
                 html.Markup(">"); html.Text(page.Title); html.Markup("</a>");
             }

@@ -13,10 +13,10 @@ public sealed record CompositionMigrationResult(string? OriginalRevision, string
 
 public sealed partial class SqliteContentSource
 {
-    // Operations remain Read until #16 supplies authorized typed editing; persistence commits are trusted-host calls.
+    // Typed operations are implemented by the application editor; commits remain trusted-host calls.
     public CompositionCapabilities CompositionCapabilities => new(2,
         compositionRegistry.Descriptors.Select(d => new SupportedBlockType(d.Id, d.Version)).ToImmutableArray(),
-        [CompositionOperation.Read], true, true);
+        Enum.GetValues<CompositionOperation>().ToImmutableArray(), true, true);
 
     public async Task<ContentHead?> HeadAsync(CancellationToken ct = default)
     {

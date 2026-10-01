@@ -6,7 +6,7 @@ The first operator creates the original owner account. Under **People and access
 
 | Role | Allowed operations |
 | --- | --- |
-| Owner / Operator | Pages, website settings, previews, content export, connected apps and account administration |
+| Owner / Operator | Pages, Shared Blocks, website settings, previews, content export, connected apps and account administration |
 | Editor | Create/edit pages, build/read previews and read/export content |
 | Reviewer | Read/export content and inspect shared preview URLs |
 
@@ -34,6 +34,6 @@ Protect the data directory and Data Protection keys: filesystem access is operat
 
 ## Existing installations
 
-The previous one-owner installation stored owner permissions as claims. Startup upgrades that existing account by adding the original-owner marker, Owner role and account-management permission in a transaction, without changing the schema, password, content or retained artifacts. The upgrade is idempotent. If no owner marker exists and the legacy owner cannot be identified uniquely, startup fails and requires operator inspection rather than selecting an arbitrary user.
+The previous one-owner installation stored owner permissions as claims. Startup upgrades that existing account by adding the original-owner marker, Owner role and account-management permission in a transaction, without changing the schema, password, content or retained artifacts. The upgrade is idempotent. The composition permission upgrade also grants `content:shared:write` only to named Owner/Operator profiles and updates their security stamp, invalidating their old sessions and app credentials once. Sign in again and recreate needed credentials with explicit scopes. Editors/Reviewers and stored credential scopes are never expanded. If no owner marker exists and the legacy owner cannot be identified uniquely, startup fails and requires operator inspection rather than selecting an arbitrary user.
 
 Roles are fixed application permission profiles stored as Identity claims. Arbitrary role editing, invitation/email delivery, MFA, SSO, per-page grants, durable account audit and hosted deployment are not implemented. The existing Identity database still needs explicit schema migrations when its schema changes; this claim upgrade is not a substitute for them.

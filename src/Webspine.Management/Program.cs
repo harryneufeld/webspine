@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 using Webspine.Content.Sqlite;
+using Webspine.Core.Composition;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -49,6 +50,8 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
     builder.Services.AddSingleton(new SqliteContentSource(Path.Combine(dataDirectory, "webspine.db"), DemoComposition.Registry()));
     builder.Services.AddSingleton<IWebsiteAuthoringSource>(services => services.GetRequiredService<SqliteContentSource>());
     builder.Services.AddSingleton<AuthoringOperations>();
+    builder.Services.AddSingleton<ICompositionDraftPersistence>(services => services.GetRequiredService<SqliteContentSource>());
+    builder.Services.AddSingleton<CompositionOperations>();
 }
 builder.Services.AddSingleton<IDeliveryCache>(services =>
     builder.Configuration.GetValue("Demo:CacheEnabled", true) ? new MemoryDeliveryCache() : new NoDeliveryCache());
@@ -95,13 +98,6 @@ if (managementEnabled)
     {
         var contentSource = app.Services.GetRequiredService<SqliteContentSource>();
         await contentSource.InitializeSchemaAsync();
-        if ((await contentSource.HeadAsync())?.Version == 2)
-        {
-            Console.Error.WriteLine("Composition v2 storage is active. The composition board/API arrive in #16; restore a retained v1 revision to use this editor.");
-            Environment.ExitCode = 1;
-            await app.DisposeAsync();
-            return;
-        }
     }
     app.UseAuthentication();
     app.UseRateLimiter();
@@ -117,6 +113,8 @@ if (managementEnabled)
     app.MapAccounts();
     app.MapAccountAdministration();
     app.MapAuthoringApi();
+    app.MapCompositionApi();
+    app.MapCompositionBoard();
 }
 
 if (demoEnabled)

@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace Webspine.Core.Composition;
 
-// An opt-in v2 build path; existing management/demo builds continue using v1.
+// The v2 build path; retained v1 artifacts and legacy sites preserve their original build semantics.
 public sealed class CompositionBuildPipeline(BlockRegistry registry)
 {
     public async ValueTask<BuiltArtifact> BuildAsync(ICompositionSource source, CompositionDesign design,
@@ -25,10 +25,14 @@ public sealed class CompositionBuildPipeline(BlockRegistry registry)
         return Build(captured, cancellationToken);
     }
 
-    public BuiltArtifact Build(CapturedComposition captured, CancellationToken cancellationToken = default)
+    public BuiltArtifact Build(CapturedComposition captured, CancellationToken cancellationToken = default, string pathBase = "")
     {
         cancellationToken.ThrowIfCancellationRequested();
         CompositionContract.Validate(captured.Content, captured.Design, registry);
+        if (pathBase.Length > 0 && (!pathBase.StartsWith('/') || pathBase.Contains("..") || pathBase.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '/' or '-'))))
+            throw new ContentValidationException("Invalid preview path prefix.");
+        pathBase = pathBase.TrimEnd('/');
+        string Link(string path) => path.StartsWith('/') ? pathBase + path : path;
         var site = captured.Content.Website;
         var assets = site.Assets.ToDictionary(a => a.Id, StringComparer.Ordinal);
         if (captured.AssetFiles is null || captured.AssetFiles.Count != site.Assets.Length)
@@ -52,11 +56,11 @@ public sealed class CompositionBuildPipeline(BlockRegistry registry)
                 cancellationToken.ThrowIfCancellationRequested();
                 var block = blocks[placement.Kind == TargetKind.Shared ? shared[placement.TargetId].RootBlockId : placement.TargetId];
                 registry.Resolve(block.TypeId, block.TypeVersion).Render(block,
-                    new(() => { foreach (var child in block.Children) RenderPlacement(child); }, id => "/" + assets[id].File, site, page), html);
+                    new(() => { foreach (var child in block.Children) RenderPlacement(child); }, id => Link("/" + assets[id].File), site, page, Link), html);
             }
             html.Markup("<!doctype html><html lang=\""); html.Text(site.Language); html.Markup("\"><head><meta charset=\"utf-8\"><title>");
             html.Text(page.Title + " | " + site.Title); html.Markup("</title><meta name=\"description\" content=\"");
-            html.Text(page.Description); html.Markup("\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><link rel=\"stylesheet\" href=\"/assets/composition.css\"></head><body>");
+            html.Text(page.Description); html.Markup("\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><link rel=\"stylesheet\" href=\""); html.Text(Link("/assets/composition.css")); html.Markup("\"></head><body>");
             foreach (var region in captured.Design.Layout.Regions)
             {
                 // Region IDs are validated tokens, not user-supplied element names.

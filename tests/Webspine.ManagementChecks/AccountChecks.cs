@@ -130,7 +130,7 @@ static partial class AccountChecks
         using var response = await api.GetAsync(url + "/api/v1/site"); Require(response.IsSuccessStatusCode, "API read failed: " + await response.Content.ReadAsStringAsync());
         return (await response.Content.ReadFromJsonAsync<JsonObject>())!;
     }
-    private static async Task<string> Issue(HttpClient browser, string url, string label, string[] scopes)
+    public static async Task<string> Issue(HttpClient browser, string url, string label, string[] scopes)
     {
         var form = Form(await browser.GetStringAsync(url + "/manage/integrations"));
         form.Remove("scope");

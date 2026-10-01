@@ -47,7 +47,7 @@ public sealed record CompositionCapabilities(int ContractVersion, ImmutableArray
     }
 }
 
-// Read/capture boundary only. Typed editing operations belong to #16; no unvalidated graph-replacement write API.
+// Read/capture boundary. Typed edits use CompositionEditor; no unvalidated graph-replacement HTTP API.
 public interface ICompositionSource
 {
     SourceIdentity Identity { get; }
@@ -75,6 +75,7 @@ public static class CompositionJson
         {
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
             PropertyNameCaseInsensitive = false,
+            RespectRequiredConstructorParameters = true,
             MaxDepth = 32
         };
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
@@ -92,7 +93,7 @@ public static class CompositionJson
             ?? throw new ContentValidationException("Composition content is required.");
     }
 
-    internal static void RejectDuplicateProperties(JsonElement value)
+    public static void RejectDuplicateProperties(JsonElement value)
     {
         if (value.ValueKind == JsonValueKind.Object)
         {

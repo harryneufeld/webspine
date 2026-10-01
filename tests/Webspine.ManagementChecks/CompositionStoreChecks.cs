@@ -209,15 +209,17 @@ static class CompositionStoreChecks
             var commandMigration = await Command("migrate", restored.Revision);
             Require(commandMigration.Code == 0, "Offline migration failed: " + commandMigration.Errors);
             var headV2 = (await store.HeadAsync())!;
-            await using (var blocked = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
+            Require(!File.Exists(Path.Combine(directory, "accounts.db")), "Offline content tooling initialized unrelated account storage.");
+            using var browser = new HttpClient(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false });
+            await using (var migratedHost = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
             {
-                await blocked.Process.WaitForExitAsync(timeout.Token);
-                Require(blocked.Process.ExitCode != 0 && (await blocked.Errors).Contains("composition board/API arrive"), "v1 host served a migrated site unsafely.");
+                await migratedHost.WaitHealthyAsync(browser);
+                using var response = await browser.GetAsync(migratedHost.Url + "/manage/composition");
+                Require(response.StatusCode == System.Net.HttpStatusCode.Found && response.Headers.Location!.ToString().Contains("login"), "Migrated board exposed drafts anonymously.");
             }
             var staleRestore = await Command("restore", restored.Revision, restored.Revision); Require(staleRestore.Code != 0, "Stale recovery succeeded.");
             var recovery = await Command("restore", headV2.Revision, restored.Revision); Require(recovery.Code == 0 && (await store.HeadAsync())!.Version == 1, "Offline recovery failed.");
-            Require(!File.Exists(Path.Combine(directory, "accounts.db")), "Offline content tooling initialized unrelated account storage.");
-            Console.WriteLine("PASS: Actual offline inspect/migrate/restore enforce expected revisions, exit without HTTP hosting and guard the v1 board.");
+            Console.WriteLine("PASS: Offline migration preserves conditional recovery; migrated hosting requires authentication.");
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
