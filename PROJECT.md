@@ -1,6 +1,6 @@
 # Project charter
 
-Status: MVP scope baseline, updated 30 September 2026. The selected product name is `webspine`, described as a modular web engine. Its wordmark is web**spine**, with “spine” bold; `webspine` is the repository folder. C# namespaces/projects use `Webspine` by convention.
+Status: MVP scope baseline, updated 1 October 2026. The selected product name is `webspine`, described as a modular web engine. Its wordmark is web**spine**, with “spine” bold; `webspine` is the repository folder. C# namespaces/projects use `Webspine` by convention. The default, replaceable CMS is named `spinecms`; this does not require an immediate project/namespace rename.
 
 ## Purpose
 
@@ -20,10 +20,10 @@ MVP success means one pilot customer can run a small informational website using
 ## Proposed MVP boundary
 
 - One customer and one website per installation; several pages in one configured language.
-- A small built-in CMS: pages, approved component fields, managed images, versioned drafts and conditional writes, editable through the portal and API.
+- spinecms as the default CMS: pages, approved typed Blocks, bounded Groups/Regions, site-shared content, managed images, versioned drafts and conditional writes, editable through the portal and API. Patterns and a small typed content Record example follow the first composition slice; see decision 0009.
 - One reference external CMS connector with explicit field mapping and tested revision behavior; selecting it does not block building the default experience.
 - One active content source per site, with an operator-guided migration from built-in content to the supported external CMS.
-- A small approved component set: heading/text, image, CTA and cards; pages use developer-controlled layouts. The optional demo has five pages: Home, Services, Products, About and Contact. The final pilot schema remains a discovery deliverable.
+- A small approved component set: heading/text, image, CTA and cards; pages compose registered types within developer-controlled layout rules. Design packages own rendering, styles and reusable definitions. The optional demo has five pages: Home, Services, Products, About and Contact. The final pilot schema remains a discovery deliverable.
 - A modular core with documented extension contracts across content, rendering, builds, exports, preview and deployment. External AI clients use scoped operations across these stages as they are implemented.
 - Local human accounts using maintained authentication components, plus separate revocable integration tokens.
 - Scoped content editing, protected previews, release history, publication and rollback.
@@ -40,7 +40,7 @@ Shared multi-tenant hosting; additional external CMS products; universal connect
 
 Cross-platform operation is required: Windows and Linux, with macOS included in automated verification. Linux is the primary hosting target. Application services and required development/verification commands must avoid Windows-specific APIs, paths and shell dependencies. Future storage, media and CMS components must support the target platforms.
 
-1. Keep one authoritative content source per site: built-in or external. Release snapshots are immutable records. External mode disables built-in editing for that site; no automatic two-way synchronization is implied.
+1. Keep one authoritative CMS per site: spinecms or external. Release snapshots are immutable captures. External mode disables spinecms writes; the webspine board/API continue editing through supported external adapter operations. No hidden spinecms fallback or automatic two-way synchronization is implied.
 2. Keep content separate from design. Content cannot supply arbitrary executable templates or CSS.
 3. Reject stale writes; never claim conflict safety that the CMS cannot provide.
 4. A draft or CMS publication does not automatically replace the public website.
@@ -49,6 +49,7 @@ Cross-platform operation is required: Windows and Linux, with macOS included in 
 7. Website rollback restores retained output without reversing CMS edits.
 8. Credentials and permissions are explicit. AI-provider choice is independent of the platform.
 9. Preserve operator data during upgrades; verify recovery rather than relying on backup creation alone.
+10. Keep content Records separate from business workflows. Optional external data providers own their business data, not website composition; provider reads do not imply write access. Capture bound data for prerendered builds.
 
 ## Decisions required before implementation
 

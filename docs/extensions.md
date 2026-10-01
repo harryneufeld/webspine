@@ -2,6 +2,8 @@
 
 Baseline, 30 September 2026. Modularity is an MVP requirement. WordPress is a useful ambition for extensibility; plugin parity is not a claim about the current implementation.
 
+Accepted composition direction: [decision 0009](decisions/0009-composition-records-and-substitutable-cms.md). Add versioned type/schema/validator/renderer registration and operation-specific adapter capabilities before expanding beyond current sections. CMS-managed composition and optional external business-data providers have separate authority. These registrations/providers are planned, not implemented.
+
 | Stage | Current implementation | Next contract work |
 | --- | --- | --- |
 | Content sources | `IContentSource`, `IWebsiteAuthoringSource`, shared approved fields and SQLite conditional writes | External adapters, source migrations and full component/media authoring |

@@ -50,7 +50,7 @@ Reused UI elements share a layout/component contract within their design package
 
 The built-in CMS implements the same source interface as external adapters. It stores website pages, permitted component values, media references and versioned drafts using the chosen durable storage. The portal is its human editor; external AI clients use the authenticated website API. Use maintained storage and identity components and keep the initial content model small.
 
-Each site selects one active source. When an external CMS is active, the built-in content editor is disabled or replaced with the operations supported by that connector. Frozen release snapshots stay independent of the source; they are never used as an editable synchronized copy.
+Each site selects one active CMS: spinecms (the default) or an external CMS. When an external CMS is active, spinecms accepts no content writes. The webspine management board and API remain editing entry points for the operations supported by that connector. Unsupported operations are reported explicitly, never persisted through a hidden spinecms fallback. Frozen release snapshots stay independent of the source; they are never used as an editable synchronized copy.
 
 Changing sources is an explicit migration: export content/assets, configure field mappings, import or reconcile with destination content, validate the resulting pages, rehearse a build, freeze edits briefly for final transfer, then switch the site source. Preserve original source data and previously published releases for recovery. Candidates from the prior source become ineligible for normal publication; rollback to retained published artifacts remains possible. Switching source does not publish a new website automatically.
 
@@ -59,6 +59,16 @@ Use opaque source revision references rather than assuming every CMS has an inte
 If the chosen CMS cannot enforce a required conditional update, this is a discovery blocker for automated writes. Decide on a supported source-side strategy or narrow the pilot to proposals/read-only operation; do not silently weaken the requirement.
 
 CMS-native edits bypass the platform API. Validate every release snapshot against the website contract regardless of edit origin. Service-account connector credentials do not imply the initiating user's source permissions: define and test delegated access or an explicit permission mapping.
+
+## Accepted composition and data direction
+
+[Decision 0009](decisions/0009-composition-records-and-substitutable-cms.md) defines planned Block trees, Groups, named Regions, layouts (Spines), site-owned Shared Blocks, Patterns and typed Records. Current storage/API still use contract v1 flat sections; the decision is not an implementation claim.
+
+Design packages own layout/Region definitions, styles, Pattern structures and rendering. The active CMS owns page composition, Block values, shared instances, Pattern inputs, media references and content Records. Editors and AI use structured, authorized operations within registered type/placement rules. Alternative editing UIs use the same API guarantees as the default board. Application services enforce rules; spinecms persistence initially uses SQLite without exposing it as the common contract.
+
+Ordinary Blocks have page ownership; Shared Blocks have site ownership. Stable object identity is separate from stable placement identity. Shared references initially have no local overrides. All edits retain site-wide conditional revisions; shared writes require additional authority and an affected-page summary. Resolve and validate references from frozen inputs before rendering.
+
+External business-data providers may supply typed Records, with explicit provider identity, field mappings and capture evidence. They do not become a second CMS or receive implicit write authority. Orders, inventory rules and similar processes remain in their originating application. Prerendered candidates capture bound values/assets; runtime queries on Dynamic pages require a separate policy. First implement composition and shared content, then a bounded Pattern/Record example; defer a general schema designer and business-provider implementation.
 
 ## Release lifecycle
 
