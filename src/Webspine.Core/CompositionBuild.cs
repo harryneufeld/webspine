@@ -52,7 +52,7 @@ public sealed class CompositionBuildPipeline(BlockRegistry registry)
                 cancellationToken.ThrowIfCancellationRequested();
                 var block = blocks[placement.Kind == TargetKind.Shared ? shared[placement.TargetId].RootBlockId : placement.TargetId];
                 registry.Resolve(block.TypeId, block.TypeVersion).Render(block,
-                    new(() => { foreach (var child in block.Children) RenderPlacement(child); }, id => "/" + assets[id].File), html);
+                    new(() => { foreach (var child in block.Children) RenderPlacement(child); }, id => "/" + assets[id].File, site, page), html);
             }
             html.Markup("<!doctype html><html lang=\""); html.Text(site.Language); html.Markup("\"><head><meta charset=\"utf-8\"><title>");
             html.Text(page.Title + " | " + site.Title); html.Markup("</title><meta name=\"description\" content=\"");
@@ -61,7 +61,7 @@ public sealed class CompositionBuildPipeline(BlockRegistry registry)
             {
                 // Region IDs are validated tokens, not user-supplied element names.
                 var tag = region.Id is "header" or "main" or "footer" ? region.Id : "section";
-                html.Markup("<" + tag + " id=\""); html.Text(region.Id); html.Markup("\">");
+                html.Markup("<" + tag + " id=\""); html.Text(region.Id); html.Markup("\" class=\"site-container\">");
                 foreach (var placement in page.Regions.Single(r => r.Id == region.Id).Placements) RenderPlacement(placement);
                 html.Markup("</" + tag + ">");
             }

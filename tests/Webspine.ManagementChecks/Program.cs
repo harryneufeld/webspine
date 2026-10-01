@@ -6,6 +6,7 @@ using System.Text.Json;
 using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(2) };
 await DeliveryChecks.RunAsync();
 await ContentStoreChecks.RunAsync();
+await CompositionStoreChecks.RunAsync();
 await AuthoringChecks.RunAsync();
 await AccountChecks.RunAsync();
 await HumanAccountChecks.RunAsync();
@@ -89,7 +90,8 @@ sealed class CheckHost : IAsyncDisposable
         output = process.StandardOutput.ReadToEndAsync();
     }
 
-    public static CheckHost Start(string environment, bool enableDemo, bool cacheEnabled = true, string? dataDirectory = null, bool managementEnabled = false, string? recoveryUsername = null)
+    public static CheckHost Start(string environment, bool enableDemo, bool cacheEnabled = true, string? dataDirectory = null, bool managementEnabled = false, string? recoveryUsername = null,
+        string? contentAction = null, string? expectedRevision = null, string? legacyRevision = null)
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -122,6 +124,11 @@ sealed class CheckHost : IAsyncDisposable
         {
             start.ArgumentList.Add("--Recovery:Username");
             start.ArgumentList.Add(recoveryUsername);
+        }
+        foreach (var option in new[] { ("--Content:Action", contentAction), ("--Content:ExpectedRevision", expectedRevision), ("--Content:LegacyRevision", legacyRevision) })
+        {
+            if (option.Item2 is null) continue;
+            start.ArgumentList.Add(option.Item1); start.ArgumentList.Add(option.Item2);
         }
         return new(Process.Start(start) ?? throw new InvalidOperationException("Could not start management host."), url);
     }

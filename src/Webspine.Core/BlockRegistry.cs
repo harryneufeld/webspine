@@ -80,12 +80,19 @@ public sealed class BlockValidationContext(CompositionWebsite website, Compositi
         if (!website.Assets.Any(a => a.Id == id)) throw new ContentValidationException("Block references a missing asset.");
     }
     public void Destination(string value) => CompositionRules.Destination(value, website.Pages.Select(p => p.Path).ToHashSet(StringComparer.Ordinal));
+    public void Page(string id)
+    {
+        if (!website.Pages.Any(p => p.Id == id)) throw new ContentValidationException("Block references a missing page.");
+    }
 }
 
-public sealed class BlockRenderContext(Action renderChildren, Func<string, string> assetPath)
+public sealed class BlockRenderContext(Action renderChildren, Func<string, string> assetPath, CompositionWebsite website, CompositionPage page)
 {
     public void RenderChildren() => renderChildren();
     public string AssetPath(string id) => assetPath(id);
+    public string WebsiteTitle => website.Title;
+    public CompositionPage Page { get; } = page;
+    public CompositionPage PageById(string id) => website.Pages.Single(p => p.Id == id);
 }
 
 // Escape all content values. Raw markup belongs to installed, trusted rendering code only.
