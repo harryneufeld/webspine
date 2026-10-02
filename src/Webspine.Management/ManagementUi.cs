@@ -25,26 +25,11 @@ internal static class ManagementUi
         return $"<label for=\"{E(name)}\">{E(label)}</label>{field}";
     }
     private static string Alert(string? message) => message is null ? "" : $"<div class=\"notice\" role=\"alert\">{E(message)}</div>";
-    private static string WorkspaceActions(HttpContext context)
-    {
-        var links = new StringBuilder();
-        if (Permissions.Has(context.User, "settings:write")) links.Append("<a href=\"/manage/settings\">Website settings</a>");
-        if (Permissions.Has(context.User, "integrations:manage")) links.Append("<a href=\"/manage/integrations\">Connected apps</a>");
-        if (Permissions.Has(context.User, "accounts:manage")) links.Append("<a href=\"/manage/users\">People and access</a>");
-        return $"<div class=\"actions\">{links}<a href=\"/manage/account/password\">Change password</a><form method=\"post\" action=\"/manage/account/logout\">{Token(context)}<button type=\"submit\">Sign out</button></form></div>";
-    }
     public static IResult AccountForm(HttpContext context, bool firstOwner, string? error = null, int status = 200)
         => Html(firstOwner ? "Create owner account" : "Sign in", $"""
             <div class="intro"><p class="eyebrow">Your workspace</p><h1>{(firstOwner ? "Create your owner account." : "Welcome back.")}</h1><p>{(firstOwner ? "Protect this workspace before creating or editing your website." : "Sign in to manage your website and previews.")}</p></div>{Alert(error)}
             <form class="panel setup" method="post" action="/manage/account/{(firstOwner ? "start" : "login")}">{Token(context)}{Input("username", "Username", "")}<label for="password">Password</label><input id="password" name="password" type="password" autocomplete="{(firstOwner ? "new-password" : "current-password")}" required minlength="12"><p class="hint">At least 12 characters, with uppercase, lowercase, a number and a symbol.</p><button type="submit">{(firstOwner ? "Create owner account" : "Sign in")}</button></form>
             """, status);
-    public static IResult Settings(HttpContext context, ContentSnapshot snapshot, string? error = null, int status = 200, IFormCollection? submitted = null)
-    {
-        string Value(string key, string fallback) => submitted?.ContainsKey(key) == true ? submitted[key].ToString() : fallback;
-        return Html("Website settings", $"""
-            <a href="/manage">← All pages</a><div class="intro"><p class="eyebrow">{E(snapshot.Website.Title)}</p><h1>Website settings.</h1><p>Shared settings apply to the whole website. Existing previews keep their captured values.</p></div>{Alert(error)}<form class="panel editor" method="post" action="/manage/settings">{Token(context)}<input type="hidden" name="revision" value="{E(Value("revision", snapshot.Revision))}">{Input("title", "Website name / title", Value("title", snapshot.Website.Title))}<p class="hint">Used in page titles, navigation branding and the footer.</p>{Input("language", "Website language", Value("language", snapshot.Website.Language))}<p class="hint">Language tag such as en or de. This does not translate content.</p><button type="submit">Save settings</button></form>
-            """, status);
-    }
     public static IResult Integrations(HttpContext context, IReadOnlyCollection<IntegrationCredential> credentials, string? secret = null)
     {
         var rows = string.Join("", credentials.Select(c => $"<li><div><strong>{E(c.Label)}</strong><span>{E(c.Scopes)} · {(c.Revoked ? "Revoked" : c.ExpiresUtcTicks <= DateTimeOffset.UtcNow.UtcTicks ? "Expired" : "Expires " + new DateTimeOffset(c.ExpiresUtcTicks, TimeSpan.Zero).ToString("yyyy-MM-dd HH:mm 'UTC'"))}</span></div>{(c.Revoked ? "" : $"<form method=\"post\" action=\"/manage/integrations/{E(c.Id)}/revoke\">{Token(context)}<button type=\"submit\">Revoke {E(c.Label)}</button></form>")}</li>"));
@@ -61,33 +46,10 @@ internal static class ManagementUi
             <div class="choices"><label class="choice"><input type="radio" name="mode" value="blank" checked><strong>Start blank</strong><span>A Home page, ready for your own words.</span></label><label class="choice"><input type="radio" name="mode" value="demo"><strong>{E(context.RequestServices.GetRequiredService<InstalledDesign>().ExampleLabel)}</strong><span>{E(context.RequestServices.GetRequiredService<InstalledDesign>().ExampleDescription)}</span></label></div><button type="submit">Create website</button><p class="hint">Your site is saved on this computer. Nothing is published.</p></form>
             """, status);
 
-    public static IResult Overview(HttpContext context, ContentSnapshot snapshot, int revisions, string? error = null, int status = 200)
-    {
-        var rows = new StringBuilder();
-        foreach (var page in snapshot.Website.Pages)
-            rows.Append($"<li><div><strong>{E(page.Title)}</strong><span>{E(page.Path)}</span></div><a class=\"text-link\"{(Permissions.Has(context.User, "content:write") ? "" : " hidden")} href=\"/manage/pages/{E(page.Id)}\">Edit {E(page.Title)} <span aria-hidden=\"true\">↗</span></a></li>");
-        var upgrade = Permissions.Has(context.User, "settings:write") && Permissions.Has(context.User, "content:shared:write") ? $"<section class=\"panel\"><h2>Enable composition editing</h2><p>Convert this draft to Blocks, Groups and shared header/footer content. Original revisions and previews are retained. Legacy API clients must switch to v2.</p><form method=\"post\" action=\"/manage/upgrade-composition\">{Token(context)}<input type=\"hidden\" name=\"revision\" value=\"{E(snapshot.Revision)}\"><button>Enable composition editing</button></form></section>" : "";
-        return Html(snapshot.Website.Title, $"""
-            {WorkspaceActions(context)}{upgrade}<div class="intro"><p class="eyebrow">Your website</p><h1>{E(snapshot.Website.Title)}</h1><p>Edit a page, then build a preview to review your saved draft.</p></div>{Alert(error)}<div class="workspace"><section class="panel"><div class="panel-heading"><h2>Pages</h2><span>{snapshot.Website.Pages.Length} total</span></div><ul class="pages">{rows}</ul></section><aside class="panel"><h2>Review your draft</h2><p>A preview captures the current pages and images. Later edits do not change an existing preview.</p>{(Permissions.Has(context.User, "preview:build") ? $"<form method=\"post\" action=\"/manage/preview\">{Token(context)}<input type=\"hidden\" name=\"revision\" value=\"{E(snapshot.Revision)}\"><button type=\"submit\">Build preview</button></form>" : "<p>Ask an editor to share a preview link.</p>")}<p class="hint">{revisions} saved revision{(revisions == 1 ? "" : "s")} · No live publication</p><a class="text-link" href="/manage/export">Download content and images</a></aside></div>
-            <section class="panel add-page"{(Permissions.Has(context.User, "content:write") ? "" : " hidden")}><h2>Add a page</h2><form method="post" action="/manage/pages">{Token(context)}<input type="hidden" name="revision" value="{E(snapshot.Revision)}">{Input("title", "Page name", "")}{Input("path", "Page address", "/new-page/")}<p class="hint">Use a unique address such as /news/, ending in a slash.</p>{Input("description", "Page headline", "")}<button type="submit">Add page</button></form></section>
-            """, status);
-    }
-
-    public static IResult Edit(HttpContext context, ContentSnapshot snapshot, PageContent page, string? error = null, int status = 200, IFormCollection? submitted = null)
-    {
-        string Value(string key, string fallback) => submitted?.ContainsKey(key) == true ? submitted[key].ToString() : fallback;
-        var fields = new StringBuilder();
-        foreach (var section in page.Sections)
-        {
-            fields.Append("<fieldset><legend>" + E(section switch { TextSection => "Text", ImageSection => "Image", CtaSection => "Call to action", CardsSection => "Cards", _ => "Content" }) + "</legend>");
-            foreach (var field in ContentFields.Describe(section)) fields.Append(Input("field." + field.Key, field.Label, Value("field." + field.Key, field.Value), field.Multiline));
-            fields.Append("</fieldset>");
-        }
-        return Html("Edit " + page.Title, $"""
-            <a class="text-link" href="/manage">← All pages</a><div class="intro"><p class="eyebrow">{E(page.Path)}</p><h1>Edit {E(page.Title)}</h1><p>Save your words here. Build a preview from the website overview when you are ready.</p></div>{Alert(error)}
-            <form method="post" action="/manage/pages/{E(page.Id)}" class="panel editor">{Token(context)}<input type="hidden" name="revision" value="{E(Value("revision", snapshot.Revision))}">{Input("title", "Page name", Value("title", page.Title))}{Input("description", "Page headline", Value("description", page.Description))}{fields}<div class="actions"><button type="submit">Save draft</button><a class="text-link" href="/manage/pages/{E(page.Id)}">Reload latest content</a></div><p class="hint">Saving creates a revision. It does not publish your website.</p></form>
-            """, status);
-    }
+    public static IResult LegacyWorkspace() => Html("Start a new workspace", """
+        <div class="intro"><p class="eyebrow">An older workspace</p><h1>This website uses the retired editor.</h1><p>New websites use composition editing. Editing or migrating this older draft is no longer supported.</p></div>
+        <section class="panel"><h2>Start a new website</h2><p>Stop the application, preserve this workspace folder, and configure <code>Management:DataDirectory</code> to a separate empty folder. Restart, create an owner account, and choose a blank website or an example.</p><p>Your original content and stored previews stay in the original folder. Known preview links remain available here while this workspace is running.</p></section>
+        """, 409);
     public static IResult Problem(string message, int status) => Html("Unable to complete", $"<div class=\"intro\"><h1>Unable to complete this step.</h1></div>{Alert(message)}<a class=\"text-link\" href=\"/manage\">Return to your website</a>", status);
 
     public const string Css = """

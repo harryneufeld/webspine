@@ -16,7 +16,7 @@ Previews retain private `build-inputs/<candidate-id>.zip` and content-addressed 
 
 Only explicit package CSS is supported; generated isolation/bundling output must be added explicitly before such features can be used. Package scripts are retained and listed in `design-package-manifest.json`. Management preview delivery validates that declaration, serves those files as JavaScript and permits same-origin scripts through CSP. Default delivery remains script-free. The manifest is build provenance, not permission for content credentials to install code.
 
-Existing Studio v1 sites use `Webspine.Rendering.Legacy` until explicit composition migration. Fieldwork starters create native v2 directly and intentionally provide no automatic v1 migration mapping or v1 preview renderer. An incompatible selection fails authoring/building without reinterpreting stored values. Old stored previews keep their exact bytes; viewing them does not load a package or rebuild them. Migration rehearses the selected renderer before committing a new head.
+Both Studio and Fieldwork starters create native v2 sites directly. Legacy editing/converters/migration tooling are removed. Incompatible package selection fails authoring/building without reinterpreting stored content. Old stored previews keep their exact bytes; viewing them does not load a package or rebuild them. Existing v1 workspaces need a separate fresh v2 setup, without a conversion requirement.
 
 To inspect the isolated production-package verification fixture after its checks:
 

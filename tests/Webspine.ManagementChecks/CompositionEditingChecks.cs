@@ -26,12 +26,9 @@ static class CompositionEditingChecks
         {
             var registry = DemoComposition.Registry(); var design = await DemoComposition.DesignAsync();
             var store = new SqliteContentSource(Path.Combine(directory, "typed.db"), registry); await store.InitializeSchemaAsync();
-            var legacy = await new DemoContentSource(await File.ReadAllTextAsync(Path.Combine(DemoSite.FixtureDirectory, "site.json"))).ReadAsync();
-            var mappings = LegacyCompositionMapping.Identities(legacy).ToDictionary(m => (m.PageId, m.SectionId));
-            var site = DemoComposition.Convert(legacy, LegacyCompositionMapping.Blocks(legacy), (p, s) => { var m = mappings[(p, s)]; return (m.BlockId, m.PlacementId); });
-            var assets = ImmutableDictionary.CreateBuilder<string, ImmutableArray<byte>>();
-            foreach (var a in site.Assets) assets.Add(a.File, (await File.ReadAllBytesAsync(Path.Combine(DemoSite.FixtureDirectory, a.File))).ToImmutableArray());
-            var snapshot = await store.CreateCompositionAsync(site, design, assets.ToImmutable());
+            var starter = Webspine.Examples.StudioExample.Start("Editing proof", true);
+            var site = starter.Composition;
+            var snapshot = await store.CreateCompositionAsync(site, design, starter.Assets);
             var editor = new CompositionEditor(store, design, registry); var admin = new CompositionAuthority(true, true, true); var ordinary = new CompositionAuthority(true, false, false);
             var home = new CompositionLocation("home", "main", null);
             snapshot = await editor.ApplyAsync(snapshot.Revision, new CreateBlock(home, 1, "text", 1, Fields(new TextFields("New", "Editable"))), ordinary, []);
@@ -91,13 +88,11 @@ static class CompositionEditingChecks
             using var setup = await browser.PostAsync(host.Url + "/manage/setup", new FormUrlEncodedContent(form)); Require(setup.StatusCode == HttpStatusCode.Found, "HTTP setup failed.");
             var ordinaryToken = await AccountChecks.Issue(browser, host.Url, "Existing content writer", ["content:read", "content:write", "preview:build", "preview:read"]);
             var fullToken = await AccountChecks.Issue(browser, host.Url, "Shared writer", ["content:read", "content:write", "content:shared:write", "settings:write", "preview:build", "preview:read"]);
-            form = Form(await browser.GetStringAsync(host.Url + "/manage"));
-            using var upgrade = await browser.PostAsync(host.Url + "/manage/upgrade-composition", new FormUrlEncodedContent(form)); Require(upgrade.StatusCode == HttpStatusCode.Found, "HTTP migration failed: " + await upgrade.Content.ReadAsStringAsync());
             api.DefaultRequestHeaders.Authorization = new("Bearer", ordinaryToken);
             async Task<CompositionSnapshot> Read() => JsonSerializer.Deserialize<CompositionSnapshot>(await api.GetStringAsync(host.Url + "/api/v2/site"), CompositionJson.Options)!;
             async Task<HttpResponseMessage> Change(CompositionSnapshot s, CompositionEdit edit, ImmutableArray<string> pages) => await api.PostAsync(host.Url + "/api/v2/changes", new StringContent(JsonSerializer.Serialize(new { expectedRevision = s.Revision, change = edit, acknowledgedPages = pages }, CompositionJson.Options), Encoding.UTF8, "application/json"));
             snapshot = await Read();
-            using var legacyApi = await api.GetAsync(host.Url + "/api/v1/site"); Require(legacyApi.StatusCode == HttpStatusCode.Conflict, "Legacy API did not refuse v2.");
+            using var legacyApi = await api.GetAsync(host.Url + "/api/v1/site"); Require(legacyApi.StatusCode == HttpStatusCode.Gone, "Legacy API did not refuse v2.");
             var footer = snapshot.Website.Blocks.Single(b => b.TypeId == "site-footer"); impact = CompositionEditor.AffectedPages(snapshot.Website, [footer.Owner.Id]);
             using var denied = await Change(snapshot, new UpdateBlock(footer.Id, Fields(new FooterFields("Forbidden"))), impact); Require(denied.StatusCode == HttpStatusCode.Forbidden, "Old scoped token gained shared authority.");
             using var cookieApi = await browser.GetAsync(host.Url + "/api/v2/site"); Require(cookieApi.StatusCode == HttpStatusCode.Unauthorized, "v2 accepted cookie authentication.");

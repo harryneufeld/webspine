@@ -1,12 +1,12 @@
 # Composition editing
 
-Implemented for #16. Existing installations remain on v1 until an operator selects **Enable composition editing** in the overview, or runs the explicit migration described in [spinecms storage](spinecms-storage.md). This creates a v2 revision; existing revisions, images and preview bytes remain retained. `/manage` then opens the composition board. Legacy writes fail clearly; they never modify a v2 graph through v1 fields.
+Updated 2 October 2026. Composition v2 is the sole authoring workflow. Both Studio and Fieldwork blank/example setup create native v2 content immediately; `/manage` opens the board. Legacy editing and migration tooling are removed. Older v1 authoring workspaces require [fresh setup in a separate directory](management.md#older-workspaces); there is no migration requirement. Stored previews remain available.
 
-New Fieldwork installations can start directly on composition v2 from the installed blank/service-business starter. Existing Studio setup remains v1 until explicit migration. The board consumes each package's declared Regions and definitions; it does not require Header/Main/Footer names. See the [package quickstart](package-quickstart.md). Selecting an incompatible package does not transform a stored site; old previews remain retrievable.
+The board consumes each package's declared Regions/definitions, without fixed Header/Main/Footer names. Selecting an incompatible package never transforms stored data; retained artifacts stay independent. See the [package quickstart](package-quickstart.md).
 
 ## Board
 
-Expand a page to inspect Header, Main and Footer, including nested Groups. Each element has its own Edit/View link, Move up/down buttons and a More disclosure with applicable actions. Shared references are marked. Successful actions reopen the current page. Page details change the page title and description; the page-title element links to these details. Focused editors use the registered type's [field metadata](field-metadata.md): readable labels, text areas for longer copy, approved choices, image references and bounded lists. Custom types with complete basic metadata are creatable/editable without adding management templates. Missing metadata or specialized editor requirements are shown explicitly as unsupported by the basic board.
+Choose a page to inspect its design areas, including nested Groups. Each element has its own Edit/View link, Move up/down buttons and a More disclosure with applicable actions. Shared references are marked. Successful actions reopen the current page. Page details change the page title and description; the page-title element links to these details. Focused editors use the registered type's [field metadata](field-metadata.md): readable labels, text areas for longer copy, approved choices, image references and bounded lists. Custom types with complete basic metadata are creatable/editable without adding management templates. Missing metadata or specialized editor requirements are shown explicitly as unsupported by the basic board.
 
 Each area offers **Add element**, **Reuse shared content** and **Group selected** when supported. Add opens a choice of types allowed in that area, then that type's fields before saving. **Add after this element** preserves the insertion point without entering a numeric position. Grouping uses checkboxes within one area and a focused Group setup screen. **Move to another area** offers destinations within the same owner; up/down adjusts position. More also offers Make shared, Detach and Remove where applicable. Removal requires a confirmation. Moves preserve ownership; cross-page reuse goes through sharing/reference/detach instead of implicitly reparenting content. Shared Groups remain structurally editable in their library, including when unused.
 
@@ -65,10 +65,11 @@ Commands use these members inside `change` (the discriminator `operation` must a
 | `deleteShared` | `sharedId` |
 | `page` | `pageId`, `title`, `description` |
 | `settings` | `title`, `language` |
+| `addPage` | `title`, `path`, `description` |
 
 API positions start at **0**. A location is either `{ "pageId": "home", "regionId": "main", "parentBlockId": null }` or `{ "pageId": null, "regionId": null, "parentBlockId": "existing-group-id" }`. Preserve Block IDs separately from placement IDs. Ordinary field updates cannot change owners, children or type versions.
 
-Errors use problem responses: 401 for invalid credentials, 403 for missing authority, 409 for revision/contract state conflicts, 422 for invalid content or acknowledgement, 415 for an unsupported upload content type and 501 for an unsupported adapter capability. Request bodies are bounded. API preview URLs reuse the authenticated `/api/v1/previews/{id}/` delivery route; send the credential for every page/asset request. Human previews use `/manage/preview/{id}/`. Both keep links/images/CSS inside their private prefix and retain exact bytes after edits.
+Errors use problem responses: 401 for invalid credentials, 403 for missing authority, 409 for revision/contract state conflicts, 422 for invalid content or acknowledgement, 415 for an unsupported upload content type and 501 for an unsupported adapter capability. Request bodies are bounded. New API preview URLs use the authenticated `/api/v2/previews/{id}/` delivery route; existing `/api/v1/previews/{id}/` links remain readable as retained artifacts only; send the credential for every page/asset request. Human previews use `/manage/preview/{id}/`. Both keep links/images/CSS inside their private prefix and retain exact bytes after edits.
 
 ## Media policy
 
@@ -78,4 +79,4 @@ Existing approved fixture media, including its trusted SVG, remains selectable a
 
 ## Next boundaries
 
-Patterns/Records and page blueprints follow in #17. The v2 demo keeps its existing five pages; adding pages under a design that requires a header/title/footer blueprint is not exposed yet. Page deletion, route changes, design editing, plugin installation, a visual canvas and public publication are also outside this slice. Content/image export is available from the composition board.
+**Add a page** / `addPage` fills required Regions following the first page's required-area shape, using its existing shared references or registered basic defaults. It preserves shared values; update shared navigation separately to add a link. Safe defaults and supported type/create/share capabilities are required; otherwise creation fails without a partial commit. Rich page blueprints and Patterns/Records follow in #17. Page deletion, route changes, design editing, plugin installation, a visual canvas and public publication are also outside this slice. Content/image export is available from the composition board.

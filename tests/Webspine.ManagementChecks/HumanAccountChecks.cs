@@ -35,14 +35,14 @@ static class HumanAccountChecks
                 await Login(editor, host.Url, "editor"); await Login(reviewer, host.Url, "reviewer"); await Login(helper, host.Url, "operator");
                 using var editorSettings = await editor.GetAsync(host.Url + "/manage/settings"); Require(editorSettings.StatusCode == HttpStatusCode.Forbidden, "Editor changed website settings.");
                 using var editorAdmin = await editor.GetAsync(host.Url + "/manage/users"); Require(editorAdmin.StatusCode == HttpStatusCode.Forbidden, "Editor read account administration.");
-                form = Form(await editor.GetStringAsync(host.Url + "/manage/pages/home")); form["field.introduction.heading"] = "Edited by an editor";
-                using var edit = await editor.PostAsync(host.Url + "/manage/pages/home", new FormUrlEncodedContent(form)); Require(edit.StatusCode == HttpStatusCode.Found, "Editor could not edit.");
+                form = Form(await editor.GetStringAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a")); form["field.heading"] = "Edited by an editor";
+                using var edit = await editor.PostAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a", new FormUrlEncodedContent(form)); Require(edit.StatusCode == HttpStatusCode.Found, "Editor could not edit.");
                 form = Form(await editor.GetStringAsync(host.Url + "/manage"));
-                using var build = await editor.PostAsync(host.Url + "/manage/preview", new FormUrlEncodedContent(form)); Require(build.StatusCode == HttpStatusCode.Found, "Editor could not build preview."); previewUrl = build.Headers.Location!.ToString();
+                using var build = await editor.PostAsync(host.Url + "/manage/composition/preview", new FormUrlEncodedContent(form)); Require(build.StatusCode == HttpStatusCode.Found, "Editor could not build preview."); previewUrl = build.Headers.Location!.ToString();
                 Require((await reviewer.GetStringAsync(host.Url + previewUrl)).Contains("Edited by an editor"), "Reviewer could not inspect preview.");
                 form = Form(await reviewer.GetStringAsync(host.Url + "/manage"));
-                using var forbidden = await reviewer.PostAsync(host.Url + "/manage/preview", new FormUrlEncodedContent(form)); Require(forbidden.StatusCode == HttpStatusCode.Forbidden, "Reviewer built preview.");
-                using var forbiddenWrite = await reviewer.PostAsync(host.Url + "/manage/pages/home", new FormUrlEncodedContent(form)); Require(forbiddenWrite.StatusCode == HttpStatusCode.Forbidden, "Reviewer edited content.");
+                using var forbidden = await reviewer.PostAsync(host.Url + "/manage/composition/preview", new FormUrlEncodedContent(form)); Require(forbidden.StatusCode == HttpStatusCode.Forbidden, "Reviewer built preview.");
+                using var forbiddenWrite = await reviewer.PostAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a", new FormUrlEncodedContent(form)); Require(forbiddenWrite.StatusCode == HttpStatusCode.Forbidden, "Reviewer edited content.");
                 Require(!(await reviewer.GetStringAsync(host.Url + "/manage")).Contains("People and access"), "Reviewer sees privileged navigation.");
                 var list = await helper.GetStringAsync(host.Url + "/manage/users");
                 var row = Regex.Match(list, "<li><div><strong>editor</strong>.*?</li>", RegexOptions.Singleline).Value;
@@ -52,7 +52,7 @@ static class HumanAccountChecks
                 using var stale = await helper.PostAsync(host.Url + route, new FormUrlEncodedContent(form)); Require(stale.StatusCode == HttpStatusCode.Conflict, "Stale account changes overwrote state.");
                 using var oldSession = await editor.GetAsync(host.Url + "/manage"); Require(oldSession.StatusCode == HttpStatusCode.Found, "Role change did not invalidate session.");
                 await Login(editor, host.Url, "editor");
-                using var nowDenied = await editor.PostAsync(host.Url + "/manage/preview", new FormUrlEncodedContent(Form(await editor.GetStringAsync(host.Url + "/manage")))); Require(nowDenied.StatusCode == HttpStatusCode.Forbidden, "Demoted editor retained permission.");
+                using var nowDenied = await editor.PostAsync(host.Url + "/manage/composition/preview", new FormUrlEncodedContent(Form(await editor.GetStringAsync(host.Url + "/manage")))); Require(nowDenied.StatusCode == HttpStatusCode.Forbidden, "Demoted editor retained permission.");
                 list = await owner.GetStringAsync(host.Url + "/manage/users"); row = Regex.Match(list, "<li><div><strong>editor</strong>.*?</li>", RegexOptions.Singleline).Value;
                 form = Form(row); form["role"] = "Editor"; form["disabled"] = "true";
                 using var disabled = await owner.PostAsync(host.Url + route, new FormUrlEncodedContent(form)); Require(disabled.StatusCode == HttpStatusCode.Found, "Disable failed.");
@@ -72,7 +72,7 @@ static class HumanAccountChecks
                 form = Form(row); form.Remove("disabled"); form["role"] = "Reviewer";
                 using var changedOperator = await owner.PostAsync(host.Url + Regex.Match(row, "action=\"([^\"]+)\"").Groups[1].Value, new FormUrlEncodedContent(form)); Require(changedOperator.StatusCode == HttpStatusCode.Found, "Operator demotion failed.");
                 using var api = new HttpClient(new HttpClientHandler { UseProxy = false }); api.DefaultRequestHeaders.Authorization = new("Bearer", token);
-                using var revokedByRole = await api.GetAsync(host.Url + "/api/v1/site"); Require(revokedByRole.StatusCode == HttpStatusCode.Unauthorized, "Role change kept app credential active.");
+                using var revokedByRole = await api.GetAsync(host.Url + "/api/v2/site"); Require(revokedByRole.StatusCode == HttpStatusCode.Unauthorized, "Role change kept app credential active.");
                 credentialForm = Form(await owner.GetStringAsync(host.Url + "/manage/integrations")); credentialForm["label"] = "Owner recovery test"; credentialForm["days"] = "7"; credentialForm["scope"] = "content:read";
                 using var ownerToken = await owner.PostAsync(host.Url + "/manage/integrations", new FormUrlEncodedContent(credentialForm)); recoveryToken = Regex.Match(await ownerToken.Content.ReadAsStringAsync(), "wsp_[a-f0-9]{64}").Value; Require(recoveryToken.Length == 68, "Owner credential failed.");
                 Console.WriteLine("PASS: Operator/editor/reviewer permissions, owner protection, account conflicts, disabling, role/session invalidation and self-service password changes.");
@@ -89,7 +89,7 @@ static class HumanAccountChecks
                 await upgraded.WaitHealthyAsync(owner);
                 using var oldSession = await owner.GetAsync(upgraded.Url + "/manage/users"); Require(oldSession.StatusCode == HttpStatusCode.Found, "Shared permission upgrade kept an old administrative session.");
                 using var api = new HttpClient(new HttpClientHandler { UseProxy = false }); api.DefaultRequestHeaders.Authorization = new("Bearer", recoveryToken);
-                using var oldCredential = await api.GetAsync(upgraded.Url + "/api/v1/site"); Require(oldCredential.StatusCode == HttpStatusCode.Unauthorized, "Shared permission upgrade retained old credentials.");
+                using var oldCredential = await api.GetAsync(upgraded.Url + "/api/v2/site"); Require(oldCredential.StatusCode == HttpStatusCode.Unauthorized, "Shared permission upgrade retained old credentials.");
                 await Login(owner, upgraded.Url, "owner");
                 Require((await owner.GetStringAsync(upgraded.Url + "/manage/users")).Contains("Owner") && (await owner.GetStringAsync(upgraded.Url + "/manage/integrations")).Contains("content:shared:write"), "Legacy owner shared authority was not upgraded.");
             }
@@ -109,7 +109,7 @@ static class HumanAccountChecks
                 await restarted.WaitHealthyAsync(owner);
                 using var oldSession = await owner.GetAsync(restarted.Url + "/manage"); Require(oldSession.StatusCode == HttpStatusCode.Found, "Recovery kept old session.");
                 using var api = new HttpClient(new HttpClientHandler { UseProxy = false }); api.DefaultRequestHeaders.Authorization = new("Bearer", recoveryToken);
-                using var oldToken = await api.GetAsync(restarted.Url + "/api/v1/site"); Require(oldToken.StatusCode == HttpStatusCode.Unauthorized, "Recovery retained old app credential.");
+                using var oldToken = await api.GetAsync(restarted.Url + "/api/v2/site"); Require(oldToken.StatusCode == HttpStatusCode.Unauthorized, "Recovery retained old app credential.");
                 await Login(owner, restarted.Url, "owner", NewPassword);
                 Require((await owner.GetStringAsync(restarted.Url + "/manage")).Contains("Keep this website") && (await owner.GetStringAsync(restarted.Url + previewUrl)).Contains("Edited by an editor"), "Recovery lost website/preview state.");
                 Console.WriteLine("PASS: Legacy owner claims upgrade safely; offline recovery accepts stdin, avoids password logs, invalidates sessions and preserves website/accounts/previews.");

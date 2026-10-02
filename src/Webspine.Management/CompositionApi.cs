@@ -52,8 +52,8 @@ internal static class CompositionApi
         }).WithMetadata(new ApiPermission("content:write"));
         api.MapPost("/previews", async (PreviewRequest request, CompositionOperations operations, HttpContext c) =>
         {
-            var preview = await operations.PreviewAsync(request.ExpectedRevision, "/api/v1/previews/", c.RequestAborted);
-            return Results.Created("/api/v1/previews/" + preview.Id + "/", new { preview.Id, preview.Artifact.Digest, url = "/api/v1/previews/" + preview.Id + "/" });
+            var preview = await operations.PreviewAsync(request.ExpectedRevision, "/api/v2/previews/", c.RequestAborted);
+            return Results.Created("/api/v2/previews/" + preview.Id + "/", new { preview.Id, preview.Artifact.Digest, url = "/api/v2/previews/" + preview.Id + "/" });
         }).WithMetadata(new ApiPermission("preview:build"));
     }
     public static async Task<byte[]> ReadUpload(Stream input, CancellationToken ct)

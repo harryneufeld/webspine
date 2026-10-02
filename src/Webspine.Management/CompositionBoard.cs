@@ -33,7 +33,7 @@ internal static partial class CompositionBoard
             catch (Exception e) when (CompositionApi.ExpectedError(e)) { return ManagementUi.Problem(e.Message, CompositionApi.ErrorStatus(e)); }
         });
         MapStructureRoutes(board);
-        board.MapGet("", async (CompositionOperations operations, HttpContext c) => Overview(c, await operations.ReadAsync(c.RequestAborted), operations.Source.CompositionCapabilities, SelectedDesign(c)));
+        board.MapGet("", (Delegate)HomeAsync);
         board.MapGet("/export", async (CompositionOperations operations, HttpContext c) =>
         {
             operations.Source.CompositionCapabilities.RequireCapture();
@@ -75,6 +75,12 @@ internal static partial class CompositionBoard
             await operations.EditAsync(f["revision"].ToString(), new EditCompositionPage(id, f["title"].ToString(), f["description"].ToString()), c.User, [], c.RequestAborted);
             return Results.Redirect("/manage/composition?page=" + Q(id));
         });
+        board.MapPost("/pages", async (CompositionOperations operations, HttpContext c) =>
+        {
+            var f = await c.Request.ReadFormAsync(c.RequestAborted);
+            var snapshot = await operations.EditAsync(f["revision"].ToString(), new AddCompositionPage(f["title"].ToString(), f["path"].ToString(), f["description"].ToString()), c.User, [], c.RequestAborted);
+            return Results.Redirect("/manage/composition?page=" + Q(snapshot.Website.Pages[^1].Id));
+        });
         board.MapPost("/settings", async (CompositionOperations operations, HttpContext c) =>
         {
             var f = await c.Request.ReadFormAsync(c.RequestAborted);
@@ -95,21 +101,16 @@ internal static partial class CompositionBoard
             await operations.MediaAsync(f["revision"].ToString(), await CompositionApi.ReadUpload(stream, c.RequestAborted), c.User, c.RequestAborted);
             return Results.Redirect("/manage/composition");
         });
-        app.MapPost("/manage/upgrade-composition", async (SqliteContentSource store, HttpContext c) =>
-        {
-            if (!Permissions.Has(c.User, "content:shared:write")) return ManagementUi.Problem("Shared content permission is required.", 403);
-            var f = await c.Request.ReadFormAsync(c.RequestAborted);
-            try
-            {
-                var legacy = await store.ReadAsync(c.RequestAborted);
-                var mappings = LegacyCompositionMapping.Identities(legacy);
-                var bySection = mappings.ToDictionary(m => (m.PageId, m.SectionId));
-                await store.MigrateToCompositionAsync(f["revision"].ToString(), SelectedDesign(c),
-                    old => c.RequestServices.GetRequiredService<CompositionOperations>().ConvertLegacy(old, LegacyCompositionMapping.Blocks(old), (page, section) => { var m = bySection[(page, section)]; return (m.BlockId, m.PlacementId); }), mappings, c.RequestAborted, c.RequestServices.GetRequiredService<CompositionOperations>().RehearseAsync);
-                return Results.Redirect("/manage/composition");
-            }
-            catch (Exception e) when (CompositionApi.ExpectedError(e)) { return ManagementUi.Problem(e.Message, CompositionApi.ErrorStatus(e)); }
-        }).WithMetadata(new ApiPermission("settings:write"));
+    }
+    internal static async Task<IResult> HomeAsync(HttpContext c)
+    {
+        var store = c.RequestServices.GetRequiredService<SqliteContentSource>();
+        var head = await store.HeadAsync(c.RequestAborted);
+        if (head is null) return Permissions.Has(c.User, "settings:write") ? ManagementUi.Setup(c) : ManagementUi.Problem("An operator must create the website first.", 403);
+        if (head.Version != 2) return ManagementUi.LegacyWorkspace();
+        var operations = c.RequestServices.GetRequiredService<CompositionOperations>();
+        try { return Overview(c, await operations.ReadAsync(c.RequestAborted), operations.Source.CompositionCapabilities, SelectedDesign(c)); }
+        catch (Exception e) when (CompositionApi.ExpectedError(e)) { return ManagementUi.Problem(e.Message, CompositionApi.ErrorStatus(e)); }
     }
     private static ImmutableArray<string> Acknowledged(IFormCollection f) => f["acknowledge"] == "true" ? f["affected"].Select(s => s!).ToImmutableArray() : [];
     private static (bool SharedChange, ImmutableArray<string> Pages) ArrangementImpact(CompositionWebsite site, CompositionEdit edit)

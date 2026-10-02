@@ -17,6 +17,7 @@ public sealed record CompositionLocation(string? PageId, string? RegionId, strin
 [JsonDerivedType(typeof(DeleteShared), "deleteShared")]
 [JsonDerivedType(typeof(EditCompositionPage), "page")]
 [JsonDerivedType(typeof(EditCompositionSettings), "settings")]
+[JsonDerivedType(typeof(AddCompositionPage), "addPage")]
 public abstract record CompositionEdit;
 public sealed record CreateBlock(CompositionLocation Location, int Index, string TypeId, int TypeVersion, JsonElement Fields) : CompositionEdit;
 public sealed record UpdateBlock(string BlockId, JsonElement Fields) : CompositionEdit;
@@ -29,6 +30,7 @@ public sealed record DeletePlacement(string PlacementId) : CompositionEdit;
 public sealed record DeleteShared(string SharedId) : CompositionEdit;
 public sealed record EditCompositionPage(string PageId, string Title, string Description) : CompositionEdit;
 public sealed record EditCompositionSettings(string Title, string Language) : CompositionEdit;
+public sealed record AddCompositionPage(string Title, string Path, string Description) : CompositionEdit;
 public sealed record CompositionAuthority(bool ContentWrite, bool SharedWrite, bool SettingsWrite);
 public sealed class CompositionPermissionException(string message) : Exception(message);
 public sealed class CompositionRevisionException() : Exception("The draft changed. Reload before saving.");
@@ -95,6 +97,51 @@ public sealed class CompositionEditor(ICompositionDraftPersistence source, Compo
         void Fields(JsonElement fields) { if (fields.ValueKind != JsonValueKind.Object) throw new ContentValidationException("Registered fields must be an object."); }
         switch (edit)
         {
+            case AddCompositionPage e:
+                operation = CompositionOperation.Create;
+                source.CompositionCapabilities.Require(operation);
+                if (!authority.ContentWrite) throw new CompositionPermissionException("Content editing permission is required.");
+                var pageId = NewId("page"); var pageOwner = new BlockOwner(OwnerKind.Page, pageId); owners.Add(pageOwner);
+                var regions = ImmutableArray.CreateBuilder<RegionContent>();
+                // Required areas come from the selected design, never a fixed shell or type switch.
+                foreach (var region in design.Layout.Regions)
+                {
+                    var placements = ImmutableArray.CreateBuilder<Placement>();
+                    for (var i = 0; i < region.Minimum; i++)
+                    {
+                        // Follow the first page's required-area shape, never pull arbitrary shared library content into a new page.
+                        var template = site.Pages[0].Regions.Single(r => r.Id == region.Id).Placements.ElementAtOrDefault(i);
+                        var shared = template?.Kind == TargetKind.Shared ? site.SharedBlocks.Single(s => s.Id == template.TargetId) : null;
+                        if (shared is not null)
+                        {
+                            source.CompositionCapabilities.Require(CompositionOperation.Share);
+                            placements.Add(new(NewId("placement"), TargetKind.Shared, shared.Id));
+                            continue;
+                        }
+                        Block? initial = null;
+                        var preferredType = template?.Kind == TargetKind.Block ? Find(template.TargetId).TypeId : null;
+                        foreach (var type in region.AllowedTypes.OrderBy(type => type == preferredType ? 0 : 1))
+                        {
+                            var definition = registry.Descriptors.Where(d => d.Id == type).OrderByDescending(d => d.Version)
+                                .Select(d => registry.Resolve(d.Id, d.Version)).FirstOrDefault();
+                            if (definition is null || !ContentEditorContract.Generic(definition.Editor)) continue;
+                            try
+                            {
+                                source.CompositionCapabilities.Require(operation, definition.Descriptor.Id, definition.Descriptor.Version);
+                                var fields = ContentEditorContract.Defaults(definition.Editor!, site, design);
+                                initial = new(NewId("block"), pageOwner, type, definition.Descriptor.Version, fields, []);
+                                break;
+                            }
+                            catch (Exception error) when (error is SourceOperationNotSupportedException or ContentValidationException) { }
+                        }
+                        if (initial is null) throw new SourceOperationNotSupportedException("This design cannot supply safe defaults for a new page's required area: " + region.Id + ".");
+                        site = site with { Blocks = site.Blocks.Add(initial) };
+                        placements.Add(new(NewId("placement"), TargetKind.Block, initial.Id));
+                    }
+                    regions.Add(new(region.Id, placements.ToImmutable()));
+                }
+                site = site with { Pages = site.Pages.Add(new(pageId, e.Path, e.Title, e.Description, regions.ToImmutable())) };
+                break;
             case CreateBlock e:
                 Fields(e.Fields);
                 operation = CompositionOperation.Create; source.CompositionCapabilities.Require(operation, e.TypeId, e.TypeVersion);

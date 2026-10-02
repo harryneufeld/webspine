@@ -44,8 +44,6 @@ static class MetadataEditingChecks
             await host.WaitHealthyAsync(browser); await AccountChecks.BootstrapAsync(browser, host.Url);
             var form = Form(await browser.GetStringAsync(host.Url + "/manage")); form["mode"] = "demo"; form["title"] = "Questions studio";
             using var setup = await browser.PostAsync(host.Url + "/manage/setup", new FormUrlEncodedContent(form)); Require(setup.StatusCode == HttpStatusCode.Found, "Metadata fixture setup failed.");
-            form = Form(await browser.GetStringAsync(host.Url + "/manage"));
-            using var migration = await browser.PostAsync(host.Url + "/manage/upgrade-composition", new FormUrlEncodedContent(form)); Require(migration.StatusCode == HttpStatusCode.Found, "Metadata fixture migration failed.");
             var writer = await AccountChecks.Issue(browser, host.Url, "Metadata writer", ["content:read", "content:write", "preview:build", "preview:read"]);
             var sharedWriter = await AccountChecks.Issue(browser, host.Url, "Metadata shared writer", ["content:read", "content:write", "content:shared:write", "preview:build", "preview:read"]);
             var reader = await AccountChecks.Issue(browser, host.Url, "Metadata reader", ["content:read"]);
@@ -131,6 +129,19 @@ static class MetadataEditingChecks
             var store = new SqliteContentSource(Path.Combine(directory, "webspine.db")); var retained = await store.ReadPreviewAsync(info.RootElement.GetProperty("id").GetString()!);
             Require(retained is not null && retained.Files.Single(f => f.Path == "index.html").Bytes.AsSpan().SequenceEqual(before), "Reopened custom preview lost exact bytes.");
             Console.WriteLine("PASS: Shared FAQ needs separate permission/exact impact and renders escaped native disclosures in immutable previews across pages and reopening.");
+            api.DefaultRequestHeaders.Authorization = new("Bearer", writer);
+            snapshot = await Read();
+            using var newPage = await Change(snapshot, new AddCompositionPage("Updates", "/updates/", "Studio updates"));
+            Require(newPage.IsSuccessStatusCode, "Ordinary writer could not create a page: " + await newPage.Content.ReadAsStringAsync());
+            var createdPage = (await Read()).Website.Pages[^1];
+            var pageContent = createdPage.Regions.Single(r => r.Id == "main").Placements.Single();
+            var createdSnapshot = await Read();
+            Require(pageContent.Kind == TargetKind.Block && createdSnapshot.Website.Blocks.Single(b => b.Id == pageContent.TargetId).TypeId == "page-title" &&
+                CompositionEditor.AffectedPages(createdSnapshot.Website, [apiFaq.Owner.Id]).SequenceEqual(new[] { "home", "services" }),
+                "Page creation pulled unrelated shared FAQ content into the new page.");
+            var afterPageCreation = await api.GetByteArrayAsync(host.Url + previewUrl);
+            Require(before.SequenceEqual(afterPageCreation), "Page creation changed retained output.");
+            Console.WriteLine("PASS: Ordinary v2 page creation follows required-area types without pulling unrelated shared library content into the page.");
             if (browserReview)
             {
                 Console.WriteLine("Metadata editor browser fixture: " + host.Url + "/manage/composition");

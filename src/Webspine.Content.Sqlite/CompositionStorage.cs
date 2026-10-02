@@ -7,10 +7,6 @@ using Webspine.Core.Composition;
 namespace Webspine.Content.Sqlite;
 
 public sealed record ContentHead(string Revision, int Version);
-public sealed record SectionIdentityMapping(string PageId, string SectionId, string BlockId, string PlacementId);
-public sealed record CompositionMigrationResult(string? OriginalRevision, string Revision, bool AlreadyComposition,
-    ImmutableArray<SectionIdentityMapping> IdentityMap);
-
 public sealed partial class SqliteContentSource
 {
     // Typed operations are implemented by the application editor; commits remain trusted-host calls.
@@ -64,7 +60,7 @@ public sealed partial class SqliteContentSource
         await using var connection = await Open(cancellationToken);
         using var transaction = connection.BeginTransaction(deferred: true);
         var head = await Head(connection, transaction, cancellationToken) ?? throw new SiteNotInitializedException();
-        if (head.Version != 2) throw new SourceOperationNotSupportedException("Migrate the v1 site explicitly before reading composition.");
+        if (head.Version != 2) throw new SourceOperationNotSupportedException("Legacy v1 authoring is no longer supported. Preserve this data directory and configure a separate empty Management:DataDirectory to create a new v2 site. Stored previews remain available.");
         var snapshot = await CompositionRevision(connection, transaction, head.Revision, cancellationToken)
             ?? throw new ContentValidationException("Composition head is missing.");
         transaction.Commit();
@@ -75,7 +71,7 @@ public sealed partial class SqliteContentSource
         await using var connection = await Open(cancellationToken);
         using var transaction = connection.BeginTransaction(deferred: true);
         var head = await Head(connection, transaction, cancellationToken) ?? throw new SiteNotInitializedException();
-        if (head.Version != 2) throw new SourceOperationNotSupportedException("Migrate the v1 site explicitly before capturing composition.");
+        if (head.Version != 2) throw new SourceOperationNotSupportedException("Legacy v1 authoring is no longer supported. Create a fresh v2 workspace in a separate data directory; stored previews remain available.");
         var snapshot = await CompositionRevision(connection, transaction, head.Revision, cancellationToken)
             ?? throw new ContentValidationException("Composition head is missing.");
         CompositionContract.Validate(snapshot, design, compositionRegistry);

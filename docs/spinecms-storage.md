@@ -1,59 +1,29 @@
-# spinecms composition storage and migration
+# spinecms composition storage
 
-Implemented for #15, 1 October 2026. `Webspine.Content.Sqlite` persists versioned v1 or v2 content behind common contracts. The product name is spinecms; project/namespace and source identity (`builtin`, `sqlite`) remain compatible. There is one active head, not parallel editable CMS copies.
+Updated 2 October 2026. `Webspine.Content.Sqlite` is the first `ICompositionDraftPersistence` implementation. All new websites start on composition v2. The retired v1 editor and its migration/recovery tooling are removed; legacy authoring-data conversion is outside scope. See [decision 0017](decisions/0017-v2-only-management-authoring.md).
 
-## Storage versus content versions
+## Versioned persistence
 
-Database schema version 2 adds `revisions.contract_version` and `content_transitions` to the existing content database. Metadata upgrades run transactionally and idempotently at initialization, tagging old rows as v1 without rewriting their JSON. Existing v1 sites remain v1 and continue using the current board/API. No startup seeds or converts content.
+Database schema version 2 tags immutable revisions with their content contract version. Initialization transactionally adds metadata to old schema-1 databases without rewriting snapshot or artifact JSON and refuses newer unsupported database versions. A v1 content head remains v1 and cannot be edited. Existing obsolete transition tables are left untouched; new databases do not create them. Database schema version and content contract version are distinct.
 
-An explicit content migration creates a new v2 revision and switches the same head. Historical rows, media and preview JSON are retained. A transition records original/new revisions and section identity mappings. This is recovery metadata, not a complete authenticated audit trail. Newer unsupported database versions refuse initialization.
+`ICompositionSource` defines consistent read/capture. `ICompositionDraftPersistence` supplies trusted create/conditional commits; it is not an authorized HTTP graph-replacement operation. `CompositionEditor` checks typed commands, permissions, registered type capabilities and the whole proposed graph before persistence.
 
-`ICompositionSource` reads and captures the v2 head. `ICompositionDraftPersistence` defines trusted create/conditional-commit operations on proposed validated drafts; it is not an HTTP graph-replacement endpoint or permission boundary. The typed `CompositionEditor` authorizes application operations before using this persistence boundary. Capability reporting advertises the implemented editing operations and atomic/capture guarantees. The composition board/API use v2 after explicit migration.
+Commits compare an opaque expected revision in an immediate transaction, validate graph/media, insert an immutable snapshot and replace the head atomically. Invalid or stale proposals leave no partial head, history or media. Source/site identity cannot be replaced. Capture reads head, content and media in one transaction with a frozen design. Serialized snapshots must fit v2 reader bounds.
 
-Commits take an expected opaque revision, validate the whole graph and required media, insert one immutable snapshot and move the head in one immediate SQLite transaction. Conflicts and validation failures leave no partial head/revision/media changes. Site identity cannot be replaced. Capture reads head/content/media in one read transaction with an immutable captured design supplied by the caller. Snapshots must fit the v2 reader bounds before insertion.
+Media paths are immutable: replacement bytes require a new path. Removed references do not delete historical media. PNG upload is implemented through authorized [composition operations](composition-editing.md); byte maps at the trusted persistence boundary are not an upload permission boundary. Retention/quota/garbage collection remain release work.
 
-Media paths are immutable: replacement bytes require a new path. Removed references do not delete media required by history. Validated PNG upload is implemented through the [composition application operations](composition-editing.md). Retention/garbage collection and quota policy remain release work. Trusted persistence byte maps alone are not an upload authorization boundary.
+## Shared content and output
 
-## Migration mapping and design
+Detaching a shared reference copies its entire subtree into page-owned Blocks and child placements with new IDs, retaining the selected outer placement ID and captured field/image values. Remaining references remain shared. Referenced definitions cannot be deleted; detach/remove references first and delete in a later revision. Shared changes require separate authority and exact affected-page acknowledgement.
 
-`LegacyCompositionMapping` maps each `(page ID, section ID)` to `block-` and `placement-` followed by the first 32 hexadecimal characters of SHA-256 over UTF-8 `pageId + "/" + sectionId`. The complete mapping is retained, and validation rejects duplicate IDs. This handles repeated section IDs across pages and avoids overflowing bounded identifiers. Preserve page IDs, routes, titles/descriptions, website title/language, field values and asset IDs/paths.
+Previews retain source identity/revision, content contract, design provenance and exact file bytes. Reading a stored artifact does not read the current draft or invoke its renderer. Existing human and API preview URLs remain valid with preview permission, including v1 artifacts and after changing the selected package. Approval/publication/rollback are separate planned release work.
 
-The demo design package supplies registered `site-header`, `site-footer` and `page-title` types in addition to the five standard types. Header/Footer become shared definitions; each page receives independent reference placements and page-owned title/content Blocks. Navigation stores stable page IDs, resolves captured names/routes and retains current-page behavior. Website title is reused from captured metadata. Layout wrappers share the same `site-container` class. The module supplies captured CSS and rendering; SQLite does not import its templates or own design definitions.
+## Fresh setup for a retired workspace
 
-Migration checks the identity map and every original section's type/values, validates composition, captures stored media and rehearses a complete build before inserting the revision/head transition. Renderer failure, missing media, reserved/colliding paths, incompatible design or v2 bounds reject migration with the v1 head intact. Previously generated output is not rebuilt or rewritten; newly generated v2 markup need not be byte-identical to v1. Repeating migration with the current v2 revision validates it and changes nothing. Stale expected revisions fail.
+Preserve the original private data directory. Stop the host and configure `Management:DataDirectory` to a separate empty folder. Restart, create an owner account and create a blank or example v2 website. No automatic conversion, deletion, head replacement or legacy restore occurs. Original preview URLs remain accessible when running the original workspace. Full installation backups/restores must use matching application versions and stopped processes; a rehearsed production procedure remains planned.
 
-`CompositionCopies` supplies pure helpers for detaching a shared reference and deleting an unreferenced definition. Detach expands its subtree into independent Blocks/placements with new IDs and preserved fields/media references; the selected outer placement keeps its ID. Remaining references stay shared. Persistence also refuses deleting a shared definition referenced by the current draft, even when a proposed commit removes the references simultaneously: detach/remove first, then delete in a later commit. Browser/API typed commands and separate shared-write permissions are implemented; see [composition editing](composition-editing.md).
-
-## Operator workflow on a copy
-
-Try migration on a copied installation first. A v2 head now opens the composition board; legacy API writes return a contract conflict. Retained v1 and v2 previews remain readable through their authenticated delivery routes. The overview also offers an explicit Enable composition editing action; startup never migrates content automatically.
-
-Stop the host and copy its private data directory, including the database and any SQLite journal/WAL sidecars if present. Keep the original intact. Use the same absolute copy directory for every command. These commands run through the .NET host but exit without binding HTTP ports, initializing accounts or changing account credentials. Development and explicit management configuration are still required. The commands initialize content-schema metadata, including `inspect`; inspection does not migrate content.
-
-```text
-dotnet run --project src/Webspine.Management -- --environment Development --Management:Enabled true --Management:DataDirectory "<absolute-copy-directory>" --Content:Action inspect
-```
-
-The output lists head revision/version and revision history. Use the exact inspected revision:
-
-```text
-dotnet run --project src/Webspine.Management -- --environment Development --Management:Enabled true --Management:DataDirectory "<absolute-copy-directory>" --Content:Action migrate --Content:ExpectedRevision "<inspected-v1-revision>"
-```
-
-The result reports the original revision, new revision and identity map. Preserve the report with private migration records. No raw content fields or credentials are printed. Missing/invalid/stale parameters or failed validation return a nonzero exit code. No missing database/site is automatically created by this workflow.
-
-To recover v1 content after verification, inspect the current head and select a retained v1 revision:
-
-```text
-dotnet run --project src/Webspine.Management -- --environment Development --Management:Enabled true --Management:DataDirectory "<absolute-copy-directory>" --Content:Action restore --Content:ExpectedRevision "<current-v2-revision>" --Content:LegacyRevision "<retained-v1-revision>"
-```
-
-Restore validates the retained v1 snapshot/media and creates a **fresh** v1 revision before switching the head atomically. Old forms therefore remain stale; v2 history and previews are retained. This restores CMS content, not a published release, and does not merge v2 edits into v1. Inspect/reconcile those edits before recovery. Database metadata stays schema 2; this is not a downgrade for an older application binary. Original-file backup recovery must be done with all users/processes stopped and the matching application version.
-
-The current code can then start the v1 editor on the recovered copy. Full installation backup/restore, hosted migrations and publication are separate MVP work.
+The old `Content:Action` inspect/migrate/restore commands now fail before initialization. Offline password recovery is unaffected. External CMS source migration (#18) and future incompatible v2 schema evolution are separate concerns, not a replacement v1 conversion workflow.
 
 ## Verification
 
-The management checks reconstruct the previously shipped schema, reopen/upgrade it, compare original JSON/preview records, test failed/lossy/stale migration, convert all demo section types, persist mappings and shared shell, commit nested/shared objects, race two writers, detach nested shared Groups, reject referenced deletion/media replacement, preserve old artifacts, restore with a fresh revision, and exercise the real offline commands and authenticated composition hosting. Tests use isolated temporary directories and clean up their hosts.
-
-SQLite remains the only persistence implementation. Another backend must provide these transactional/revision/capture guarantees; external business-data providers and Records remain separate from backend selection.
+Management checks seed the actual old database schema as historical data and verify idempotent metadata initialization, unchanged snapshots/preview JSON/head, rejected legacy operations and exact authenticated preview retrieval under another selected design. Native v2 checks cover fresh creation with atomic media validation, graph/shared/nested commits, reopen, competing writers, stale preview saves, detach/delete and immutable history/assets. Retired offline commands are checked for nonzero exit without opening/modifying content. CI runs the checks on Windows, Linux and macOS.

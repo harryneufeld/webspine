@@ -59,7 +59,7 @@ public static class FieldworkExample
                 new("content", placements.ToImmutable()), new("contact", [new("placement-contact-" + id, TargetKind.Shared, "contact-panel")])]));
         }
         var assets = example ? ImmutableArray.Create(new AssetContent("house", "assets/home-illustration.svg", "image/svg+xml")) : [];
-        return new(null, new("site", title, "en", "service", pages.ToImmutable(), blocks.ToImmutable(),
+        return new(new("site", title, "en", "service", pages.ToImmutable(), blocks.ToImmutable(),
             [new("business", "business-brand"), new("contact-panel", "business-contact")], assets),
             example ? ImmutableDictionary<string, ImmutableArray<byte>>.Empty.Add("assets/home-illustration.svg", StudioExample.Resource("home-illustration.svg"))
                 : ImmutableDictionary<string, ImmutableArray<byte>>.Empty);

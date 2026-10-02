@@ -2,19 +2,19 @@
 
 Baseline, 30 September 2026. Modularity is an MVP requirement. WordPress is a useful ambition for extensibility; plugin parity is not a claim about the current implementation.
 
-Accepted composition direction: [decision 0009](decisions/0009-composition-records-and-substitutable-cms.md). The [v2 composition library](composition.md) implements typed definitions/validation and adapter capabilities; the board/API supply composition operations, while configured Razor packages supply presentation. [Field metadata](field-metadata.md) makes registered basic types editable without central management switches. Existing v1 management still uses four section types until explicit migration. CMS-managed composition and optional external business-data providers have separate authority. Provider integrations remain planned.
+Accepted composition direction: [decision 0009](decisions/0009-composition-records-and-substitutable-cms.md). The [v2 composition library](composition.md) implements typed definitions/validation and adapter capabilities; the board/API supply composition operations, while configured Razor packages supply presentation. [Field metadata](field-metadata.md) makes registered basic types editable without central management switches. Legacy management editing and migration tooling are retired; new setups use v2 exclusively. CMS-managed composition and optional external business-data providers have separate authority. Provider integrations remain planned.
 
 | Stage | Current implementation | Next contract work |
 | --- | --- | --- |
-| Content sources | v1 authoring; v2 read/capture and trusted conditional persistence contracts; SQLite histories and explicit v1/v2 migration/recovery | Typed composition/media authoring, external adapters and source migration |
-| Components | Four v1 typed kinds; v2 typed registration/validation/storage; metadata-driven board and schema discovery; independent FAQ module | Specialized editor integration; module packaging/loader |
+| Content sources | v2 read/capture, typed authorized editing and trusted conditional persistence; immutable SQLite histories | External adapters and source migration |
+| Components | v2 typed registration/validation/storage; metadata-driven board and schema discovery; independent FAQ module | Specialized editor integration; module packaging/loader |
 | Validation | Ordered `IContentValidator` extensions | Operation-specific policies and installation compatibility |
-| Rendering | Core `IDesignPackage`/`ICompositionRenderer`; independent Studio/Fieldwork packages and typed static Razor mappings; package-owned Regions; v1 compatibility renderer | Historical replay worker and installation tooling |
+| Rendering | Core `IDesignPackage`/`ICompositionRenderer`; independent Studio/Fieldwork packages and typed static Razor mappings; package-owned Regions; read-only fixture renderer | Historical replay worker and installation tooling |
 | Build/export | Ordered `IArtifactContributor` extensions; sample site-index contributor | Durable worker, artifact storage and portable export packaging |
 | Preview | Retained SQLite artifacts and loopback Development delivery | Replaceable artifact store, account-protected preview provider and review hooks |
 | Delivery/cache | Prerendered pipeline, artifact source, replaceable cache and per-response header hooks | Dynamic rendering, production policies, separate host and broader request hooks |
 | Deployment | Planned | Deployment provider, promotion checks, rollback and status events |
-| AI/API | Bearer scopes, conditional page/settings operations and retained previews through shared authoring operations | MCP adapter, component/media operations, durable audit and release permissions |
+| AI/API | Bearer scopes, conditional page/settings operations and retained previews through shared authoring operations | MCP adapter, durable audit and release permissions |
 
 Current extensions are explicitly supplied to the pipeline in stable order. Duplicate or empty extension IDs fail. Contributor files enter the same artifact digest as renderer output. Duplicate paths fail, failures return no finalized artifact, and extensions cannot append files after finalization. Required core validation always runs; there is no hook that disables it. Future post-build observers receive immutable artifacts and cannot mutate the reviewed bytes.
 

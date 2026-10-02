@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Webspine.Core.Composition;
 
-// Contract v2 is additive: v1 content, storage and HTTP endpoints retain their semantics.
+// The active authoring contract. Historical v1 data and retained artifacts remain separate.
 public sealed record CompositionSnapshot(int ContractVersion, SourceIdentity Source, string Revision, CompositionWebsite Website);
 public sealed record CompositionWebsite(string Id, string Title, string Language, string LayoutId,
     ImmutableArray<CompositionPage> Pages, ImmutableArray<Block> Blocks,

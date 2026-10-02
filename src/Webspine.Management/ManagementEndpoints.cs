@@ -18,7 +18,6 @@ internal static class ManagementEndpoints
     public static async Task MapManagementAsync(this WebApplication app)
     {
         var store = app.Services.GetRequiredService<SqliteContentSource>();
-        var operations = app.Services.GetRequiredService<AuthoringOperations>();
         await store.InitializeSchemaAsync();
         app.Use(async (context, next) =>
         {
@@ -63,22 +62,10 @@ internal static class ManagementEndpoints
                     catch (AntiforgeryValidationException) { await ManagementUi.Problem("This form expired or could not be verified. Reopen the page and try again.", 400).ExecuteAsync(context); return; }
                 }
             }
-            var legacyPath = context.Request.Path.Value ?? "";
-            if ((legacyPath is "/manage" or "/manage/settings" or "/manage/export" or "/manage/pages" or "/manage/preview" || legacyPath.StartsWith("/manage/pages/", StringComparison.Ordinal)) && (await store.HeadAsync(context.RequestAborted))?.Version == 2)
-            {
-                if (HttpMethods.IsGet(context.Request.Method)) context.Response.Redirect("/manage/composition");
-                else await ManagementUi.Problem("This site uses composition. Reopen the composition board before editing.", 409).ExecuteAsync(context);
-                return;
-            }
             await next(context);
         });
         app.MapGet("/manage/assets/editor.css", () => Results.Text(ManagementUi.Css + CompositionBoard.Css, "text/css; charset=utf-8"));
-        app.MapGet("/manage", async (HttpContext context) =>
-        {
-            var snapshot = await store.TryReadAsync(context.RequestAborted);
-            if (snapshot is null && !Permissions.Has(context.User, "settings:write")) return ManagementUi.Problem("An operator must create the website first.", 403);
-            return snapshot is null ? ManagementUi.Setup(context) : ManagementUi.Overview(context, snapshot, (await store.HistoryAsync(context.RequestAborted)).Length);
-        });
+        app.MapGet("/manage", (Delegate)CompositionBoard.HomeAsync);
         app.MapPost("/manage/setup", async (HttpContext context) =>
         {
             var form = await context.Request.ReadFormAsync(context.RequestAborted);
@@ -88,64 +75,13 @@ internal static class ManagementEndpoints
                 if (form["mode"] != "demo" && form["mode"] != "blank") throw new ContentValidationException("Choose Start blank or the installed example.");
                 var installation = context.RequestServices.GetRequiredService<InstalledDesign>();
                 var starter = installation.Start(title, form["mode"] == "demo");
-                if ((starter.Legacy is null) == (starter.Composition is null)) throw new ContentValidationException("A starter must provide exactly one supported content contract.");
-                if (starter.Composition is not null)
-                {
-                    if (!Permissions.Has(context.User, "content:write") || (!starter.Composition.SharedBlocks.IsEmpty && !Permissions.Has(context.User, "content:shared:write")))
-                        return ManagementUi.Problem("Creating this site requires content and shared-content editing permission.", 403);
-                    await store.CreateCompositionAsync(starter.Composition, installation.Package.Design, starter.Assets, context.RequestAborted);
-                }
-                else await store.CreateAsync(starter.Legacy!, starter.Assets, context.RequestAborted);
+                if (!Permissions.Has(context.User, "content:write") || (!starter.Composition.SharedBlocks.IsEmpty && !Permissions.Has(context.User, "content:shared:write")))
+                    return ManagementUi.Problem("Creating this site requires content and shared-content editing permission.", 403);
+                await store.CreateCompositionAsync(starter.Composition, installation.Package.Design, starter.Assets, context.RequestAborted);
                 return Results.Redirect("/manage");
             }
             catch (SiteAlreadyExistsException error) { return ManagementUi.Problem(error.Message, 409); }
             catch (ContentValidationException error) { return ManagementUi.Setup(context, error.Message, 422, form["title"].ToString()); }
-        });
-        app.MapGet("/manage/pages/{id}", async (string id, HttpContext context) =>
-        {
-            var snapshot = await store.TryReadAsync(context.RequestAborted);
-            if (snapshot is null) return Results.Redirect("/manage");
-            var page = snapshot.Website.Pages.FirstOrDefault(p => p.Id == id);
-            return page is null ? Results.NotFound() : ManagementUi.Edit(context, snapshot, page);
-        });
-        app.MapPost("/manage/pages/{id}", async (string id, HttpContext context) =>
-        {
-            var form = await context.Request.ReadFormAsync(context.RequestAborted);
-            try
-            {
-                var fields = form.Where(f => f.Key.StartsWith("field.", StringComparison.Ordinal)).ToDictionary(f => f.Key[6..], f => f.Value.ToString(), StringComparer.Ordinal);
-                await operations.EditPageAsync(form["revision"].ToString(), id, form["title"].ToString(), form["description"].ToString(), fields, context.RequestAborted);
-                return Results.Redirect("/manage");
-            }
-            catch (Exception error) when (error is RevisionConflictException or ContentValidationException)
-            {
-                var snapshot = await store.ReadAsync(context.RequestAborted);
-                var page = snapshot.Website.Pages.FirstOrDefault(p => p.Id == id);
-                return page is null ? ManagementUi.Problem(error.Message, 404) : ManagementUi.Edit(context, snapshot, page, error.Message, error is RevisionConflictException ? 409 : 422, form);
-            }
-            catch (SiteNotInitializedException error) { return ManagementUi.Problem(error.Message, 409); }
-        });
-        app.MapPost("/manage/pages", async (HttpContext context) =>
-        {
-            var form = await context.Request.ReadFormAsync(context.RequestAborted);
-            try
-            {
-                await operations.AddPageAsync(form["revision"].ToString(), form["title"].ToString(), form["path"].ToString(), form["description"].ToString(), context.RequestAborted);
-                return Results.Redirect("/manage");
-            }
-            catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException or SourceOperationNotSupportedException)
-            { return ManagementUi.Problem(error.Message, error is SourceOperationNotSupportedException ? 501 : error is ContentValidationException ? 422 : 409); }
-        });
-        app.MapPost("/manage/preview", async (HttpContext context) =>
-        {
-            var form = await context.Request.ReadFormAsync(context.RequestAborted);
-            try
-            {
-                var preview = await operations.PreviewAsync(form["revision"].ToString(), "/manage/preview/", context.RequestAborted);
-                return Results.Redirect("/manage/preview/" + preview.Id + "/");
-            }
-            catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException or SourceOperationNotSupportedException)
-            { return ManagementUi.Problem(error.Message, error is SourceOperationNotSupportedException ? 501 : error is ContentValidationException ? 422 : 409); }
         });
         app.MapMethods("/manage/preview/{id}/{**path}", ["GET", "HEAD"], async (string id, string? path, HttpContext context) =>
         {
@@ -153,38 +89,8 @@ internal static class ManagementEndpoints
             if (artifact is null) { context.Response.StatusCode = 404; return; }
             await new PrerenderedDelivery(new FixedArtifactSource(artifact), new NoDeliveryCache(), scripts: DesignScriptPolicy.FromArtifact(artifact)).DeliverAsync(context, path);
         });
-        app.MapGet("/manage/export", async (HttpContext context) =>
-        {
-            var captured = await store.CaptureAsync(context.RequestAborted);
-            using var stream = new MemoryStream();
-            using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
-            {
-                var entry = zip.CreateEntry("content.json");
-                await using (var target = entry.Open()) await JsonSerializer.SerializeAsync(target, captured.Snapshot, new JsonSerializerOptions(JsonSerializerDefaults.Web), context.RequestAborted);
-                foreach (var (file, bytes) in captured.Assets)
-                {
-                    await using var target = zip.CreateEntry(file).Open();
-                    await target.WriteAsync(bytes.ToArray(), context.RequestAborted);
-                }
-            }
-            return Results.File(stream.ToArray(), "application/zip", "webspine-content.zip");
-        });
-        app.MapGet("/manage/settings", async (HttpContext context) =>
-        {
-            var snapshot = await store.TryReadAsync(context.RequestAborted);
-            return snapshot is null ? Results.Redirect("/manage") : ManagementUi.Settings(context, snapshot);
-        });
-        app.MapPost("/manage/settings", async (HttpContext context) =>
-        {
-            var form = await context.Request.ReadFormAsync(context.RequestAborted);
-            try
-            {
-                await operations.SettingsAsync(form["revision"].ToString(), form["title"].ToString(), form["language"].ToString(), context.RequestAborted);
-                return Results.Redirect("/manage");
-            }
-            catch (Exception error) when (error is RevisionConflictException or ContentValidationException)
-            { return ManagementUi.Settings(context, await store.ReadAsync(context.RequestAborted), error.Message, error is RevisionConflictException ? 409 : 422, form); }
-            catch (SiteNotInitializedException error) { return ManagementUi.Problem(error.Message, 409); }
-        });
+        foreach (var route in new[] { "/manage/pages", "/manage/pages/{**path}", "/manage/settings", "/manage/export", "/manage/preview", "/manage/upgrade-composition" })
+            app.MapMethods(route, ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"], () =>
+                ManagementUi.Problem("This legacy editing operation has been removed. Open your website to use composition editing. Older v1 workspaces require a fresh v2 setup in a separate data directory.", 410));
     }
 }

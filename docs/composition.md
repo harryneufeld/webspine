@@ -1,6 +1,6 @@
 # Composition contract v2
 
-Implemented library slice for #14, 1 October 2026. `Webspine.Core.Composition` provides an opt-in v2 model, registry, validator and captured-input build path. The [spinecms store](spinecms-storage.md) now supports v2 capture/conditional persistence and explicit migration/recovery. The [composition board and `/api/v2`](composition-editing.md) implement typed editing, media and shared-write permissions. Existing v1 sites continue using their flat editor until explicit migration. Patterns/Records remain #17.
+Composition v2 is the default authoring model. `Webspine.Core.Composition` supplies typed graphs, registration, validation, capabilities and captured-input builds. The [store](spinecms-storage.md) persists native v2 drafts; the [board/API](composition-editing.md) provide authorized typed editing, media and shared operations. Legacy editing/migration tooling is removed; old workspaces require separate fresh setup. Patterns/Records remain #17.
 
 ## Objects and placement
 
@@ -54,6 +54,6 @@ All files, including manifest/CSS/scripts, enter the artifact digest. Razor esca
 
 The examples are loaded and built by the check suite. A separate test provider proves the source boundary and a Quote registration proves type extension without engine switch changes.
 
-v1 `ContentContract.Version`, JSON records, retained previews and HTTP field-edit semantics are unchanged. v2 content identifies version 2 explicitly and uses its separate serializer/model. Typed composition HTTP operations use `/api/v2`; `/api/v1` refuses v2 content instead of reinterpreting it. Database schema version is separate from content version: metadata schema 2 retains v1 rows, with explicit content migration, history readers, mappings and fresh-revision recovery. No retained artifact bytes are rewritten or v1 payloads silently reinterpreted.
+V2 identifies contract version 2 explicitly and uses its own serializer/model. It is the sole management authoring workflow. API v1 editing is retired with 410; old retained preview GET/HEAD URLs continue serving exact output with preview permissions. Database metadata initialization preserves v1 snapshot/artifact JSON but never converts or edits it. Legacy migration/mapping/restore tooling is removed; preserve old workspaces and create native v2 sites in separate empty directories. Decision 0017 supersedes the original additive authoring policy.
 
 Storage backends remain implementation details of spinecms/adapters. Multiple external business-data providers and typed Records are separate from choosing SQLite/PostgreSQL/MySQL persistence; neither additional database backends nor Record providers are introduced here.
