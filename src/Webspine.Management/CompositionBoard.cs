@@ -33,6 +33,7 @@ internal static partial class CompositionBoard
             catch (Exception e) when (CompositionApi.ExpectedError(e)) { return ManagementUi.Problem(e.Message, CompositionApi.ErrorStatus(e)); }
         });
         MapStructureRoutes(board);
+        MapRecordRoutes(board);
         board.MapGet("", (Delegate)HomeAsync);
         board.MapGet("/export", async (CompositionOperations operations, HttpContext c) =>
         {

@@ -101,3 +101,7 @@ dotnet run --project tests/Webspine.RazorChecks --configuration Release --no-bui
 `dotnet run --project tests/Webspine.ManagementChecks -- --independent-preview` runs the independent-design checks and retains their disposable Fieldwork host for browser review. It prints the loopback URL; the synthetic owner is `owner` / `Disposable-Test!123`. Stop with Ctrl+C after review. Normal checks clean up automatically. Review keyboard operation, narrow screens, actual script MIME/CSP and prefixed navigation; CI runs Windows/Linux/macOS.
 
 Current limits: trusted explicit installation, static prerendering, explicit CSS/browser assets and cooperative component cancellation. Hosted management/publication, durable jobs, OS/container pinning, historical replay, automatic package/content migration, hot-loading, a schema designer and specialized editor loading remain separate work.
+
+## Patterns and content Records
+
+[Patterns and Records](patterns-records.md) document the Studio Product/card workflow, registered schema/input versions, source capabilities, board/API conditional operations, affected-page authority, frozen values/media and explicit breaking-version migrations. This is implemented for native v2; external business providers remain planned.

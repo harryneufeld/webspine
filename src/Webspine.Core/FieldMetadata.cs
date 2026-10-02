@@ -7,13 +7,13 @@ using System.Text.Json.Serialization;
 namespace Webspine.Core.Composition;
 
 public enum EditorFieldKind { Text, Image, Destination, Choice, Integer, Repeat }
-public enum EditorChoiceSource { None, Images, Pages, GroupModes, GroupAlignments, GroupSpacing, GroupColumns }
+public enum EditorChoiceSource { None, Images, Pages, GroupModes, GroupAlignments, GroupSpacing, GroupColumns, Records }
 public sealed record EditorChoice(string Value, string Label);
 public sealed record EditorField(string Name, string Label, EditorFieldKind Kind, bool Required, JsonElement Default,
     int MaximumLength = 0, bool Multiline = false, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] ImmutableArray<EditorChoice> Choices = default,
     EditorChoiceSource ChoiceSource = EditorChoiceSource.None, int Minimum = 0, int Maximum = 0,
     string? ItemLabel = null, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] ImmutableArray<EditorField> ItemFields = default, EditorField? Item = null,
-    int DefaultItemCount = 0, bool DefaultAllPages = false)
+    int DefaultItemCount = 0, bool DefaultAllPages = false, string? RecordSchemaId = null, int RecordSchemaVersion = 0, string? RecordLabelField = null)
 {
     private static JsonElement Value(object? value) => JsonSerializer.SerializeToElement(value, CompositionJson.Options);
     public static EditorField Text(string name, string label, string initial, int maximum, bool multiline = false) =>
@@ -22,6 +22,9 @@ public sealed record EditorField(string Name, string Label, EditorFieldKind Kind
         new(name, label, EditorFieldKind.Image, required, Value(null), 64, ChoiceSource: EditorChoiceSource.Images);
     public static EditorField Destination(string name, string label, string initial = "/") =>
         new(name, label, EditorFieldKind.Destination, true, Value(initial), 500);
+    public static EditorField Record(string name, string label, string schema, int version, string? labelField = null) =>
+        new(name, label, EditorFieldKind.Choice, true, Value(null), 64, ChoiceSource: EditorChoiceSource.Records,
+            RecordSchemaId: schema, RecordSchemaVersion: version, RecordLabelField: labelField);
     public static EditorField Choice(string name, string label, string initial, EditorChoiceSource source) =>
         new(name, label, EditorFieldKind.Choice, true, Value(initial), 160, ChoiceSource: source);
     public static EditorField Number(string name, string label, int initial, int minimum, int maximum,
@@ -43,6 +46,15 @@ public sealed record ContentEditorMetadata(string Label, string Description, Imm
 
 public static class ContentEditorContract
 {
+    public static IEnumerable<EditorField> AllFields(ImmutableArray<EditorField> fields)
+    {
+        foreach (var field in fields)
+        {
+            yield return field;
+            if (!field.ItemFields.IsDefaultOrEmpty) foreach (var nested in AllFields(field.ItemFields)) yield return nested;
+            if (field.Item is not null) foreach (var nested in AllFields([field.Item])) yield return nested;
+        }
+    }
     public static bool Generic(ContentEditorMetadata? editor) => editor is { SpecializedEditor: null };
     public static void ValidateRegistration(ContentEditorMetadata editor, Type payload)
     {
@@ -72,6 +84,12 @@ public static class ContentEditorContract
                 field.Name.Any(c => !char.IsAsciiLetterOrDigit(c))) Fail("Invalid editor field name.");
             CompositionRules.Text(field.Label, 120);
             if (!Enum.IsDefined(field.Kind) || !Enum.IsDefined(field.ChoiceSource) || field.Default.ValueKind == JsonValueKind.Undefined) Fail("Invalid field kind/default/source.");
+            if (field.ChoiceSource == EditorChoiceSource.Records)
+            {
+                CompositionRules.Identifier(field.RecordSchemaId);
+                if (field.Kind != EditorFieldKind.Choice || field.RecordSchemaVersion < 1) Fail("Record choices require an explicit schema version.");
+            }
+            else if (field.RecordSchemaId is not null || field.RecordSchemaVersion != 0 || field.RecordLabelField is not null) Fail("Only Record choices may declare a Record schema.");
             if (field.Multiline && field.Kind != EditorFieldKind.Text) Fail("Only text fields support multiline editing.");
             if (field.Kind == EditorFieldKind.Choice && field.ChoiceSource is EditorChoiceSource.GroupColumns) Fail("Column choices require an integer field.");
             if (field.Kind == EditorFieldKind.Integer && field.ChoiceSource is not (EditorChoiceSource.None or EditorChoiceSource.GroupColumns)) Fail("Integer fields require numeric choices.");
@@ -119,6 +137,8 @@ public static class ContentEditorContract
     {
         EditorChoiceSource.Images => site.Assets.Select((a, i) => new EditorChoice(a.Id, "Image " + (i + 1))).ToImmutableArray(),
         EditorChoiceSource.Pages => site.Pages.Select(p => new EditorChoice(p.Id, p.Title)).ToImmutableArray(),
+        EditorChoiceSource.Records => site.Records.Where(r => r.SchemaId == field.RecordSchemaId && r.SchemaVersion == field.RecordSchemaVersion)
+            .Select(r => new EditorChoice(r.Id, field.RecordLabelField is { } label && r.Fields.TryGetProperty(label, out var name) && name.ValueKind == JsonValueKind.String ? name.GetString()! : r.Id)).ToImmutableArray(),
         EditorChoiceSource.GroupModes => design.Groups.Modes.Select(v => new EditorChoice(v, Label(v))).ToImmutableArray(),
         EditorChoiceSource.GroupAlignments => design.Groups.Alignments.Select(v => new EditorChoice(v, Label(v))).ToImmutableArray(),
         EditorChoiceSource.GroupSpacing => design.Groups.Spacing.Select(v => new EditorChoice(v, Label(v))).ToImmutableArray(),
@@ -131,6 +151,16 @@ public static class ContentEditorContract
         if (!Generic(editor)) throw new SourceOperationNotSupportedException("This type requires a specialized editor or a client with its typed schema. The basic board cannot safely edit it.");
         var values = JsonSerializer.SerializeToElement(ObjectDefaults(editor!.Fields, site, design), CompositionJson.Options);
         ValidateValues(editor, values, site, design); return values;
+    }
+    public static JsonElement OptionalDefaults(ContentEditorMetadata editor, JsonElement fields)
+    {
+        if (fields.ValueKind != JsonValueKind.Object) throw new ContentValidationException("Typed fields require an object.");
+        CompositionJson.RejectDuplicateProperties(fields);
+        var values = (JsonObject)JsonNode.Parse(fields.GetRawText())!;
+        foreach (var field in editor.Fields.Where(f => !f.Required))
+            if (!values.ContainsKey(field.Name) || values[field.Name] is null)
+                values[field.Name] = JsonNode.Parse(field.Default.GetRawText());
+        return JsonSerializer.SerializeToElement(values, CompositionJson.Options);
     }
     public static JsonObject ObjectDefaults(ImmutableArray<EditorField> fields, CompositionWebsite site, CompositionDesign design)
     {

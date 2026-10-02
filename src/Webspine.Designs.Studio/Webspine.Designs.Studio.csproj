@@ -3,6 +3,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../Webspine.Rendering.Razor/Webspine.Rendering.Razor.csproj" />
     <ProjectReference Include="../Webspine.Content.Faq/Webspine.Content.Faq.csproj" />
+    <ProjectReference Include="../Webspine.Content.Product/Webspine.Content.Product.csproj" />
     <EmbeddedResource Include="Assets/*" LogicalName="studio/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

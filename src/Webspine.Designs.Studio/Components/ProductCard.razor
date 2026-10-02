@@ -1,0 +1,14 @@
+@using Webspine.Content.Product
+@inherits RazorContentComponent<ProductCardFields>
+@{ var product = Context.Record<ProductFields>(Fields.ProductId, "product", 1); }
+<article class="product-card">
+    @if (product.Image is not null)
+    {
+        <img src="@Context.Asset(product.Image)" alt="@product.Name" loading="lazy" />
+    }
+    <div class="product-card-body">
+        <h2>@product.Name</h2>
+        @if (!string.IsNullOrEmpty(product.Description)) { <p>@product.Description</p> }
+        @if (!string.IsNullOrEmpty(Fields.Caption)) { <p class="product-caption">@Fields.Caption</p> }
+    </div>
+</article>

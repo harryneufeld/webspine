@@ -12,9 +12,11 @@ public sealed class BlockRegistry
 {
     private readonly ImmutableDictionary<string, IBlockDefinition> registrations;
     public ImmutableArray<BlockTypeDescriptor> Descriptors { get; }
+    public RecordRegistry Records { get; }
 
-    public BlockRegistry(IEnumerable<IBlockDefinition> registrations)
+    public BlockRegistry(IEnumerable<IBlockDefinition> registrations, RecordRegistry? records = null)
     {
+        Records = records ?? new();
         var items = registrations.OrderBy(r => r.Descriptor.Id, StringComparer.Ordinal).ToArray();
         var map = ImmutableDictionary.CreateBuilder<string, IBlockDefinition>(StringComparer.Ordinal);
         var modules = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -22,6 +24,7 @@ public sealed class BlockRegistry
         {
             var descriptor = item.Descriptor;
             if (item.Editor is not null) ContentEditorContract.ValidateRegistration(item.Editor, item.PayloadType);
+            PatternContract.ValidateRegistration(item, Records);
             CompositionRules.Identifier(descriptor.Id); CompositionRules.Identifier(descriptor.ModuleId);
             CompositionRules.Text(descriptor.ModuleVersion, 80); CompositionRules.Text(descriptor.SchemaId, 120);
             CompositionRules.Text(descriptor.RendererVersion, 80);

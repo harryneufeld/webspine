@@ -12,7 +12,7 @@ public sealed partial class SqliteContentSource
     // Typed operations are implemented by the application editor; commits remain trusted-host calls.
     public CompositionCapabilities CompositionCapabilities => new(2,
         compositionRegistry.Descriptors.Select(d => new SupportedBlockType(d.Id, d.Version)).ToImmutableArray(),
-        Enum.GetValues<CompositionOperation>().ToImmutableArray(), true, true);
+        Enum.GetValues<CompositionOperation>().ToImmutableArray(), true, true) { RecordSchemas = compositionRegistry.Records.Descriptors };
 
     public async Task<ContentHead?> HeadAsync(CancellationToken ct = default)
     {
@@ -112,6 +112,15 @@ public sealed partial class SqliteContentSource
         var removedShared = current.Website.SharedBlocks.Select(s => s.Id).Except(proposed.SharedBlocks.Select(s => s.Id)).ToHashSet(StringComparer.Ordinal);
         if (AllPlacements(current.Website).Any(p => p.Kind == TargetKind.Shared && removedShared.Contains(p.TargetId)))
             throw new ContentValidationException("Referenced Shared Blocks cannot be deleted.");
+        foreach (var record in current.Website.Records)
+        {
+            var next = proposed.Records.FirstOrDefault(r => r.Id == record.Id);
+            if (next is null && PatternContract.IsReferenced(current.Website, compositionRegistry, record.Id))
+                throw new ContentValidationException("Referenced Records cannot be deleted; remove their references in an earlier conditional write.");
+            if (next is not null && next.Revision == record.Revision && (next.SchemaId != record.SchemaId || next.SchemaVersion != record.SchemaVersion ||
+                next.Fields.GetRawText() != record.Fields.GetRawText()))
+                throw new ContentValidationException("Changed Record values require a new Record revision.");
+        }
         await EnsureAssets(connection, transaction, proposed.Assets, newAssets ?? ImmutableDictionary<string, ImmutableArray<byte>>.Empty, cancellationToken);
         await InsertComposition(connection, transaction, snapshot, cancellationToken);
         await ReplaceHead(connection, transaction, expectedRevision, snapshot.Revision, cancellationToken);

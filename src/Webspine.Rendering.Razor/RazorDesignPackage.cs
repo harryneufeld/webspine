@@ -56,7 +56,8 @@ public sealed class RazorDesignPackage : IDesignPackage, ICompositionRenderer
         Bindings = map.ToImmutable(); Assets = assets;
         // All explicitly registered executable types must be in the captured application closure.
         foreach (var assembly in Bindings.Values.Select(b => b.Component.Assembly).Append(document.Assembly)
-            .Concat(definitions.Descriptors.Select(d => definitions.Resolve(d.Id, d.Version).PayloadType.Assembly)).Distinct())
+            .Concat(definitions.Descriptors.Select(d => definitions.Resolve(d.Id, d.Version).PayloadType.Assembly))
+            .Concat(definitions.Records.Descriptors.Select(d => definitions.Records.Resolve(d.Id, d.Version).PayloadType.Assembly)).Distinct())
             if (!Path.GetFullPath(assembly.Location).StartsWith(Path.GetFullPath(AppContext.BaseDirectory),
                     OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 throw new ContentValidationException("Package assemblies must be installed with the application.");
@@ -79,15 +80,18 @@ public sealed class RazorDesignPackage : IDesignPackage, ICompositionRenderer
             var mappings = Bindings.Values.OrderBy(b => b.TypeId, StringComparer.Ordinal)
                 .Select(b => new ComponentBinding(b.TypeId, b.TypeVersion, b.Component.FullName!, b.Version)).ToImmutableArray();
             var definitions = ContentTypes.Descriptors.Select(d => new ContentDefinitionIdentity(d,
-                ContentTypes.Resolve(d.Id, d.Version).ImplementationDigest, ContentTypes.Resolve(d.Id, d.Version).Editor)).ToImmutableArray();
+                ContentTypes.Resolve(d.Id, d.Version).ImplementationDigest, ContentTypes.Resolve(d.Id, d.Version).Editor,
+                ContentTypes.Resolve(d.Id, d.Version).Pattern)).ToImmutableArray();
+            var recordSchemas = ContentTypes.Records.Descriptors.Select(d => new RecordDefinitionIdentity(d,
+                ContentTypes.Records.Resolve(d.Id, d.Version).ImplementationDigest, ContentTypes.Records.Resolve(d.Id, d.Version).Editor)).ToImmutableArray();
             var digest = BuildPipeline.Hash(JsonSerializer.SerializeToUtf8Bytes(new
             {
                 Descriptor, Design, document = DocumentComponent.FullName, components = mappings,
-                definitions,
+                definitions, recordSchemas,
                 executable = new { executable.Digest, executable.Runtime, executable.RuntimeIdentifier, executable.OperatingSystem },
                 assets = Assets.OrderBy(a => a.Key, StringComparer.Ordinal).Select(a => new { path = a.Key, digest = BuildPipeline.Hash(a.Value.AsSpan()) })
             }, CompositionJson.Options));
-            return frozen = new(Descriptor, Design, mappings, definitions, Assets, executable, digest);
+            return frozen = new(Descriptor, Design, mappings, definitions, Assets, executable, digest) { RecordSchemas = recordSchemas };
         }
         finally { captureLock.Release(); }
     }

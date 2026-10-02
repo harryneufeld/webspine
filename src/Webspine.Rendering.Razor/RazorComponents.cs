@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Text.Json;
 using Webspine.Core.Composition;
 
 namespace Webspine.Rendering.Razor;
@@ -23,6 +24,13 @@ public sealed class RazorPageContext(RazorDesignPackage package, CapturedComposi
 {
     public CompositionPage Page => page;
     public CompositionWebsite Website => captured.Content.Website;
+    public T Record<T>(string id, string schema, int version)
+    {
+        var record = Website.Records.Single(r => r.Id == id && r.SchemaId == schema && r.SchemaVersion == version);
+        var definition = package.ContentTypes.Records.Resolve(schema, version);
+        if (definition.PayloadType != typeof(T)) throw new InvalidOperationException("The component requested an incompatible Record type.");
+        return definition.Values(record, Website, captured.Design).Deserialize<T>(CompositionJson.Options)!;
+    }
     public FrozenDesignPackage Design => design;
     public CancellationToken CancellationToken => cancellationToken;
     public string Link(string destination) => destination.StartsWith('/') ? prefix + destination : destination;

@@ -54,6 +54,8 @@ All files, including manifest/CSS/scripts, enter the artifact digest. Razor esca
 
 The examples are loaded and built by the check suite. A separate test provider proves the source boundary and a Quote registration proves type extension without engine switch changes.
 
+[Patterns and Records](patterns-records.md) extend native v2 with an additive empty-default Record collection, registered versioned schemas, typed Pattern inputs/override slots, conditional Record operations and explicit upgrades. Decision 0018 records the bounded Product/card proof.
+
 V2 identifies contract version 2 explicitly and uses its own serializer/model. It is the sole management authoring workflow. API v1 editing is retired with 410; old retained preview GET/HEAD URLs continue serving exact output with preview permissions. Database metadata initialization preserves v1 snapshot/artifact JSON but never converts or edits it. Legacy migration/mapping/restore tooling is removed; preserve old workspaces and create native v2 sites in separate empty directories. Decision 0017 supersedes the original additive authoring policy.
 
 Storage backends remain implementation details of spinecms/adapters. Multiple external business-data providers and typed Records are separate from choosing SQLite/PostgreSQL/MySQL persistence; neither additional database backends nor Record providers are introduced here.

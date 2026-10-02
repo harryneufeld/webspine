@@ -18,6 +18,9 @@ public sealed record CompositionLocation(string? PageId, string? RegionId, strin
 [JsonDerivedType(typeof(EditCompositionPage), "page")]
 [JsonDerivedType(typeof(EditCompositionSettings), "settings")]
 [JsonDerivedType(typeof(AddCompositionPage), "addPage")]
+[JsonDerivedType(typeof(CreateRecord), "createRecord")]
+[JsonDerivedType(typeof(UpdateRecord), "updateRecord")]
+[JsonDerivedType(typeof(DeleteRecord), "deleteRecord")]
 public abstract record CompositionEdit;
 public sealed record CreateBlock(CompositionLocation Location, int Index, string TypeId, int TypeVersion, JsonElement Fields) : CompositionEdit;
 public sealed record UpdateBlock(string BlockId, JsonElement Fields) : CompositionEdit;
@@ -31,6 +34,9 @@ public sealed record DeleteShared(string SharedId) : CompositionEdit;
 public sealed record EditCompositionPage(string PageId, string Title, string Description) : CompositionEdit;
 public sealed record EditCompositionSettings(string Title, string Language) : CompositionEdit;
 public sealed record AddCompositionPage(string Title, string Path, string Description) : CompositionEdit;
+public sealed record CreateRecord(string SchemaId, int SchemaVersion, JsonElement Fields) : CompositionEdit;
+public sealed record UpdateRecord(string RecordId, string ExpectedRecordRevision, JsonElement Fields) : CompositionEdit;
+public sealed record DeleteRecord(string RecordId, string ExpectedRecordRevision) : CompositionEdit;
 public sealed record CompositionAuthority(bool ContentWrite, bool SharedWrite, bool SettingsWrite);
 public sealed class CompositionPermissionException(string message) : Exception(message);
 public sealed class CompositionRevisionException() : Exception("The draft changed. Reload before saving.");
@@ -46,6 +52,7 @@ public sealed class CompositionEditor(ICompositionDraftPersistence source, Compo
         if (snapshot.Source != source.Identity) throw new ContentValidationException("The selected CMS returned a different source identity.");
         if (snapshot.Revision != expectedRevision) throw new CompositionRevisionException();
         CompositionContract.Validate(snapshot, design, registry);
+        foreach (var record in snapshot.Website.Records) source.CompositionCapabilities.RequireRecord(CompositionOperation.Read, record.SchemaId, record.SchemaVersion);
         var site = snapshot.Website;
         var owners = new HashSet<BlockOwner>();
         string? promotedPage = null;
@@ -97,6 +104,34 @@ public sealed class CompositionEditor(ICompositionDraftPersistence source, Compo
         void Fields(JsonElement fields) { if (fields.ValueKind != JsonValueKind.Object) throw new ContentValidationException("Registered fields must be an object."); }
         switch (edit)
         {
+            case CreateRecord e:
+                operation = CompositionOperation.RecordCreate; source.CompositionCapabilities.RequireRecord(operation, e.SchemaId, e.SchemaVersion);
+                if (!authority.ContentWrite) throw new CompositionPermissionException("Content editing permission is required.");
+                registry.Records.Resolve(e.SchemaId, e.SchemaVersion); Fields(e.Fields);
+                site = site with { Records = site.Records.Add(new(NewId("record"), e.SchemaId, e.SchemaVersion, Guid.NewGuid().ToString("N"), e.Fields.Clone())) }; break;
+            case UpdateRecord e:
+                operation = CompositionOperation.RecordUpdate;
+                var record = site.Records.FirstOrDefault(r => r.Id == e.RecordId) ?? throw new ContentValidationException("Record does not exist.");
+                source.CompositionCapabilities.RequireRecord(operation, record.SchemaId, record.SchemaVersion);
+                if (!authority.ContentWrite) throw new CompositionPermissionException("Content editing permission is required.");
+                if (record.Revision != e.ExpectedRecordRevision) throw new CompositionRevisionException();
+                var recordPages = PatternContract.AffectedPages(site, registry, record.Id);
+                if (PatternContract.IsReferenced(site, registry, record.Id))
+                {
+                    if (!authority.SharedWrite) throw new CompositionPermissionException("Editing a reused Record requires shared-content permission.");
+                    if (acknowledgedPages.IsDefault || !acknowledgedPages.Order(StringComparer.Ordinal).SequenceEqual(recordPages))
+                        throw new ContentValidationException("Review and acknowledge every affected page before editing a reused Record.");
+                }
+                Fields(e.Fields);
+                site = site with { Records = site.Records.Replace(record, record with { Revision = Guid.NewGuid().ToString("N"), Fields = e.Fields.Clone() }) }; break;
+            case DeleteRecord e:
+                operation = CompositionOperation.RecordDelete;
+                var removedRecord = site.Records.FirstOrDefault(r => r.Id == e.RecordId) ?? throw new ContentValidationException("Record does not exist.");
+                source.CompositionCapabilities.RequireRecord(operation, removedRecord.SchemaId, removedRecord.SchemaVersion);
+                if (!authority.ContentWrite) throw new CompositionPermissionException("Content editing permission is required.");
+                if (removedRecord.Revision != e.ExpectedRecordRevision) throw new CompositionRevisionException();
+                if (PatternContract.IsReferenced(site, registry, removedRecord.Id)) throw new ContentValidationException("Remove or replace every Record reference before deleting it.");
+                site = site with { Records = site.Records.Remove(removedRecord) }; break;
             case AddCompositionPage e:
                 operation = CompositionOperation.Create;
                 source.CompositionCapabilities.Require(operation);

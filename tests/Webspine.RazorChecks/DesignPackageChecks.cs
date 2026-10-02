@@ -124,7 +124,7 @@ static class DesignPackageChecks
         Console.WriteLine("PASS Only declared intact package scripts receive executable MIME/CSP; default, tampered and different candidates remain blocked");
         var definitions = new BlockRegistry(package.ContentTypes.Descriptors.Select(d => package.ContentTypes.Resolve(d.Id, d.Version))
             .Append(new BlockDefinition<QuoteFields>(new("quote", 1, 2, "quote-content", "1", "quote-fields-v1", "none", false),
-                (v, _) => CompositionRules.Text(v.Quote, 1000))));
+                (v, _) => CompositionRules.Text(v.Quote, 1000))), package.ContentTypes.Records);
         var main = package.Design.Layout.Regions.Single(r => r.Id == "main");
         var customDesign = package.Design with { Layout = package.Design.Layout with { Regions = package.Design.Layout.Regions.Replace(main,
             main with { AllowedTypes = main.AllowedTypes.Add("quote") }) }, Groups = package.Design.Groups with { AllowedTypes = package.Design.Groups.AllowedTypes.Add("quote") } };

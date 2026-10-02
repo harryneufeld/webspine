@@ -35,6 +35,14 @@ internal static class CompositionApi
             if (!snapshot.Website.SharedBlocks.Any(s => s.Id == id)) return Results.NotFound();
             return Results.Json(new { snapshot.Revision, affectedPages = CompositionEditor.AffectedPages(snapshot.Website, [id]) }, CompositionJson.Options);
         }).WithMetadata(new ApiPermission("content:read"));
+        api.MapGet("/records/{id}/impact", async (string id, CompositionOperations operations, HttpContext c) =>
+        {
+            var snapshot = await operations.ReadAsync(c.RequestAborted);
+            var record = snapshot.Website.Records.FirstOrDefault(r => r.Id == id);
+            return record is null ? Results.NotFound() : Results.Json(new { snapshot.Revision, recordRevision = record.Revision,
+                isReferenced = PatternContract.IsReferenced(snapshot.Website, operations.Registry, id),
+                affectedPages = PatternContract.AffectedPages(snapshot.Website, operations.Registry, id) }, CompositionJson.Options);
+        }).WithMetadata(new ApiPermission("content:read"));
         api.MapPost("/changes", async (HttpContext c, CompositionOperations operations) =>
         {
             using var json = await JsonDocument.ParseAsync(c.Request.Body, new JsonDocumentOptions { MaxDepth = 32 }, c.RequestAborted);

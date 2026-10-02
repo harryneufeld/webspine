@@ -102,7 +102,7 @@ internal static partial class CompositionBoard
             operations.Source.CompositionCapabilities.Require(CompositionOperation.Share);
             var body = ScreenHeader(snapshot.Website, page, "Reuse shared content", "This adds a reference. Edits to the shared content affect every page that uses it.");
             foreach (var shared in snapshot.Website.SharedBlocks.Where(s => destination.Types.Contains(snapshot.Website.Blocks.Single(b => b.Id == s.RootBlockId).TypeId)))
-                body += Form(c, snapshot.Revision, "/manage/composition/reference", ContextFields(page, location, after) + Hidden("shared", shared.Id) + "<h2>" + E(BlockLabel(c, snapshot.Website.Blocks.Single(b => b.Id == shared.RootBlockId))) + "</h2>", "Use this Shared Block");
+                body += Form(c, snapshot.Revision, "/manage/composition/reference", ContextFields(page, location, after) + Hidden("shared", shared.Id) + "<h2>" + E(BlockLabel(c, snapshot.Website.Blocks.Single(b => b.Id == shared.RootBlockId), snapshot.Website)) + "</h2>", "Use this Shared Block");
             return ManagementUi.Html("Reuse shared content", body);
         });
         board.MapPost("/reference", async (CompositionOperations operations, HttpContext c) =>
@@ -164,7 +164,7 @@ internal static partial class CompositionBoard
             if (selected.IsEmpty || selected.Any(id => !d.Items.Any(p => p.Id == id))) throw new ContentValidationException("Select elements from this one area to group.");
             var fields = ContentFieldForms.Render(SelectedEditor(c, "group"), SeedFields(c, "group", snapshot.Website), snapshot.Website, design);
             var body = ScreenHeader(snapshot.Website, f["page"].ToString(), "Group selected elements", "The selected elements keep their content and order inside this Group.");
-            body += "<ul>" + string.Join("", d.Items.Where(p => selected.Contains(p.Id)).Select(p => "<li>" + E(BlockLabel(c, Target(snapshot.Website, p))) + "</li>")) + "</ul>";
+            body += "<ul>" + string.Join("", d.Items.Where(p => selected.Contains(p.Id)).Select(p => "<li>" + E(BlockLabel(c, Target(snapshot.Website, p), snapshot.Website)) + "</li>")) + "</ul>";
             return ManagementUi.Html("Group elements", body + Form(c, snapshot.Revision, "/manage/composition/group/commit", ContextFields(f["page"].ToString(), l) + string.Join("", selected.Select(id => Hidden("selection", id))) + fields, "Create Group"));
         });
         board.MapPost("/group/commit", async (CompositionOperations operations, HttpContext c) =>
@@ -214,9 +214,9 @@ internal static partial class CompositionBoard
     private static string ChangeDescription(HttpContext c, CompositionWebsite site, CompositionEdit edit) => edit switch
     {
         CreateBlock e => "Add " + TypeLabel(c, e.TypeId).ToLowerInvariant() + " to shared content.",
-        MovePlacement e => "Move “" + BlockLabel(c, Target(site, Locate(site, e.PlacementId).Placement)) + "” within shared content.",
-        PromoteShared e => "Make “" + BlockLabel(c, Target(site, Locate(site, e.PlacementId).Placement)) + "” a reusable Shared Block.",
-        DeletePlacement e => "Remove “" + BlockLabel(c, Target(site, Locate(site, e.PlacementId).Placement)) + "” from this area" + (Target(site, Locate(site, e.PlacementId).Placement).Children.IsEmpty ? "." : ", including its nested placements."),
+        MovePlacement e => "Move “" + BlockLabel(c, Target(site, Locate(site, e.PlacementId).Placement), site) + "” within shared content.",
+        PromoteShared e => "Make “" + BlockLabel(c, Target(site, Locate(site, e.PlacementId).Placement), site) + "” a reusable Shared Block.",
+        DeletePlacement e => "Remove “" + BlockLabel(c, Target(site, Locate(site, e.PlacementId).Placement), site) + "” from this area" + (Target(site, Locate(site, e.PlacementId).Placement).Children.IsEmpty ? "." : ", including its nested placements."),
         DeleteShared => "Delete the unused Shared Block and its owned content.",
         GroupPlacements => "Group the selected elements within shared content.", ReferenceShared => "Add a shared reference within shared content.", DetachPlacement => "Replace this shared reference with an independent copy.", _ => "Update this draft."
     };
@@ -227,6 +227,7 @@ internal static partial class CompositionBoard
         var site = snapshot.Website;
         var selectedPage = c.Request.Query["page"].ToString(); if (!site.Pages.Any(p => p.Id == selectedPage)) selectedPage = site.Pages[0].Id;
         var html = new StringBuilder("<nav class=\"actions\" aria-label=\"Workspace\">");
+        if (!SelectedDefinitions(c).Records.Descriptors.IsEmpty) html.Append("<a href=\"/manage/composition/records\">Reusable content</a>");
         if (Permissions.Has(c.User, "integrations:manage")) html.Append("<a href=\"/manage/integrations\">Connected apps</a>");
         if (Permissions.Has(c.User, "accounts:manage")) html.Append("<a href=\"/manage/users\">People and access</a>");
         html.Append("<a href=\"/manage/composition/export\">Download content</a><a href=\"/manage/account/password\">Your account</a></nav><div class=\"intro\"><p class=\"eyebrow\">Your website</p><h1>" + E(site.Title) + "</h1><p>Open a page to edit its content. Add and arrange elements directly in each area.</p></div>");
@@ -244,8 +245,8 @@ internal static partial class CompositionBoard
                 var sharedReadOnly = !Editable(c, block.Owner) || !Supported(caps, CompositionOperation.Update, block.TypeId, block.TypeVersion) || !ContentEditorContract.Generic(registry.Resolve(block.TypeId, block.TypeVersion).Editor);
                 var editUrl = block.TypeId == "page-title" ? "/manage/composition/page/" + page : "/manage/composition/blocks/" + block.Id + "?page=" + Q(page);
                 html.Append("<li class=\"structure-node\"><div class=\"element-row\"><div class=\"element-name\">");
-                if (canGroup) html.Append($"<label class=\"element-select\"><input type=\"checkbox\" form=\"{groupForm}\" name=\"selection\" value=\"{E(p.Id)}\"><span class=\"visually-hidden\">Select {E(BlockLabel(c, block))} for grouping</span></label>");
-                html.Append("<div><strong>" + E(BlockLabel(c, block)) + "</strong><span class=\"element-kind\">" + E(TypeLabel(c, block.TypeId)) + (p.Kind == TargetKind.Shared ? " · Shared across pages" : "") + "</span></div></div><div class=\"element-actions\"><a href=\"" + E(editUrl) + "\">" + (sharedReadOnly || !Permissions.Has(c.User, "content:write") ? "View" : "Edit") + "</a>");
+                if (canGroup) html.Append($"<label class=\"element-select\"><input type=\"checkbox\" form=\"{groupForm}\" name=\"selection\" value=\"{E(p.Id)}\"><span class=\"visually-hidden\">Select {E(BlockLabel(c, block, site))} for grouping</span></label>");
+                html.Append("<div><strong>" + E(BlockLabel(c, block, site)) + "</strong><span class=\"element-kind\">" + E(TypeLabel(c, block.TypeId)) + (p.Kind == TargetKind.Shared ? " · Shared across pages" : "") + "</span></div></div><div class=\"element-actions\"><a href=\"" + E(editUrl) + "\">" + (sharedReadOnly || !Permissions.Has(c.User, "content:write") ? "View" : "Edit") + "</a>");
                 if (canEdit && Supported(caps, CompositionOperation.Move))
                 {
                     html.Append(Quick(p, "reorder", "Move up", page, Hidden("direction", "up"), i == 0));
@@ -289,7 +290,7 @@ internal static partial class CompositionBoard
         foreach (var shared in site.SharedBlocks)
         {
             var root = site.Blocks.Single(b => b.Id == shared.RootBlockId); var used = site.Pages.SelectMany(p => p.Regions).SelectMany(r => r.Placements).Concat(site.Blocks.SelectMany(b => b.Children)).Any(p => p.Kind == TargetKind.Shared && p.TargetId == shared.Id);
-            html.Append("<li><div><strong>" + E(BlockLabel(c, root)) + "</strong><span>" + (used ? "Referenced shared content" : "Not currently referenced") + "</span></div><a href=\"/manage/composition/blocks/" + E(root.Id) + "?page=" + Q(selectedPage) + "\">" + (Editable(c, root.Owner) ? "Edit" : "View") + "</a>");
+            html.Append("<li><div><strong>" + E(BlockLabel(c, root, site)) + "</strong><span>" + (used ? "Referenced shared content" : "Not currently referenced") + "</span></div><a href=\"/manage/composition/blocks/" + E(root.Id) + "?page=" + Q(selectedPage) + "\">" + (Editable(c, root.Owner) ? "Edit" : "View") + "</a>");
             if (!used && Editable(c, root.Owner) && Supported(caps, CompositionOperation.Delete)) html.Append(Form(c, snapshot.Revision, "/manage/composition/shared/" + shared.Id + "/remove", Hidden("page", selectedPage), "Remove unused Shared Block"));
             if (registry.Resolve(root.TypeId, root.TypeVersion).Descriptor.Container)
             {

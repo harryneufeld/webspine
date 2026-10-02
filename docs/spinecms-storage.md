@@ -27,3 +27,7 @@ The old `Content:Action` inspect/migrate/restore commands now fail before initia
 ## Verification
 
 Management checks seed the actual old database schema as historical data and verify idempotent metadata initialization, unchanged snapshots/preview JSON/head, rejected legacy operations and exact authenticated preview retrieval under another selected design. Native v2 checks cover fresh creation with atomic media validation, graph/shared/nested commits, reopen, competing writers, stale preview saves, detach/delete and immutable history/assets. Retired offline commands are checked for nonzero exit without opening/modifying content. CI runs the checks on Windows, Linux and macOS.
+
+## Patterns and content Records
+
+[Patterns and Records](patterns-records.md) document the Studio Product/card workflow, registered schema/input versions, source capabilities, board/API conditional operations, affected-page authority, frozen values/media and explicit breaking-version migrations. This is implemented for native v2; external business providers remain planned.

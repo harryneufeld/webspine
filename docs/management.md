@@ -35,3 +35,7 @@ Known old preview URLs remain readable in the original workspace with preview pe
 ## Verification
 
 `dotnet run --project tests/Webspine.ManagementChecks` verifies all four native starter combinations, v2 editing/API/account permissions, conflicts, page creation, atomic storage, exact retained output, retired operations and local-host restrictions. Checks use isolated temporary directories and stop their own hosts. Core and Razor checks verify mandatory contracts/builds and configured static rendering. CI runs on Windows, Linux and macOS.
+
+## Patterns and content Records
+
+[Patterns and Records](patterns-records.md) document the Studio Product/card workflow, registered schema/input versions, source capabilities, board/API conditional operations, affected-page authority, frozen values/media and explicit breaking-version migrations. This is implemented for native v2; external business providers remain planned.

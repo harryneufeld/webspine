@@ -8,7 +8,11 @@ namespace Webspine.Core.Composition;
 public sealed record CompositionSnapshot(int ContractVersion, SourceIdentity Source, string Revision, CompositionWebsite Website);
 public sealed record CompositionWebsite(string Id, string Title, string Language, string LayoutId,
     ImmutableArray<CompositionPage> Pages, ImmutableArray<Block> Blocks,
-    ImmutableArray<SharedBlock> SharedBlocks, ImmutableArray<AssetContent> Assets);
+    ImmutableArray<SharedBlock> SharedBlocks, ImmutableArray<AssetContent> Assets)
+{
+    // Additive v2 field: older native snapshots have no Records.
+    public ImmutableArray<ContentRecord> Records { get; init; } = [];
+}
 public sealed record CompositionPage(string Id, string Path, string Title, string Description, ImmutableArray<RegionContent> Regions);
 public sealed record RegionContent(string Id, ImmutableArray<Placement> Placements);
 public enum OwnerKind { Page, Shared }
@@ -27,11 +31,18 @@ public sealed record CompositionDesign(string Id, string Revision, LayoutDefinit
 public sealed record CapturedComposition(CompositionSnapshot Content, CompositionDesign Design,
     ImmutableDictionary<string, ImmutableArray<byte>> AssetFiles);
 
-public enum CompositionOperation { Read, Create, Update, Move, Group, Share, Detach, Delete, Media }
+public enum CompositionOperation { Read, Create, Update, Move, Group, Share, Detach, Delete, Media, RecordCreate, RecordUpdate, RecordDelete }
 public sealed record SupportedBlockType(string Id, int Version);
 public sealed record CompositionCapabilities(int ContractVersion, ImmutableArray<SupportedBlockType> Types,
     ImmutableArray<CompositionOperation> Operations, bool AtomicConditionalWrites, bool ConsistentCapture)
 {
+    public ImmutableArray<RecordSchemaDescriptor> RecordSchemas { get; init; } = [];
+    public void RequireRecord(CompositionOperation operation, string schemaId, int version)
+    {
+        Require(operation);
+        if (RecordSchemas.IsDefaultOrEmpty || !RecordSchemas.Any(s => s.Id == schemaId && s.Version == version))
+            throw new SourceOperationNotSupportedException("The selected CMS does not support this Record schema/version.");
+    }
     public void Require(CompositionOperation operation, string? typeId = null, int typeVersion = 1)
     {
         if (!Enum.IsDefined(operation) || ContractVersion != CompositionContract.Version || Operations.IsDefault || !Operations.Contains(operation) ||

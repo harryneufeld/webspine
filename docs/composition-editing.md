@@ -80,3 +80,7 @@ Existing approved fixture media, including its trusted SVG, remains selectable a
 ## Next boundaries
 
 **Add a page** / `addPage` fills required Regions following the first page's required-area shape, using its existing shared references or registered basic defaults. It preserves shared values; update shared navigation separately to add a link. Safe defaults and supported type/create/share capabilities are required; otherwise creation fails without a partial commit. Rich page blueprints and Patterns/Records follow in #17. Page deletion, route changes, design editing, plugin installation, a visual canvas and public publication are also outside this slice. Content/image export is available from the composition board.
+
+## Patterns and content Records
+
+[Patterns and Records](patterns-records.md) document the Studio Product/card workflow, registered schema/input versions, source capabilities, board/API conditional operations, affected-page authority, frozen values/media and explicit breaking-version migrations. This is implemented for native v2; external business providers remain planned.

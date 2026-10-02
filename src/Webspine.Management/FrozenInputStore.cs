@@ -27,7 +27,7 @@ internal sealed class FrozenInputStore(string directory)
             await Add("content.json", JsonSerializer.SerializeToUtf8Bytes(content, content.GetType(), CompositionJson.Options));
             await Add("design.json", JsonSerializer.SerializeToUtf8Bytes(new
             {
-                design.Descriptor, design.Design, design.Components, design.ContentTypes, design.Digest,
+                design.Descriptor, design.Design, design.Components, design.ContentTypes, design.RecordSchemas, design.Digest,
                 executableDigest = design.Executable.Digest, design.Executable.Files,
                 design.Executable.Runtime, design.Executable.RuntimeIdentifier, design.Executable.OperatingSystem
             }, CompositionJson.Options));

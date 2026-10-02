@@ -54,7 +54,8 @@ public static class RazorCompositionRenderer
         {
             contractVersion = 2, content.Content.Source, content.Content.Revision,
             contentDigest = BuildPipeline.Hash(JsonSerializer.SerializeToUtf8Bytes(content.Content, CompositionJson.Options)),
-            designRevision = design.Digest, package = design.Descriptor, design.Design, design.Components, design.ContentTypes,
+            designRevision = design.Digest, package = design.Descriptor, design.Design, design.Components, design.ContentTypes, design.RecordSchemas,
+            records = site.Records.Select(r => new { r.Id, r.SchemaId, r.SchemaVersion, r.Revision }),
             executable = new { design.Executable.Digest, design.Executable.Runtime, design.Executable.RuntimeIdentifier, design.Executable.OperatingSystem,
                 files = design.Executable.Files }, scripts,
             assets = design.Assets.OrderBy(a => a.Key, StringComparer.Ordinal).Select(a => new { path = a.Key, digest = BuildPipeline.Hash(a.Value.AsSpan()) })

@@ -52,6 +52,7 @@ public static class CompositionContract
         foreach (var asset in site.Assets)
             if (!assetPaths.Add(asset.File)) CompositionRules.Fail("Duplicate or reserved asset path.");
         ValidateDesign(design, registry);
+        registry.Records.Validate(site, design);
         if (site.LayoutId != design.Layout.Id) CompositionRules.Fail("Unavailable layout.");
         var pages = site.Pages.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
         var blocks = Unique(site.Blocks, b => b.Id);
@@ -102,6 +103,7 @@ public static class CompositionContract
                 CompositionRules.Fail("Block fields must be a bounded object.");
             ValidateFieldJson(block.Fields, 0);
             registration.Validate(block, context);
+            PatternContract.Validate(block, registration, site);
             foreach (var child in block.Children) edges[block.Id].Add(Target(child, block.Owner, design.Groups.AllowedTypes).Id);
         }
         var pageRoots = new Dictionary<string, List<string>>(StringComparer.Ordinal);

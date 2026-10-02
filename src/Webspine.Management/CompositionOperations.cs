@@ -49,7 +49,7 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
                 catch (ContentValidationException e) { unavailable = e.Message; }
             }
             else unavailable = "The basic board requires editing metadata or a specialized editor. Typed clients must supply the registered schema.";
-            return new { descriptor.Id, descriptor.Version, descriptor.SchemaId, descriptor.Container, editor, defaults,
+            return new { descriptor.Id, descriptor.Version, descriptor.SchemaId, descriptor.Container, definition.Pattern, editor, defaults,
                 resolvedChoices = choices, boardEditable = ContentEditorContract.Generic(editor) && Allowed(CompositionOperation.Update, descriptor.Id, descriptor.Version),
                 boardCreatable = defaults is not null && Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
                 unavailable, canCreate = Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
@@ -58,7 +58,11 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
         return new { contractVersion = 2, metadataVersion = 1, snapshot.Revision, package = package.Descriptor,
             Design.Layout, Design.Groups, operations = caps.Operations.Where(op => Allowed(op)).ToArray(),
             canWriteShared = Permissions.Has(user, "content:write") && Permissions.Has(user, "content:shared:write"),
-            types = Registry.Descriptors.Select(Type).ToArray() };
+            types = Registry.Descriptors.Select(Type).ToArray(),
+            recordSchemas = Registry.Records.Descriptors.Select(d => new { descriptor = d, editor = Registry.Records.Resolve(d.Id, d.Version).Editor,
+                canCreate = Allowed(CompositionOperation.RecordCreate) && caps.RecordSchemas.Contains(d),
+                canUpdate = Allowed(CompositionOperation.RecordUpdate) && caps.RecordSchemas.Contains(d),
+                canDelete = Allowed(CompositionOperation.RecordDelete) && caps.RecordSchemas.Contains(d) }).ToArray() };
     }
     public async Task<CompositionSnapshot> ReadAsync(CancellationToken ct)
     {
@@ -66,6 +70,7 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
         var snapshot = await source.ReadCompositionAsync(ct);
         if (snapshot.Source != source.Identity) throw new ContentValidationException("The selected CMS returned a different source identity.");
         CompositionContract.Validate(snapshot, Design, Registry);
+        foreach (var record in snapshot.Website.Records) source.CompositionCapabilities.RequireRecord(CompositionOperation.Read, record.SchemaId, record.SchemaVersion);
         return snapshot;
     }
     public static CompositionAuthority Authority(ClaimsPrincipal user) => new(Permissions.Has(user, "content:write"), Permissions.Has(user, "content:shared:write"), Permissions.Has(user, "settings:write"));
@@ -98,6 +103,7 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
         var frozen = await package.CaptureAsync(ct);
         var captured = await source.CaptureCompositionAsync(frozen.Design, ct);
         foreach (var block in captured.Content.Website.Blocks) source.CompositionCapabilities.Require(CompositionOperation.Read, block.TypeId, block.TypeVersion);
+        foreach (var record in captured.Content.Website.Records) source.CompositionCapabilities.RequireRecord(CompositionOperation.Read, record.SchemaId, record.SchemaVersion);
         if (captured.Content.Revision != revision) throw new CompositionRevisionException();
         var id = Guid.NewGuid().ToString("N");
         var artifact = await renderer.BuildAsync(captured, frozen, prefix + id, ct);

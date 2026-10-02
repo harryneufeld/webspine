@@ -29,6 +29,7 @@ p { color: var(--muted); }
 .card { padding: 26px; background: #fffdf8; border: 1px solid var(--line); border-radius: 14px; }
 .card img { display: block; width: 100%; height: auto; border-radius: 8px; }
 .card p { font-size: 15px; }
+.product-card{min-width:0;overflow:hidden;background:#fffdf8;border:1px solid var(--line);border-radius:14px}.product-card img{display:block;width:100%;max-height:20rem;object-fit:cover}.product-card-body{padding:26px}.product-card h2{margin-top:0}.product-card p{white-space:pre-line;overflow-wrap:anywhere;max-width:65ch}.product-caption{font-size:14px;color:var(--muted,#555)}
 .card a { font-size: 14px; font-weight: 600; }
 footer { display: flex; justify-content: space-between; gap: 30px; border-top: 1px solid var(--line); margin-top: 65px; padding: 30px 0; font-size: 12px; }
 footer p { margin: 0; }

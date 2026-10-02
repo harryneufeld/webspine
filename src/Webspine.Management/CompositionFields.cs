@@ -22,12 +22,17 @@ internal static partial class CompositionBoard
     private static string TypeLabel(HttpContext c, string type) => SelectedDefinitions(c).Descriptors.FirstOrDefault(d => d.Id == type) is { } definition
         ? SelectedDefinitions(c).Resolve(type, definition.Version).Editor?.Label ?? HumanLabel(type) : HumanLabel(type);
     private static string HumanLabel(string text) => text.Length == 0 ? "Content" : char.ToUpperInvariant(text[0]) + text[1..].Replace('-', ' ');
-    private static string BlockLabel(HttpContext c, Block block)
+    private static string BlockLabel(HttpContext c, Block block, CompositionWebsite site)
     {
         var editor = SelectedDefinitions(c).Resolve(block.TypeId, block.TypeVersion).Editor;
         var label = TypeLabel(c, block.TypeId);
         if (editor?.SummaryField is { } name && block.Fields.TryGetProperty(name, out var summary) && summary.ValueKind == JsonValueKind.String)
             label += " · " + summary.GetString();
+        else if (editor is not null)
+            foreach (var field in editor.Fields.Where(f => f.ChoiceSource == EditorChoiceSource.Records))
+                if (block.Fields.TryGetProperty(field.Name, out var reference) && reference.ValueKind == JsonValueKind.String &&
+                    site.Records.FirstOrDefault(r => r.Id == reference.GetString()) is { } record)
+                    label += " · " + RecordLabel(record, SelectedDefinitions(c).Records.Resolve(record.SchemaId, record.SchemaVersion));
         return label.Length <= 100 ? label : label[..97] + "…";
     }
     private static IResult Edit(HttpContext c, CompositionSnapshot snapshot, Block block, CompositionDesign design, CompositionCapabilities caps)

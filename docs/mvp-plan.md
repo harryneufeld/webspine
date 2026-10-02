@@ -42,7 +42,7 @@ These slices provide local setup, editing, metadata, preview, export, owner sess
 | [#26](https://github.com/harryneufeld/webspine/issues/26) | Field metadata and registered-type editing through board/API | #25; extends #16 |
 | [#27](https://github.com/harryneufeld/webspine/issues/27) | Two independent website packages, custom block and developer quickstart | #25, #26 |
 
-The #16 editor and #24â€“27 independent design proof are implemented. Next, [#31](https://github.com/harryneufeld/webspine/issues/31) makes native v2 authoring the sole workflow and removes legacy editing/migration tooling, without a v1 conversion requirement. Then resume #17 Patterns/Records and #18 external CMS support. Existing v2 permissions, conditional writes and retained-output guarantees remain mandatory. Durable builds and exact-artifact publication remain the next release objective after the framework proof. GitHub owns completion status.
+The #16 editor, #24–27 independent design proof and #31 native v2 authoring cleanup are implemented. [#17 Patterns/Records](patterns-records.md) now supplies the bounded Product/card proof, versioned capture and explicit upgrade seam. The next architecture task is #18 external CMS support; [#33](https://github.com/harryneufeld/webspine/issues/33) separately tracks the reported image-upload connection reset. Existing v2 permissions, conditional writes and retained-output guarantees remain mandatory. Durable builds and exact-artifact publication remain the next release objective after the framework proof. GitHub owns completion status.
 
 ## Release objective
 
