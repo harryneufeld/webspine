@@ -2,6 +2,8 @@
 
 Implemented for #26; [decision 0015](decisions/0015-data-only-content-editor-metadata.md) records the boundary. The existing composition board now derives creation, focused forms, summaries and type labels from registered definitions. Website markup remains in the selected design package.
 
+`ContentEditorMetadata.AllowCreate` defaults to true. Set it to false to retain a type for existing content while retiring new creation. The board excludes it from creation selectors, schema discovery reports effective create flags, and typed Record/Block create operations reject it. Existing editing, validation, capture and rendering continue using the registered schema. Required-area defaults for new pages also skip retired types.
+
 ## Register a type
 
 Supply a `ContentEditorMetadata` as the third argument of `BlockDefinition<T>`, alongside the descriptor and typed validator. Register the definition in the selected package, map it to a compatible Razor component, and allow it in the appropriate Regions/Groups. See `src/Webspine.Content.Faq/FaqContent.cs` and Studio's `FrequentlyAsked.razor`: the FAQ definition depends only on Core, while Studio owns presentation. Management needs no FAQ-specific changes.

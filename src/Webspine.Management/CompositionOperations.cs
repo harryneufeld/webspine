@@ -51,8 +51,8 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
             else unavailable = "The basic board requires editing metadata or a specialized editor. Typed clients must supply the registered schema.";
             return new { descriptor.Id, descriptor.Version, descriptor.SchemaId, descriptor.Container, definition.Pattern, editor, defaults,
                 resolvedChoices = choices, boardEditable = ContentEditorContract.Generic(editor) && Allowed(CompositionOperation.Update, descriptor.Id, descriptor.Version),
-                boardCreatable = defaults is not null && Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
-                unavailable, canCreate = Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
+                boardCreatable = editor is { AllowCreate: true } && defaults is not null && Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
+                unavailable, canCreate = editor is not { AllowCreate: false } && Allowed(CompositionOperation.Create, descriptor.Id, descriptor.Version),
                 canUpdate = Allowed(CompositionOperation.Update, descriptor.Id, descriptor.Version) };
         }
         return new { contractVersion = 2, metadataVersion = 1, snapshot.Revision, package = package.Descriptor,
@@ -60,7 +60,7 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
             canWriteShared = Permissions.Has(user, "content:write") && Permissions.Has(user, "content:shared:write"),
             types = Registry.Descriptors.Select(Type).ToArray(),
             recordSchemas = Registry.Records.Descriptors.Select(d => new { descriptor = d, editor = Registry.Records.Resolve(d.Id, d.Version).Editor,
-                canCreate = Allowed(CompositionOperation.RecordCreate) && caps.RecordSchemas.Contains(d),
+                canCreate = Registry.Records.Resolve(d.Id, d.Version).Editor.AllowCreate && Allowed(CompositionOperation.RecordCreate) && caps.RecordSchemas.Contains(d),
                 canUpdate = Allowed(CompositionOperation.RecordUpdate) && caps.RecordSchemas.Contains(d),
                 canDelete = Allowed(CompositionOperation.RecordDelete) && caps.RecordSchemas.Contains(d) }).ToArray() };
     }

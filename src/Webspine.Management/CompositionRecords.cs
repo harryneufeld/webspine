@@ -29,8 +29,8 @@ internal static partial class CompositionBoard
         board.MapGet("/records", async (CompositionOperations operations, HttpContext c) =>
         {
             var snapshot = await operations.ReadAsync(c.RequestAborted); var registry = operations.Registry.Records;
-            var body = RecordHeader("Reusable content", "Keep information in one place and reuse it across your website.");
-            body += "<section class=\"panel\"><h2>Your content</h2><ul class=\"pages\">";
+            var body = RecordHeader("Records", "A record stores information about one subject. Page elements can refer to it in several places without copying its content.");
+            body += "<section class=\"panel\"><h2>Your records</h2><ul class=\"pages\">";
             foreach (var record in snapshot.Website.Records)
             {
                 var definition = registry.Resolve(record.SchemaId, record.SchemaVersion); var pages = RecordPages(snapshot, c, record.Id);
@@ -38,12 +38,30 @@ internal static partial class CompositionBoard
                     E(pages.IsEmpty ? (PatternContract.IsReferenced(snapshot.Website, operations.Registry, record.Id) ? "Used in the shared library" : "Not used yet") : string.Join(", ", pages.Select(id => snapshot.Website.Pages.Single(p => p.Id == id).Title))) +
                     "</span></div><a aria-label=\"Open " + E(RecordLabel(record, definition)) + "\" href=\"/manage/composition/records/" + E(record.Id) + "\">Open</a></li>";
             }
-            if (snapshot.Website.Records.IsEmpty) body += "<li>No reusable content yet. Add content below, then select it in a compatible page element.</li>";
+            if (snapshot.Website.Records.IsEmpty) body += "<li>No records yet. Add a record, then select it in a compatible page element.</li>";
             body += "</ul></section>";
-            if (Permissions.Has(c.User, "content:write"))
-                foreach (var schema in registry.Descriptors.Where(d => RecordSupported(operations.Source.CompositionCapabilities, CompositionOperation.RecordCreate, d)))
-                    body += "<p><a class=\"button\" href=\"/manage/composition/records/new/" + E(schema.Id) + "\">Add " + E(registry.Resolve(schema.Id, schema.Version).Editor.Label.ToLowerInvariant()) + "</a></p>";
-            return ManagementUi.Html("Reusable content", body);
+            if (Permissions.Has(c.User, "content:write") && registry.Descriptors.Any(d => registry.Resolve(d.Id, d.Version).Editor.AllowCreate &&
+                RecordSupported(operations.Source.CompositionCapabilities, CompositionOperation.RecordCreate, d)))
+                body += "<p><a class=\"button\" href=\"/manage/composition/records/new\">Add record</a></p>";
+            body += "<section class=\"panel\"><h2>Records and page elements</h2><p>Records hold information. Patterns define how records appear on a page. Shared elements reuse the same composed element across pages.</p></section>";
+            return ManagementUi.Html("Records", body);
+        });
+        board.MapGet("/records/new", async (CompositionOperations operations, HttpContext c) =>
+        {
+            await operations.ReadAsync(c.RequestAborted);
+            if (!Permissions.Has(c.User, "content:write")) throw new CompositionPermissionException("Content editing permission is required.");
+            var body = RecordHeader("Add record", "Choose a record type. Each type defines the information you can enter.") +
+                "<p><a href=\"/manage/composition/records\">All records</a></p><section class=\"panel\"><h2>Available record types</h2><ul class=\"pages\">";
+            var schemas = operations.Registry.Records.Descriptors.Where(d => operations.Registry.Records.Resolve(d.Id, d.Version).Editor.AllowCreate &&
+                RecordSupported(operations.Source.CompositionCapabilities, CompositionOperation.RecordCreate, d)).ToArray();
+            foreach (var schema in schemas)
+            {
+                var editor = operations.Registry.Records.Resolve(schema.Id, schema.Version).Editor;
+                body += "<li><div><strong>" + E(editor.Label) + "</strong><span class=\"element-kind\">" + E(editor.Description) +
+                    "</span></div><a aria-label=\"Choose " + E(editor.Label) + "\" href=\"/manage/composition/records/new/" + E(schema.Id) + "\">Choose</a></li>";
+            }
+            if (schemas.Length == 0) body += "<li>No record types are available to create for this source.</li>";
+            return ManagementUi.Html("Add record", body + "</ul></section><p>Record types are supplied by your website configuration. Ask your website developer to register additional types.</p>");
         });
         board.MapGet("/records/new/{schema}", async (string schema, CompositionOperations operations, HttpContext c) =>
         {
@@ -52,6 +70,7 @@ internal static partial class CompositionBoard
             operations.Source.CompositionCapabilities.RequireRecord(CompositionOperation.RecordCreate, schema, descriptor.Version);
             if (!Permissions.Has(c.User, "content:write")) throw new CompositionPermissionException("Content editing permission is required.");
             var editor = operations.Registry.Records.Resolve(schema, descriptor.Version).Editor;
+            if (!editor.AllowCreate) throw new ContentValidationException("This Record type is retained for existing content only.");
             var fields = ContentEditorContract.Defaults(editor, snapshot.Website, operations.Design);
             return ManagementUi.Html("Add " + editor.Label.ToLowerInvariant(), RecordHeader("Add " + editor.Label.ToLowerInvariant(), editor.Description) +
                 Form(c, snapshot.Revision, "/manage/composition/records/new/" + schema, ContentFieldForms.Render(editor, fields, snapshot.Website, operations.Design), "Add " + editor.Label.ToLowerInvariant()));
@@ -75,7 +94,7 @@ internal static partial class CompositionBoard
                 RecordSupported(operations.Source.CompositionCapabilities, CompositionOperation.RecordUpdate, definition.Descriptor);
             var fields = ContentFieldForms.Render(definition.Editor, definition.Values(record, snapshot.Website, operations.Design), snapshot.Website, operations.Design);
             var body = RecordHeader(RecordLabel(record, definition), "Edit this information once for every place that uses it.");
-            body += "<p><a href=\"/manage/composition/records\">All reusable content</a></p>";
+            body += "<p><a href=\"/manage/composition/records\">All records</a></p>";
             body += canEdit ? Form(c, snapshot.Revision, "/manage/composition/records/" + id, Hidden("recordRevision", record.Revision) + fields + RecordImpact(snapshot, pages, true), "Save changes") :
                 "<p class=\"notice\">This content is read-only for your account or source. Used content requires shared-content editing permission.</p><fieldset disabled>" + fields + "</fieldset>" + RecordImpact(snapshot, pages, false);
             if (!referenced && Permissions.Has(c.User, "content:write") && RecordSupported(operations.Source.CompositionCapabilities, CompositionOperation.RecordDelete, definition.Descriptor))

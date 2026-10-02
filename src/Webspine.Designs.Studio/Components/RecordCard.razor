@@ -1,0 +1,13 @@
+@inherits RazorContentComponent<RecordCardFields>
+@{ var entry = Context.Record<EntryFields>(Fields.RecordId, "content-entry", 1); }
+<article class="record-card">
+    @if (entry.Image is not null)
+    {
+        <img src="@Context.Asset(entry.Image)" alt="@entry.Title" loading="lazy" />
+    }
+    <div class="record-card-body">
+        <h2>@entry.Title</h2>
+        @if (!string.IsNullOrEmpty(entry.Description)) { <p>@entry.Description</p> }
+        @if (!string.IsNullOrEmpty(Fields.Caption)) { <p class="record-caption">@Fields.Caption</p> }
+    </div>
+</article>

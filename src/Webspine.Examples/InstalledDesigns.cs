@@ -20,6 +20,7 @@ public static class InstalledDesigns
         InstalledDesign[] installed =
         [
             new(StudioPackage.Create(), "Use demo", "Home, Services, Products, About and Contact", StudioExample.Start),
+            new(StudioPackage.Create(includeProductExample: true), "Use product example", "Optional Product schema and Product card demonstration", StudioExample.Start),
             new(FieldworkPackage.Create(), "Use service business example", "Home, Services, Our approach and Contact", FieldworkExample.Start)
         ];
         var selected = new DesignPackageCatalog(installed.Select(i => i.Package)).Select(id, version);

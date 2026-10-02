@@ -2,11 +2,21 @@
 
 Implemented for local Development authoring, 2 October 2026; [#17](https://github.com/harryneufeld/webspine/issues/17). Hosting, publication, external CMS adapters and business providers remain separate work.
 
-## Edit products and select them in cards
+## Records, Patterns and shared elements
 
-The Studio package registers Product schema version 1 and product-card Pattern version 1. Fieldwork remains independent and does not register these types. Open **Reusable content** from the website board, then **Add product**. A Product has a required name (160 characters), an optional description (3,000 characters, default empty text) and an optional managed image (default no image). Select the image from the existing Images library. No price, inventory, ordering or commerce behavior is introduced.
+**Records** store structured information about a subject, independently of its presentation. **Patterns** are package-owned presentation blueprints that bind to compatible Records. **Shared elements** reuse one composed element instance across pages. These are separate kinds of reuse, not synonyms.
 
-Open a page's Main area and **Add element → Product card**. Select a Product by name and optionally enter a card caption (160 characters). Each card keeps its own reference and caption. Two cards can select two different Products; several cards/pages can select the same Product without copying its values. Product cards in the structure list include their selected Product's name. The Pattern's Image, heading and description presentation is owned by the Studio Razor component; editors cannot edit arbitrary descendants, templates or CSS.
+Default Studio offers **Records → Add record → Content entry**, with a required title (160 characters), optional description (3,000 characters, default empty text) and optional managed image. Use it for any subject, then choose **Add element → Record card** on a page. The card selects a Content entry and has its own optional caption (160 characters). Reusing the same Record avoids copying information; changing a card's selection changes only that instance. Select images through the Images library.
+
+The engine has no built-in Product concept. Types and forms come from the installed `RecordRegistry` and editor metadata, and presentation comes from the design package. Developers can register schemas for people, services, events or other content with their own fields and compatible Patterns. Content entry is one neutral starter schema, not a universal schema or an in-browser schema designer. Fieldwork remains independent and does not register these types.
+
+## Optional Product proof and existing content
+
+Select `--Design:Package studio-products --Design:Version 1` to enable the optional Product@1 / product-card@1 demonstration from #17. A Product has a required name, optional description and managed image, with the same bounds as Content entry. No price, inventory, ordering or commerce behavior is introduced.
+
+Default Studio retains the Product schema/component registrations to validate, edit and render existing drafts, but sets their editor metadata `AllowCreate` to false. They do not appear in creation selectors, and typed create operations reject them; discovery reports `canCreate: false`, while authorized updates remain available. No existing data or retained artifact is renamed, rewritten or deleted. The opt-in example enables creation through the same registry and operations.
+
+In the optional example, use **Records → Add record → Product**, then **Add element → Product card**. Select a Product by name and optionally enter a card caption. Two cards can select different Products; several cards/pages can select the same Product without copying its values. The Pattern's structure and styling belong to the package's Razor component; editors cannot edit arbitrary descendants, templates or CSS.
 
 Editing a card's selection affects that instance. Editing a used Product affects every card that selects it in newly built previews. The form shows the affected pages and requires their acknowledgement. Used Records require both `content:write` and `content:shared:write`, including when all their uses are currently on one page or in an unplaced Shared Block in the library. Creating unused Records requires `content:write`. Readers see disabled fields. Used Records cannot be deleted; replace/remove their references first, then confirm removal of the unused Record. Existing previews retain their exact bytes.
 
@@ -30,22 +40,22 @@ Use the existing `POST /api/v2/changes` envelope with these typed operations:
 | `updateRecord` | `recordId`, `expectedRecordRevision`, `fields` |
 | `deleteRecord` | `recordId`, `expectedRecordRevision` |
 
-For example, create a Product:
+For example, create a neutral Content entry in default Studio:
 
 ```json
 {
   "expectedRevision": "current-site-revision",
   "change": {
     "operation": "createRecord",
-    "schemaId": "product",
+    "schemaId": "content-entry",
     "schemaVersion": 1,
-    "fields": { "name": "Oak chair", "description": "Solid oak." }
+    "fields": { "title": "Repair workshop", "description": "Everyone welcome." }
   },
   "acknowledgedPages": []
 }
 ```
 
-Create a card with the ordinary `create` operation (`typeId: "product-card"`, `typeVersion: 1`, `fields: { "productId": "returned-record-id", "caption": "Made for everyday use" }`). Rebind it with `update`. Update used Records with the exact `acknowledgedPages` returned at the current revision. Permission failures are 403, site/Record conflicts 409, invalid data/references/acknowledgement 422, unsupported source schemas/operations 501. Human forms use the same application operations and CSRF protection.
+Create a card with the ordinary `create` operation (`typeId: "record-card"`, `typeVersion: 1`, `fields: { "recordId": "returned-record-id", "caption": "Everyone welcome" }`). Rebind it with `update`. Update used Records with the exact `acknowledgedPages` returned at the current revision. Permission failures are 403, site/Record conflicts 409, invalid data/references/acknowledgement or package-disabled creation 422, unsupported source schemas/operations 501. Human forms use the same application operations and CSRF protection.
 
 ## Capture, compatibility and explicit upgrades
 
@@ -65,4 +75,4 @@ Read access must not grant business writes. Any supported business mutation need
 
 ## Verification
 
-`RecordPatternChecks` exercises actual authenticated board/API operations, two Products/three cards across pages, typed/unknown-field rejection, permissions, exact impact, site/Record conflicts, guarded deletion and media, escaping, frozen inputs, retained bytes, compatible new design capture, and atomic explicit breaking migration/reopening. It runs with the existing full check suite on Windows, Linux and macOS. `--records-preview` provides a disposable browser-review fixture; `--records-only` runs the focused checks.
+`RecordPatternChecks` exercises the explicitly selected Product example: authenticated board/API operations, two Products/three cards across pages, typed/unknown-field rejection, permissions, exact impact, site/Record conflicts, guarded deletion and media, escaping, frozen inputs, retained bytes, compatible new design capture, and atomic explicit breaking migration/reopening. `DefaultRecordChecks` verifies neutral Record/card authoring, type selection, server-enforced retirement of example creation and preservation of existing Product editing, rendering and history. Both run on Windows, Linux and macOS. `--default-records-preview` provides the neutral browser fixture; `--records-preview` provides the optional Product fixture. The respective `--default-records-only` and `--records-only` flags run focused checks.

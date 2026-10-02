@@ -3,6 +3,17 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
 
+if (args.Contains("--default-records-preview", StringComparer.Ordinal))
+{
+    await DefaultRecordChecks.RunAsync(browserReview: true);
+    return;
+}
+if (args.Contains("--default-records-only", StringComparer.Ordinal))
+{
+    await DefaultRecordChecks.RunAsync();
+    return;
+}
+
 if (args.Contains("--records-preview", StringComparer.Ordinal))
 {
     await RecordPatternChecks.RunAsync(browserReview: true);
@@ -31,6 +42,7 @@ await CompositionStoreChecks.RunAsync();
 await CompositionEditingChecks.RunAsync();
 await MetadataEditingChecks.RunAsync();
 await RecordPatternChecks.RunAsync();
+await DefaultRecordChecks.RunAsync();
 await IndependentDesignChecks.RunAsync();
 await AuthoringChecks.RunAsync();
 await AccountChecks.RunAsync();

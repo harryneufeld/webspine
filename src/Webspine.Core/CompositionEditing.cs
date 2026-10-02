@@ -107,7 +107,9 @@ public sealed class CompositionEditor(ICompositionDraftPersistence source, Compo
             case CreateRecord e:
                 operation = CompositionOperation.RecordCreate; source.CompositionCapabilities.RequireRecord(operation, e.SchemaId, e.SchemaVersion);
                 if (!authority.ContentWrite) throw new CompositionPermissionException("Content editing permission is required.");
-                registry.Records.Resolve(e.SchemaId, e.SchemaVersion); Fields(e.Fields);
+                if (!registry.Records.Resolve(e.SchemaId, e.SchemaVersion).Editor.AllowCreate)
+                    throw new ContentValidationException("This Record type is retained for existing content; creating new Records is disabled by the selected package.");
+                Fields(e.Fields);
                 site = site with { Records = site.Records.Add(new(NewId("record"), e.SchemaId, e.SchemaVersion, Guid.NewGuid().ToString("N"), e.Fields.Clone())) }; break;
             case UpdateRecord e:
                 operation = CompositionOperation.RecordUpdate;
@@ -159,7 +161,7 @@ public sealed class CompositionEditor(ICompositionDraftPersistence source, Compo
                         {
                             var definition = registry.Descriptors.Where(d => d.Id == type).OrderByDescending(d => d.Version)
                                 .Select(d => registry.Resolve(d.Id, d.Version)).FirstOrDefault();
-                            if (definition is null || !ContentEditorContract.Generic(definition.Editor)) continue;
+                            if (definition is null || !ContentEditorContract.Generic(definition.Editor) || !definition.Editor!.AllowCreate) continue;
                             try
                             {
                                 source.CompositionCapabilities.Require(operation, definition.Descriptor.Id, definition.Descriptor.Version);
@@ -180,6 +182,8 @@ public sealed class CompositionEditor(ICompositionDraftPersistence source, Compo
             case CreateBlock e:
                 Fields(e.Fields);
                 operation = CompositionOperation.Create; source.CompositionCapabilities.Require(operation, e.TypeId, e.TypeVersion);
+                if (registry.Resolve(e.TypeId, e.TypeVersion).Editor is { AllowCreate: false })
+                    throw new ContentValidationException("This element type is retained for existing content; creating new elements is disabled by the selected package.");
                 var owner = Owner(e.Location); owners.Add(owner);
                 var created = new Block(NewId("block"), owner, e.TypeId, e.TypeVersion, e.Fields.Clone(), []);
                 site = site with { Blocks = site.Blocks.Add(created) }; Insert(e.Location, e.Index, new(NewId("placement"), TargetKind.Block, created.Id)); break;

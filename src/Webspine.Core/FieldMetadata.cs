@@ -42,7 +42,7 @@ public sealed record EditorField(string Name, string Label, EditorFieldKind Kind
 
 // A data-only contract; specialized editors are explicitly unsupported by the basic board.
 public sealed record ContentEditorMetadata(string Label, string Description, ImmutableArray<EditorField> Fields,
-    string? SummaryField = null, string? SpecializedEditor = null, int Version = 1);
+    string? SummaryField = null, string? SpecializedEditor = null, int Version = 1, bool AllowCreate = true);
 
 public static class ContentEditorContract
 {

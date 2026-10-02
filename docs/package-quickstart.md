@@ -75,6 +75,34 @@ Register `NoticeContent.Definition` alongside the package's other definitions, m
 
 Ordinary Razor expressions escape content. Do not use `MarkupString` for CMS text, execute customer-supplied templates/styles, query the live source from a component or assume C# click handlers survive static HTML export. Any browser enhancement must be an explicit captured script with native behavior as its baseline.
 
+## Register reusable Record types
+
+Records are data, separate from page elements and rendering. The board's **Records → Add record** selector is generated from the installed schemas; there are no management switches for Product, Person or other domains. Define your own payload and validation in a Core-only content module, for example:
+
+```csharp
+public sealed record PersonFields(
+    [property: JsonRequired] string Name,
+    [property: JsonRequired] string Role);
+
+public static class PeopleContent
+{
+    public static IRecordDefinition Definition => new RecordDefinition<PersonFields>(
+        new("person", 1, "my-site-content", "1"),
+        new("Person", "A person and their role",
+            [EditorField.Text("name", "Name", "New person", 160),
+             EditorField.Text("role", "Role", "Team member", 160)], "name"),
+        (fields, _) =>
+        {
+            CompositionRules.Text(fields.Name, 160);
+            CompositionRules.Text(fields.Role, 160);
+        });
+}
+```
+
+Supply `new RecordRegistry([PeopleContent.Definition])` as the second `BlockRegistry` constructor argument alongside your Block definitions. To display a Person, register a typed Pattern Block whose `EditorField.Record("personId", "Person", "person", 1, "name")` matches a `PatternDescriptor` input, and resolve captured data in its Razor component with `Context.Record<PersonFields>(Fields.PersonId, "person", 1)`. Register the component and permitted placements like any other Block. See [Patterns and Records](patterns-records.md) for the complete binding contract and conditional writes.
+
+Default Studio supplies a neutral Content entry / Record card starter. Select `studio-products` explicitly for the Product demonstration. Types retained only for editing existing content can use `ContentEditorMetadata.AllowCreate = false`; both the board selectors and typed create operations honor it. This does not remove their schema or rendering support. A general in-browser schema designer remains deferred.
+
 ## Install and seed it explicitly
 
 Add the package project reference to the operator-controlled installation catalog (`Webspine.Examples` in the default host). Add one `InstalledDesign` entry with your package, readable setup labels and a native v2 starter function. `InstalledDesigns.Select` validates exact ID/version selection through the package catalog. Management consumes this registration through dependency injection.

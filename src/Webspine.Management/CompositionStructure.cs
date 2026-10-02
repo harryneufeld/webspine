@@ -227,7 +227,7 @@ internal static partial class CompositionBoard
         var site = snapshot.Website;
         var selectedPage = c.Request.Query["page"].ToString(); if (!site.Pages.Any(p => p.Id == selectedPage)) selectedPage = site.Pages[0].Id;
         var html = new StringBuilder("<nav class=\"actions\" aria-label=\"Workspace\">");
-        if (!SelectedDefinitions(c).Records.Descriptors.IsEmpty) html.Append("<a href=\"/manage/composition/records\">Reusable content</a>");
+        if (!SelectedDefinitions(c).Records.Descriptors.IsEmpty) html.Append("<a href=\"/manage/composition/records\">Records</a>");
         if (Permissions.Has(c.User, "integrations:manage")) html.Append("<a href=\"/manage/integrations\">Connected apps</a>");
         if (Permissions.Has(c.User, "accounts:manage")) html.Append("<a href=\"/manage/users\">People and access</a>");
         html.Append("<a href=\"/manage/composition/export\">Download content</a><a href=\"/manage/account/password\">Your account</a></nav><div class=\"intro\"><p class=\"eyebrow\">Your website</p><h1>" + E(site.Title) + "</h1><p>Open a page to edit its content. Add and arrange elements directly in each area.</p></div>");

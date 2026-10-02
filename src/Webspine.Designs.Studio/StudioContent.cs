@@ -11,11 +11,12 @@ public sealed record HeaderFields([property: JsonRequired] string Subtitle, [pro
 public sealed record FooterFields([property: JsonRequired] string Message);
 public sealed record PageTitleFields;
 public sealed record ProductCardFields([property: JsonRequired] string ProductId, string? Caption = null);
+public sealed record RecordCardFields([property: JsonRequired] string RecordId, string? Caption = null);
 
 public static class StudioContent
 {
     private static BlockTypeDescriptor Descriptor(string id) => new(id, 1, 2, "webspine-studio-content", "1", id + "-fields-v1", "none", false);
-    public static BlockRegistry Definitions() => new(StandardContentTypes.Definitions.AddRange(new IBlockDefinition[]
+    public static BlockRegistry Definitions(bool includeProductExample = false) => new(StandardContentTypes.Definitions.AddRange(new IBlockDefinition[]
     {
         new BlockDefinition<HeaderFields>(Descriptor("site-header"), (fields, context) =>
         {
@@ -29,9 +30,13 @@ public static class StudioContent
             new("Site footer", "Website name and footer message", [EditorField.Text("message", "Footer message", "Get in touch", 300, true)])),
         new BlockDefinition<PageTitleFields>(Descriptor("page-title"), (_, _) => { }, new("Page title", "Reuse this page's headline", [])),
         FaqContent.Definition,
+        new BlockDefinition<RecordCardFields>(Descriptor("record-card"), (_, _) => { },
+            new("Record card", "Show a Content entry. Choose a record; the caption belongs only to this card.",
+                [EditorField.Record("recordId", "Content entry", "content-entry", 1, "title"), EditorField.Text("caption", "Card caption (optional)", "", 160) with { Required = false }]),
+            new("record-card", 1, [new("recordId", "content-entry", 1)], ["caption"])),
         new BlockDefinition<ProductCardFields>(Descriptor("product-card"), (_, _) => { },
             new("Product card", "Show reusable product information. Changing the selected product affects only this card.",
-                [EditorField.Record("productId", "Product", "product", 1, "name"), EditorField.Text("caption", "Card caption (optional)", "", 160) with { Required = false }]),
+                [EditorField.Record("productId", "Product", "product", 1, "name"), EditorField.Text("caption", "Card caption (optional)", "", 160) with { Required = false }], AllowCreate: includeProductExample),
             new("product-card", 1, [new("productId", "product", 1)], ["caption"]))
-    }), new([ProductContent.Definition]));
+    }), new([EntryContent.Definition, ProductContent.Create(includeProductExample)]));
 }

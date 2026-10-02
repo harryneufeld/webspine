@@ -26,7 +26,7 @@ static class RecordPatternChecks
         using var api = new HttpClient(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false });
         try
         {
-            await using var host = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true);
+            await using var host = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true, designPackage: "studio-products");
             await host.WaitHealthyAsync(browser); await AccountChecks.BootstrapAsync(browser, host.Url);
             var form = Form(await browser.GetStringAsync(host.Url + "/manage")); form["title"] = "Product collection"; form["mode"] = "demo";
             using var setup = await browser.PostAsync(host.Url + "/manage/setup", new FormUrlEncodedContent(form)); Require(setup.StatusCode == HttpStatusCode.Found, "Record setup failed.");
@@ -104,13 +104,13 @@ static class RecordPatternChecks
             Require(before.SequenceEqual(after), "Later Record edit/rebinding changed retained bytes.");
             Console.WriteLine("PASS: Board/API enforce Record permissions, exact impact, both revisions, safe fields and protected references; rebinding/editing leave retained output unchanged.");
 
-            var package = StudioPackage.Create(); var store = new SqliteContentSource(Path.Combine(directory, "webspine.db"), package.ContentTypes);
+            var package = StudioPackage.Create(includeProductExample: true); var store = new SqliteContentSource(Path.Combine(directory, "webspine.db"), package.ContentTypes);
             var unsupported = new UnsupportedRecords(store);
             await Reject<SourceOperationNotSupportedException>(() => new CompositionEditor(unsupported, package.Design, package.ContentTypes)
                 .ApplyAsync(snapshot.Revision, new CreateRecord("product", 1, Fields(new { name = "Unsupported" })), new(true, true, true), []));
             Require(!unsupported.CommitCalled && (await store.ReadCompositionAsync()).Revision == snapshot.Revision, "Unsupported adapter wrote through a fallback.");
             var captured = await store.CaptureCompositionAsync(package.Design); var frozen = await package.CaptureAsync();
-            Require(frozen.RecordSchemas.Single().Descriptor.Version == 1 && frozen.ContentTypes.Single(d => d.Descriptor.Id == "product-card").Pattern?.Version == 1, "Frozen schema/Pattern provenance omitted.");
+            Require(frozen.RecordSchemas.Single(s => s.Descriptor.Id == "product").Descriptor.Version == 1 && frozen.ContentTypes.Single(d => d.Descriptor.Id == "product-card").Pattern?.Version == 1, "Frozen schema/Pattern provenance omitted.");
             using (var zip = System.IO.Compression.ZipFile.OpenRead(Path.Combine(directory, "build-inputs", info.RootElement.GetProperty("id").GetString() + ".zip")))
             {
                 using var contentReader = new StreamReader(zip.GetEntry("content.json")!.Open());
@@ -186,7 +186,8 @@ static class RecordPatternChecks
         var card = new BlockDefinition<CardV2>(old.ContentTypes.Resolve("product-card", 1).Descriptor with { Version = 2, SchemaId = "product-card-v2" }, (_, _) => { },
             new("Product card", "New explicit input contract", [EditorField.Record("productId", "Product", "product", 2), EditorField.Text("caption", "Caption", "", 160) with { Required = false },
                 EditorField.Text("heading", "Heading", "Product", 160)]), new("product-card", 2, [new("productId", "product", 2)], ["caption", "heading"]));
-        var registry = new BlockRegistry(old.ContentTypes.Descriptors.Where(d => d.Id != "product-card").Select(d => old.ContentTypes.Resolve(d.Id, d.Version)).Append(card), new([schema]));
+        var registry = new BlockRegistry(old.ContentTypes.Descriptors.Where(d => d.Id != "product-card").Select(d => old.ContentTypes.Resolve(d.Id, d.Version)).Append(card),
+            new(old.ContentTypes.Records.Descriptors.Where(d => d.Id != "product").Select(d => old.ContentTypes.Records.Resolve(d.Id, d.Version)).Append(schema)));
         var target = old.Design with { Revision = "2" };
         var path = Path.Combine(directory, "migration.db"); var initial = new SqliteContentSource(path, old.ContentTypes); await initial.InitializeSchemaAsync();
         var libraryRecord = new ContentRecord("library-product", "product", 1, "library-revision", Fields(new { name = "Library product" }));

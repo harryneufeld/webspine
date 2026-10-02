@@ -16,7 +16,12 @@ internal static partial class CompositionBoard
         ContentEditorContract.Defaults(SelectedEditor(c, type), site, SelectedDesign(c));
     private static bool CanCreate(HttpContext c, string type, int version, CompositionWebsite site)
     {
-        try { ContentEditorContract.Defaults(SelectedDefinitions(c).Resolve(type, version).Editor, site, SelectedDesign(c)); return true; }
+        try
+        {
+            var editor = SelectedDefinitions(c).Resolve(type, version).Editor;
+            if (editor is { AllowCreate: false }) return false;
+            ContentEditorContract.Defaults(editor, site, SelectedDesign(c)); return true;
+        }
         catch (Exception e) when (e is ContentValidationException or SourceOperationNotSupportedException) { return false; }
     }
     private static string TypeLabel(HttpContext c, string type) => SelectedDefinitions(c).Descriptors.FirstOrDefault(d => d.Id == type) is { } definition
