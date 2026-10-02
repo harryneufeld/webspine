@@ -1,5 +1,8 @@
 # 0014 — Configured static design packages
 
+Legacy authoring/migration policy superseded by [decision 0017](0017-v2-only-management-authoring.md), 2 October 2026. This record describes the decision at its original implementation; native v2 is now the sole authoring workflow.
+
+
 Status: implemented locally for #25, 1 October 2026. Three-platform CI and review remain pending.
 
 ## Decision

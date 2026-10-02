@@ -35,9 +35,7 @@ static class IndependentDesignChecks
     {
         var studio = InstalledDesigns.Select("studio", "1"); var fieldwork = InstalledDesigns.Select("fieldwork", "1");
         var studioSeed = studio.Start("Studio proof", true); var serviceSeed = fieldwork.Start("Oak & Hearth", true);
-        var legacy = new ContentSnapshot(new("proof", "fixture"), "studio-fixture", studioSeed.Legacy!);
-        var identities = LegacyCompositionMapping.Identities(legacy).ToDictionary(m => (m.PageId, m.SectionId));
-        var studioSite = studio.LegacyConverter.Convert(legacy, LegacyCompositionMapping.Blocks(legacy), (p, s) => { var identity = identities[(p, s)]; return (identity.BlockId, identity.PlacementId); });
+        var studioSite = studioSeed.Composition;
         Require(studioSite.Pages.Length == 5 && serviceSeed.Composition!.Pages.Length == 4 && fieldwork.Start("Blank service", false).Composition!.Pages.Length == 1, "Installed starters lost independent page structures.");
         Require(!Assembly.Load("Webspine.Management").GetReferencedAssemblies().Any(a => a.Name == "Webspine.Demo") &&
             !typeof(FieldworkPackage).Assembly.GetReferencedAssemblies().Any(a => a.Name is "Webspine.Demo" or "Webspine.Designs.Studio"), "The second package or management depends on demo/presentation code.");
@@ -46,7 +44,7 @@ static class IndependentDesignChecks
         Console.WriteLine("PASS: Studio and Fieldwork have independent layouts/starters and no Demo dependency in management or the second package.");
 
         var fieldCapture = new CapturedComposition(new(2, new("proof", "fixture"), "service-fixture", serviceSeed.Composition!), fieldwork.Package.Design, serviceSeed.Assets);
-        var studioCapture = new CapturedComposition(new(2, legacy.Source, legacy.Revision, studioSite), studio.Package.Design, studioSeed.Assets);
+        var studioCapture = new CapturedComposition(new(2, new("proof", "fixture"), "studio-fixture", studioSite), studio.Package.Design, studioSeed.Assets);
         var frozen = await fieldwork.Package.CaptureAsync();
         var serviceArtifact = await fieldwork.Package.BuildAsync(fieldCapture, frozen, "/proof/service");
         var repeat = await fieldwork.Package.BuildAsync(fieldCapture, frozen, "/proof/service");
@@ -138,43 +136,29 @@ static class IndependentDesignChecks
     private static async Task VerifyCompatibility()
     {
         var directory = Path.Combine(Path.GetTempPath(), "webspine-design-compatibility-" + Guid.NewGuid().ToString("N"));
-        using var browser = Browser(); byte[] oldBytes; string oldPreview; string legacyRevision;
+        using var browser = Browser(); byte[] bytes; string previewUrl; string revision;
         try
         {
             await using (var studio = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
             {
                 await studio.WaitHealthyAsync(browser); await AccountChecks.BootstrapAsync(browser, studio.Url); await Setup(browser, studio.Url, "Retained studio");
-                var source = new SqliteContentSource(Path.Combine(directory, "webspine.db")); legacyRevision = (await source.ReadAsync()).Revision;
-                var form = Form(await browser.GetStringAsync(studio.Url + "/manage")); using var preview = await browser.PostAsync(studio.Url + "/manage/preview", new FormUrlEncodedContent(form));
-                Require(preview.StatusCode == HttpStatusCode.Found, "Compatibility v1 preview failed."); oldPreview = preview.Headers.Location!.ToString(); oldBytes = await browser.GetByteArrayAsync(studio.Url + oldPreview);
+                var source = new SqliteContentSource(Path.Combine(directory, "webspine.db")); revision = (await source.HeadAsync())!.Revision;
+                var form = Form(await browser.GetStringAsync(studio.Url + "/manage"));
+                using var preview = await browser.PostAsync(studio.Url + "/manage/composition/preview", new FormUrlEncodedContent(form));
+                Require(preview.StatusCode == HttpStatusCode.Found, "Native v2 preview failed.");
+                previewUrl = preview.Headers.Location!.ToString(); bytes = await browser.GetByteArrayAsync(studio.Url + previewUrl);
             }
             await using (var incompatible = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true, designPackage: "fieldwork"))
             {
-                await incompatible.WaitHealthyAsync(browser); Require(Enumerable.SequenceEqual(oldBytes, await browser.GetByteArrayAsync(incompatible.Url + oldPreview)), "Package selection changed historical v1 preview.");
-                var form = Form(await browser.GetStringAsync(incompatible.Url + "/manage")); using var migration = await browser.PostAsync(incompatible.Url + "/manage/upgrade-composition", new FormUrlEncodedContent(form));
-                Require(migration.StatusCode == HttpStatusCode.NotImplemented, "Unsupported legacy mapping did not fail explicitly.");
-                using var newPreview = await browser.PostAsync(incompatible.Url + "/manage/preview", new FormUrlEncodedContent(form)); Require(newPreview.StatusCode == HttpStatusCode.NotImplemented, "Incompatible design silently rendered v1 with different styles.");
-                Require((await new SqliteContentSource(Path.Combine(directory, "webspine.db")).ReadAsync()).Revision == legacyRevision, "Unsupported design mutated legacy head.");
+                await incompatible.WaitHealthyAsync(browser);
+                using var board = await browser.GetAsync(incompatible.Url + "/manage");
+                Require(board.StatusCode == HttpStatusCode.UnprocessableEntity, "Incompatible package silently reinterpreted v2 draft.");
+                Require(Enumerable.SequenceEqual(bytes, await browser.GetByteArrayAsync(incompatible.Url + previewUrl)), "Wrong selected design altered retained preview.");
+                Require((await new SqliteContentSource(Path.Combine(directory, "webspine.db")).HeadAsync())!.Revision == revision, "Incompatible package changed v2 head.");
             }
-            byte[] compositionBytes; string compositionPreview; string compositionRevision;
-            await using (var studio = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
-            {
-                await studio.WaitHealthyAsync(browser); var form = Form(await browser.GetStringAsync(studio.Url + "/manage"));
-                using var migration = await browser.PostAsync(studio.Url + "/manage/upgrade-composition", new FormUrlEncodedContent(form)); Require(migration.StatusCode == HttpStatusCode.Found, "Original design could not migrate retained v1.");
-                var source = new SqliteContentSource(Path.Combine(directory, "webspine.db"), InstalledDesigns.Select("studio", "1").Package.ContentTypes); compositionRevision = (await source.ReadCompositionAsync()).Revision;
-                form = Form(await browser.GetStringAsync(studio.Url + "/manage/composition")); using var preview = await browser.PostAsync(studio.Url + "/manage/composition/preview", new FormUrlEncodedContent(form));
-                Require(preview.StatusCode == HttpStatusCode.Found, "Compatibility v2 preview failed."); compositionPreview = preview.Headers.Location!.ToString(); compositionBytes = await browser.GetByteArrayAsync(studio.Url + compositionPreview);
-            }
-            await using (var incompatible = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true, designPackage: "fieldwork"))
-            {
-                await incompatible.WaitHealthyAsync(browser); using var board = await browser.GetAsync(incompatible.Url + "/manage/composition"); Require(board.StatusCode == HttpStatusCode.UnprocessableEntity, "Incompatible package silently reinterpreted v2 draft.");
-                Require(Enumerable.SequenceEqual(compositionBytes, await browser.GetByteArrayAsync(incompatible.Url + compositionPreview)), "Wrong selected design altered retained v2 preview.");
-                var source = new SqliteContentSource(Path.Combine(directory, "webspine.db")); Require((await source.HeadAsync())!.Revision == compositionRevision, "Incompatible package changed v2 head.");
-                var restored = await source.RestoreLegacyAsync(compositionRevision, legacyRevision); Require(restored.Website.Title == "Retained studio" && restored.Revision != legacyRevision &&
-                    Enumerable.SequenceEqual(oldBytes, await browser.GetByteArrayAsync(incompatible.Url + oldPreview)), "Legacy recovery lost source or historical output.");
-            }
-            Console.WriteLine("PASS: Wrong-package v1/v2 authoring fails without reinterpretation; historical previews and explicit fresh-revision recovery remain intact.");
+            Console.WriteLine("PASS: Wrong-package authoring fails without reinterpretation; historical preview bytes remain independent of selected design.");
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
+
 }

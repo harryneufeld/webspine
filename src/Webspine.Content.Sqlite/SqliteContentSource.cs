@@ -11,14 +11,14 @@ public sealed class SiteAlreadyExistsException() : Exception("A site already exi
 public sealed class SiteNotInitializedException() : Exception("Create a site before editing content.");
 public sealed record StoredContent(ContentSnapshot Snapshot, ImmutableDictionary<string, ImmutableArray<byte>> Assets);
 public sealed record DraftRevision(string Revision, string CreatedUtc, int ContractVersion = 1);
-public sealed class CompositionSiteException() : Exception("This site uses composition v2. The v1 editor cannot edit it; use the composition tooling or restore a retained v1 revision.");
+public sealed class CompositionSiteException() : Exception("This site uses composition v2. The v1 editor cannot edit it; use the composition board or v2 API.");
 
-public sealed partial class SqliteContentSource : IWebsiteAuthoringSource, Webspine.Core.Composition.ICompositionDraftPersistence
+public sealed partial class SqliteContentSource : IContentSource, Webspine.Core.Composition.ICompositionDraftPersistence
 {
     private readonly string connectionString;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
     public SourceIdentity Identity { get; } = new("builtin", "sqlite");
-    public SourceCapabilities Capabilities { get; } = new(true, true, false);
+    public SourceCapabilities Capabilities { get; } = new(true, false, false);
     private readonly Webspine.Core.Composition.BlockRegistry compositionRegistry;
     public SqliteContentSource(string databasePath, Webspine.Core.Composition.BlockRegistry? compositionRegistry = null)
     {
@@ -49,12 +49,6 @@ public sealed partial class SqliteContentSource : IWebsiteAuthoringSource, Websp
         {
             using var upgrade = Command(connection, transaction, """
                 ALTER TABLE revisions ADD COLUMN contract_version INTEGER NOT NULL DEFAULT 1 CHECK(contract_version IN (1,2));
-                CREATE TABLE content_transitions (
-                    revision TEXT PRIMARY KEY REFERENCES revisions(revision),
-                    from_revision TEXT NOT NULL REFERENCES revisions(revision),
-                    original_revision TEXT NOT NULL REFERENCES revisions(revision),
-                    operation TEXT NOT NULL CHECK(operation IN ('migrate','restore')),
-                    identity_map TEXT NOT NULL);
                 PRAGMA user_version = 2;
                 """);
             await upgrade.ExecuteNonQueryAsync(ct);
@@ -68,52 +62,8 @@ public sealed partial class SqliteContentSource : IWebsiteAuthoringSource, Websp
     }
     public async ValueTask<ContentSnapshot> ReadAsync(CancellationToken cancellationToken = default)
         => await TryReadAsync(cancellationToken) ?? throw new SiteNotInitializedException();
-    public async Task<ContentSnapshot> CreateAsync(WebsiteContent website, IReadOnlyDictionary<string, ImmutableArray<byte>> assets, CancellationToken ct = default)
-    {
-        var snapshot = new ContentSnapshot(Identity, Guid.NewGuid().ToString("N"), website);
-        ContentContract.Validate(snapshot);
-        foreach (var asset in website.Assets)
-            if (!assets.ContainsKey(asset.File)) throw new ContentValidationException("A required image is missing.");
-        await using var connection = await Open(ct);
-        using var transaction = connection.BeginTransaction(deferred: false);
-        if (await Read(connection, transaction, ct) is not null) throw new SiteAlreadyExistsException();
-        await InsertRevision(connection, transaction, snapshot, ct);
-        using var create = Command(connection, transaction, "INSERT INTO site(id,revision) VALUES(1,$revision)");
-        create.Parameters.AddWithValue("$revision", snapshot.Revision);
-        await create.ExecuteNonQueryAsync(ct);
-        foreach (var asset in website.Assets)
-        {
-            using var insert = Command(connection, transaction, "INSERT INTO assets(file,bytes) VALUES($file,$bytes)");
-            insert.Parameters.AddWithValue("$file", asset.File);
-            insert.Parameters.AddWithValue("$bytes", assets[asset.File].ToArray());
-            await insert.ExecuteNonQueryAsync(ct);
-        }
-        transaction.Commit();
-        return snapshot;
-    }
-    public async Task<ContentSnapshot> EditPageAsync(string expected, string pageId, string title, string description, IReadOnlyDictionary<string, string> fields, CancellationToken ct = default)
-        => await Change(expected, snapshot =>
-        {
-            var page = snapshot.Website.Pages.FirstOrDefault(p => p.Id == pageId) ?? throw new ContentValidationException("Page does not exist.");
-            var allowed = page.Sections.SelectMany(s => ContentFields.Describe(s)).Select(f => f.Key).ToHashSet(StringComparer.Ordinal);
-            if (fields.Keys.Any(key => !allowed.Contains(key))) throw new ContentValidationException("An unapproved field was submitted.");
-            var edited = page with { Title = title, Description = description, Sections = page.Sections.Select(s => ContentFields.Apply(s, fields)).ToImmutableArray() };
-            return snapshot.Website with { Pages = snapshot.Website.Pages.Replace(page, edited) };
-        }, ct);
-    public async Task<ContentSnapshot> AddPageAsync(string expected, string title, string path, string description, CancellationToken ct = default)
-        => await Change(expected, snapshot => snapshot.Website with { Pages = snapshot.Website.Pages.Add(new("page-" + Guid.NewGuid().ToString("N"), path, title, description, [new TextSection("introduction", "Tell your story", "Add your page content here.")])) }, ct);
-    public async Task<ContentSnapshot> UpdateWebsiteAsync(string expected, string title, string language, CancellationToken ct = default)
-        => await Change(expected, snapshot => snapshot.Website with { Title = title, Language = language }, ct);
-    public async ValueTask<ContentSnapshot> UpdateDraftAsync(DraftChange change, CancellationToken cancellationToken = default)
-        => await Change(change.ExpectedRevision, snapshot =>
-        {
-            var page = snapshot.Website.Pages.FirstOrDefault(p => p.Id == change.PageId) ?? throw new ContentValidationException("Page does not exist.");
-            var section = page.Sections.FirstOrDefault(s => s.Id == change.SectionId) ?? throw new ContentValidationException("Section does not exist.");
-            var key = section.Id + "." + change.Field;
-            if (!ContentFields.Describe(section).Any(f => f.Key == key)) throw new ContentValidationException("An unapproved field was submitted.");
-            var updated = ContentFields.Apply(section, new Dictionary<string, string> { [key] = change.Value });
-            return snapshot.Website with { Pages = snapshot.Website.Pages.Replace(page, page with { Sections = page.Sections.Replace(section, updated) }) };
-        }, cancellationToken);
+    public ValueTask<ContentSnapshot> UpdateDraftAsync(DraftChange change, CancellationToken cancellationToken = default)
+        => ValueTask.FromException<ContentSnapshot>(new SourceOperationNotSupportedException("Legacy draft editing has been removed. Use composition v2."));
     public async Task<StoredContent> CaptureAsync(CancellationToken ct = default)
     {
         await using var connection = await Open(ct);
@@ -161,30 +111,6 @@ public sealed partial class SqliteContentSource : IWebsiteAuthoringSource, Websp
         command.Parameters.AddWithValue("$id", id);
         var json = await command.ExecuteScalarAsync(ct) as string;
         return json is null ? null : JsonSerializer.Deserialize<BuiltArtifact>(json, Json);
-    }
-    private async Task<ContentSnapshot> Change(string expected, Func<ContentSnapshot, WebsiteContent> edit, CancellationToken ct)
-    {
-        await using var connection = await Open(ct);
-        using var transaction = connection.BeginTransaction(deferred: false);
-        var snapshot = await Read(connection, transaction, ct) ?? throw new SiteNotInitializedException();
-        if (snapshot.Revision != expected) throw new RevisionConflictException();
-        var changed = new ContentSnapshot(Identity, Guid.NewGuid().ToString("N"), edit(snapshot));
-        ContentContract.Validate(changed);
-        await InsertRevision(connection, transaction, changed, ct);
-        using var update = Command(connection, transaction, "UPDATE site SET revision=$new WHERE id=1 AND revision=$expected");
-        update.Parameters.AddWithValue("$new", changed.Revision);
-        update.Parameters.AddWithValue("$expected", expected);
-        if (await update.ExecuteNonQueryAsync(ct) != 1) throw new RevisionConflictException();
-        transaction.Commit();
-        return changed;
-    }
-    private static async Task InsertRevision(SqliteConnection connection, SqliteTransaction transaction, ContentSnapshot snapshot, CancellationToken ct)
-    {
-        using var command = Command(connection, transaction, "INSERT INTO revisions(revision,created_utc,snapshot) VALUES($revision,$created,$snapshot)");
-        command.Parameters.AddWithValue("$revision", snapshot.Revision);
-        command.Parameters.AddWithValue("$created", DateTimeOffset.UtcNow.ToString("O"));
-        command.Parameters.AddWithValue("$snapshot", JsonSerializer.Serialize(snapshot, Json));
-        await command.ExecuteNonQueryAsync(ct);
     }
     private static async Task<ContentSnapshot?> Read(SqliteConnection connection, SqliteTransaction? transaction, CancellationToken ct)
     {

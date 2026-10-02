@@ -10,9 +10,6 @@ internal sealed class FrozenInputStore(string directory)
 {
     public async Task SaveAsync(string id, CapturedComposition content, FrozenDesignPackage design, CancellationToken ct)
         => await SaveContentAsync(id, content.Content, content.AssetFiles, design, ct);
-    public async Task SaveLegacyAsync(string id, ContentSnapshot content,
-        System.Collections.Immutable.ImmutableDictionary<string, System.Collections.Immutable.ImmutableArray<byte>> assets,
-        FrozenDesignPackage design, CancellationToken ct) => await SaveContentAsync(id, content, assets, design, ct);
     private async Task SaveContentAsync(string id, object content,
         System.Collections.Immutable.ImmutableDictionary<string, System.Collections.Immutable.ImmutableArray<byte>> assets,
         FrozenDesignPackage design, CancellationToken ct)

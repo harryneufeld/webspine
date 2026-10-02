@@ -14,6 +14,12 @@ using Webspine.Core.Composition;
 using Webspine.Rendering.Razor;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Configuration["Content:Action"] is not null)
+{
+    Console.Error.WriteLine("Legacy content migration/restore tooling has been removed. Create a fresh v2 workspace in a separate Management:DataDirectory; preserve the original directory and stored previews.");
+    Environment.ExitCode = 1;
+    return;
+}
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
@@ -30,7 +36,6 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
     builder.Services.AddSingleton(installation);
     builder.Services.AddSingleton<IDesignPackage>(selectedDesign);
     builder.Services.AddSingleton<ICompositionRenderer>(selectedDesign);
-    builder.Services.AddSingleton<ILegacyCompositionConverter>(installation.LegacyConverter);
     builder.Services.AddSingleton(new FrozenInputStore(Path.Combine(dataDirectory, "build-inputs")));
     builder.Services.AddDbContext<AccountDatabase>(options => options.UseSqlite(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = Path.Combine(Path.GetFullPath(dataDirectory), "accounts.db"), Pooling = false }.ToString()));
     builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
@@ -57,8 +62,6 @@ if (builder.Configuration.GetValue<bool>("Management:Enabled") && builder.Enviro
     });
     builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow);
     builder.Services.AddSingleton(new SqliteContentSource(Path.Combine(dataDirectory, "webspine.db"), selectedDesign.ContentTypes));
-    builder.Services.AddSingleton<IWebsiteAuthoringSource>(services => services.GetRequiredService<SqliteContentSource>());
-    builder.Services.AddSingleton<AuthoringOperations>();
     builder.Services.AddSingleton<ICompositionDraftPersistence>(services => services.GetRequiredService<SqliteContentSource>());
     builder.Services.AddSingleton<CompositionOperations>();
 }
@@ -69,9 +72,9 @@ var app = builder.Build();
 
 var demoEnabled = app.Configuration.GetValue<bool>("Demo:Enabled");
 var managementEnabled = app.Configuration.GetValue<bool>("Management:Enabled");
-if ((app.Configuration["Recovery:Username"] is not null || app.Configuration["Content:Action"] is not null) && !managementEnabled)
+if (app.Configuration["Recovery:Username"] is not null && !managementEnabled)
 {
-    Console.Error.WriteLine("Offline recovery/migration requires explicit local management configuration.");
+    Console.Error.WriteLine("Offline account recovery requires explicit local management configuration.");
     Environment.ExitCode = 1;
     await app.DisposeAsync();
     return;
@@ -86,24 +89,6 @@ if ((demoEnabled || managementEnabled) && !app.Environment.IsDevelopment())
 
 if (managementEnabled)
 {
-    if (app.Configuration["Content:Action"] is not null)
-    {
-        var migrationDirectory = app.Configuration["Management:DataDirectory"] ?? Path.Combine(app.Environment.ContentRootPath, ".local");
-        if (!File.Exists(Path.Combine(migrationDirectory, "webspine.db")) || app.Configuration["Recovery:Username"] is not null)
-        {
-            Console.Error.WriteLine("Content migration requires an existing database and cannot run together with account recovery.");
-            Environment.ExitCode = 1;
-        }
-        else
-        {
-            var migrationSource = app.Services.GetRequiredService<SqliteContentSource>();
-            await migrationSource.InitializeSchemaAsync();
-            Environment.ExitCode = await ContentMigration.RunAsync(migrationSource, app.Configuration,
-                app.Services.GetRequiredService<CompositionOperations>());
-        }
-        await app.DisposeAsync();
-        return;
-    }
     if (app.Configuration["Recovery:Username"] is null)
     {
         var contentSource = app.Services.GetRequiredService<SqliteContentSource>();
@@ -122,7 +107,7 @@ if (managementEnabled)
     await app.MapManagementAsync();
     app.MapAccounts();
     app.MapAccountAdministration();
-    app.MapAuthoringApi();
+    app.MapRetainedPreviews();
     app.MapCompositionApi();
     app.MapCompositionBoard();
 }

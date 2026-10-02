@@ -3,6 +3,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Webspine.Core;
+using Webspine.Core.Composition;
+using Webspine.Designs.Studio;
 using Webspine.Rendering.Legacy;
 
 namespace Webspine.Examples;
@@ -18,11 +20,22 @@ public static class StudioExample
     }
     public static WebsiteStarter Start(string title, bool example)
     {
-        if (!example) return new(new("site", title, "en", [new("home", "/", "Home", "Welcome to your website", [new TextSection("introduction", "Tell your story", "Add your first words here.")])], []), null,
-            ImmutableDictionary<string, ImmutableArray<byte>>.Empty);
-        var snapshot = Snapshot();
-        return new(snapshot.Website with { Id = "site", Title = title }, null,
-            snapshot.Website.Assets.ToImmutableDictionary(a => a.File, a => Resource(a.File), StringComparer.Ordinal));
+        var site = JsonSerializer.Deserialize<CompositionWebsite>(Resource("studio-site.json").AsSpan(), CompositionJson.Options)
+            ?? throw new ContentValidationException("Empty installed Studio example.");
+        if (!example)
+        {
+            var home = site.Pages.Single(p => p.Id == "home");
+            var main = home.Regions.Single(r => r.Id == "main");
+            var text = site.Blocks.Single(b => b.Id == main.Placements[1].TargetId);
+            var header = site.Blocks.Single(b => b.Id == "site-header-root");
+            site = site with { Pages = [home with { Description = "Welcome to your website", Regions = home.Regions.Replace(main, main with { Placements = main.Placements[..2] }) }],
+                Blocks = site.Blocks.Where(b => b.Id == main.Placements[0].TargetId || b.Id == text.Id || b.Owner.Kind == OwnerKind.Shared).ToImmutableArray(), Assets = [] };
+            site = site with { Blocks = site.Blocks.Replace(text, text with { Fields = JsonSerializer.SerializeToElement(new TextFields("Tell your story", "Add your first words here."), CompositionJson.Options) })
+                .Replace(header, header with { Fields = JsonSerializer.SerializeToElement(new HeaderFields("Independent studio", ["home"]), CompositionJson.Options) }) };
+        }
+        site = site with { Id = "site", Title = title };
+        CompositionContract.Validate(new(2, new("starter", "installed"), "starter", site), StudioPackage.Create().Design, StudioContent.Definitions());
+        return new(site, site.Assets.ToImmutableDictionary(a => a.File, a => Resource(a.File), StringComparer.Ordinal));
     }
     private static ContentSnapshot Snapshot()
     {

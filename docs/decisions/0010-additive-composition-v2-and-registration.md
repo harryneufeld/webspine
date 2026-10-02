@@ -1,5 +1,8 @@
 # Additive composition v2 and registration
 
+Legacy authoring/migration policy superseded by [decision 0017](0017-v2-only-management-authoring.md), 2 October 2026. This record describes the decision at its original implementation; native v2 is now the sole authoring workflow.
+
+
 Selected 1 October 2026 for #14, implementing the first stage of decision 0009.
 
 ## Decision

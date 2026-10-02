@@ -23,13 +23,6 @@ static class CompositionStoreChecks
         foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value);
         return await command.ExecuteScalarAsync();
     }
-    private static CompositionWebsite Convert(ContentSnapshot legacy)
-    {
-        var map = LegacyCompositionMapping.Identities(legacy).ToDictionary(m => (m.PageId, m.SectionId));
-        return DemoComposition.Convert(legacy, LegacyCompositionMapping.Blocks(legacy), (page, section) =>
-        { var item = map[(page, section)]; return (item.BlockId, item.PlacementId); });
-    }
-
     public static async Task RunAsync()
     {
         var directory = Path.Combine(Path.GetTempPath(), "webspine-composition-" + Guid.NewGuid().ToString("N"));
@@ -41,61 +34,13 @@ static class CompositionStoreChecks
             var design = await DemoComposition.DesignAsync();
             var store = new SqliteContentSource(path, registry);
             await store.InitializeSchemaAsync();
-            var fixture = await new DemoContentSource(await File.ReadAllTextAsync(Path.Combine(DemoSite.FixtureDirectory, "site.json"))).ReadAsync();
-            var assets = ImmutableDictionary.CreateBuilder<string, ImmutableArray<byte>>(StringComparer.Ordinal);
-            foreach (var asset in fixture.Website.Assets)
-                assets.Add(asset.File, (await File.ReadAllBytesAsync(Path.Combine(DemoSite.FixtureDirectory, asset.File))).ToImmutableArray());
-            var legacy = await store.CreateAsync(fixture.Website, assets.ToImmutable());
-            var previewId = Guid.NewGuid().ToString("N");
-            var preview = await DemoSite.BuildSnapshotAsync(legacy, assets.ToImmutable(), "/manage/preview/" + previewId);
-            await store.SavePreviewAsync(previewId, preview);
-            var originalJson = (string)(await Sql(path, "SELECT snapshot FROM revisions WHERE revision=$revision", ("$revision", legacy.Revision)))!;
-            var originalPreviewJson = (string)(await Sql(path, "SELECT artifact FROM previews WHERE id=$id", ("$id", previewId)))!;
-            // Reproduce the actual previously shipped v1 schema rather than testing only a new database.
-            await Sql(path, "DROP TABLE content_transitions; ALTER TABLE revisions DROP COLUMN contract_version; PRAGMA user_version=1;");
-            await store.InitializeSchemaAsync(); await store.InitializeSchemaAsync();
-            Require(System.Convert.ToInt32(await Sql(path, "PRAGMA user_version")) == 2 && (await store.ReadAsync()).Revision == legacy.Revision,
-                "Schema upgrade changed the authoritative content.");
-            Require((string)(await Sql(path, "SELECT snapshot FROM revisions WHERE revision=$revision", ("$revision", legacy.Revision)))! == originalJson,
-                "Schema upgrade rewrote history.");
-            Console.WriteLine("PASS: Real v1 database metadata upgrades idempotently without changing content/history/previews.");
-
-            var map = LegacyCompositionMapping.Identities(legacy);
-            var incompatible = design with { Layout = design.Layout with { Id = "different" } };
-            await Fails<ContentValidationException>(() => store.MigrateToCompositionAsync(legacy.Revision, incompatible, Convert, map));
-            await Fails<ContentValidationException>(() => store.MigrateToCompositionAsync(legacy.Revision, design, current =>
-            {
-                var changed = Convert(current);
-                var block = changed.Blocks.First(b => b.TypeId == "text");
-                return changed with { Blocks = changed.Blocks.Replace(block, block with { Fields = JsonSerializer.SerializeToElement(new TextFields("Lost original value", "Body"), CompositionJson.Options) }) };
-            }, map));
-            await Fails<ContentValidationException>(() => store.MigrateToCompositionAsync(legacy.Revision, design, current =>
-            {
-                var changed = Convert(current);
-                var page = changed.Pages[0]; var main = page.Regions.Single(r => r.Id == "main");
-                return changed with { Pages = changed.Pages.SetItem(0, page with
-                    { Regions = page.Regions.Replace(main, main with { Placements = main.Placements.Reverse().ToImmutableArray() }) }) };
-            }, map));
-            Require((await store.HeadAsync())!.Revision == legacy.Revision && (await store.HistoryAsync()).Length == 1, "Failed migration partially committed.");
-            await Fails<RevisionConflictException>(() => store.MigrateToCompositionAsync("stale", design, Convert, map));
-            Console.WriteLine("PASS: Invalid/lossy/stale migrations preserve the original head and leave no partial revision.");
-
-            var migration = await store.MigrateToCompositionAsync(legacy.Revision, design, Convert, map);
-            var migrated = await store.ReadCompositionAsync();
-            Require(migration.Revision == migrated.Revision && migrated.Website.Pages.Select(p => (p.Id, p.Path, p.Title, p.Description))
-                .SequenceEqual(legacy.Website.Pages.Select(p => (p.Id, p.Path, p.Title, p.Description))), "Migration lost page identity/content.");
-            Require((await store.MigrationMapAsync(migrated.Revision)).SequenceEqual(map), "Identity mapping not persisted.");
-            var repeated = await store.MigrateToCompositionAsync(migrated.Revision, design, Convert, []);
-            Require(repeated.AlreadyComposition && repeated.Revision == migrated.Revision && (await store.HistoryAsync()).Length == 2, "Repeated migration changed content.");
-            await Fails<CompositionSiteException>(async () => await store.UpdateDraftAsync(new(legacy.Revision, "home", "introduction", "heading", "Old form")));
-            Require((await store.ReadLegacyRevisionAsync(legacy.Revision))!.Website.Title == legacy.Website.Title, "Legacy history unreadable.");
+            var starter = Webspine.Examples.StudioExample.Start("Store proof", true);
+            var assets = starter.Assets;
+            var migrated = await store.CreateCompositionAsync(starter.Composition, design, assets);
             var capture = await store.CaptureCompositionAsync(design);
             var built = new CompositionBuildPipeline(registry).Build(capture);
-            var html = Encoding.UTF8.GetString(built.Files.Single(f => f.Path == "index.html").Bytes.AsSpan());
-            Require(html.Contains("Main navigation") && html.Contains("/contact/") && html.Contains(legacy.Website.Title) && html.Contains("Draft preview"), "Shared shell lost during migration.");
-            Require(capture.AssetFiles.Single().Value.SequenceEqual(assets.Single().Value), "Migration changed media.");
-            Console.WriteLine("PASS: Explicit v1 migration preserves all fields/pages/media, captures shared shell and retains its identity map.");
-
+            Require(capture.AssetFiles.Single().Value.SequenceEqual(assets.Single().Value), "Capture changed media.");
+            Console.WriteLine("PASS: Native v2 creation captures all pages, shared shell and exact media.");
             var reopened = new SqliteContentSource(path, DemoComposition.Registry());
             await reopened.InitializeSchemaAsync();
             var home = migrated.Website.Pages.Single(p => p.Id == "home");
@@ -125,7 +70,7 @@ static class CompositionStoreChecks
                 catch (RevisionConflictException) { return false; }
             }
             var winners = await Task.WhenAll(Task.Run(() => Compete("Writer one")), Task.Run(() => Compete("Writer two")));
-            Require(winners.Count(v => v) == 1 && (await store.HistoryAsync()).Length == 4, "Concurrent composition writes both committed.");
+            Require(winners.Count(v => v) == 1 && (await store.HistoryAsync()).Length == 3, "Concurrent composition writes both committed.");
             var current = await store.ReadCompositionAsync();
             await Fails<RevisionConflictException>(() => store.SavePreviewAsync(Guid.NewGuid().ToString("N"), v2preview));
             Console.WriteLine("PASS: Concurrent composition writers have one winner and stale preview saves are rejected.");
@@ -175,51 +120,19 @@ static class CompositionStoreChecks
             await Fails<ContentValidationException>(() => store.CommitCompositionAsync(deleted.Revision, deleted.Website, design,
                 ImmutableDictionary<string, ImmutableArray<byte>>.Empty.Add(oldImage.File, [99])));
             Require((await store.ReadCompositionAsync()).Revision == deleted.Revision, "Rejected media replacement committed.");
-            Require((string)(await Sql(path, "SELECT snapshot FROM revisions WHERE revision=$revision", ("$revision", legacy.Revision)))! == originalJson &&
-                (string)(await Sql(path, "SELECT artifact FROM previews WHERE id=$id", ("$id", previewId)))! == originalPreviewJson, "Stored legacy/exported artifact representation changed.");
-            Require((await store.ReadPreviewAsync(previewId))!.Digest == preview.Digest && (await store.ReadPreviewAsync(v2previewId))!.Digest == v2preview.Digest,
-                "Retained artifacts changed across composition edits/deletion.");
-            var restored = await store.RestoreLegacyAsync(deleted.Revision, legacy.Revision);
-            Require(restored.Revision != legacy.Revision && restored.Revision != deleted.Revision && (await store.ReadAsync()).Website.Title == legacy.Website.Title,
-                "Recovery lost v1 content or reused an old revision.");
-            await Fails<RevisionConflictException>(async () => await store.UpdateDraftAsync(new(legacy.Revision, "home", "introduction", "heading", "Stale old form")));
-            Require((await store.ReadCompositionRevisionAsync(deleted.Revision))!.Website.SharedBlocks.Length == 1, "Recovery deleted v2 history.");
-            Console.WriteLine("PASS: Media paths/history/artifacts stay immutable; recovery creates a fresh v1 revision without deleting v2 history.");
-
+            Require((await store.ReadPreviewAsync(v2previewId))!.Digest == v2preview.Digest, "Retained artifact changed across composition edits/deletion.");
+            Require((await store.ReadCompositionRevisionAsync(migrated.Revision))!.Website.Title == migrated.Website.Title, "Edits changed historical content.");
+            Console.WriteLine("PASS: Media paths, history and captured artifacts stay immutable across edits and deletion.");
             var newPath = Path.Combine(directory, "new.db");
             var fresh = new SqliteContentSource(newPath, registry); await fresh.InitializeSchemaAsync();
             var extraAssets = migrated.Website with { Assets = migrated.Website.Assets.Add(new("missing", "assets/missing.svg", "image/svg+xml")) };
-            await Fails<ContentValidationException>(() => fresh.CreateCompositionAsync(extraAssets, design, assets.ToImmutable()));
+            await Fails<ContentValidationException>(() => fresh.CreateCompositionAsync(extraAssets, design, assets));
             Require(await fresh.HeadAsync() is null && System.Convert.ToInt32(await Sql(newPath, "SELECT COUNT(*) FROM assets")) == 0, "Failed create left partial media/head.");
-            var created = await fresh.CreateCompositionAsync(migrated.Website, design, assets.ToImmutable());
-            await Fails<SiteAlreadyExistsException>(() => fresh.CreateCompositionAsync(migrated.Website, design, assets.ToImmutable()));
+            var created = await fresh.CreateCompositionAsync(migrated.Website, design, assets);
+            await Fails<SiteAlreadyExistsException>(() => fresh.CreateCompositionAsync(migrated.Website, design, assets));
             Require((await fresh.ReadCompositionAsync()).Revision == created.Revision, "Fresh composition site missing.");
             Console.WriteLine("PASS: Fresh v2 creation validates and stores atomically without overwriting a site or leaving partial media.");
 
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            async Task<(int Code, string Output, string Errors)> Command(string action, string? expected = null, string? original = null)
-            {
-                await using var host = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true,
-                    contentAction: action, expectedRevision: expected, legacyRevision: original);
-                await host.Process.WaitForExitAsync(timeout.Token);
-                return (host.Process.ExitCode, await host.Output, await host.Errors);
-            }
-            var inspect = await Command("inspect"); Require(inspect.Code == 0 && inspect.Output.Contains(restored.Revision), "Offline inspect failed.");
-            var noExpected = await Command("migrate"); Require(noExpected.Code != 0, "Migration accepted no revision.");
-            var commandMigration = await Command("migrate", restored.Revision);
-            Require(commandMigration.Code == 0, "Offline migration failed: " + commandMigration.Errors);
-            var headV2 = (await store.HeadAsync())!;
-            Require(!File.Exists(Path.Combine(directory, "accounts.db")), "Offline content tooling initialized unrelated account storage.");
-            using var browser = new HttpClient(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false });
-            await using (var migratedHost = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
-            {
-                await migratedHost.WaitHealthyAsync(browser);
-                using var response = await browser.GetAsync(migratedHost.Url + "/manage/composition");
-                Require(response.StatusCode == System.Net.HttpStatusCode.Found && response.Headers.Location!.ToString().Contains("login"), "Migrated board exposed drafts anonymously.");
-            }
-            var staleRestore = await Command("restore", restored.Revision, restored.Revision); Require(staleRestore.Code != 0, "Stale recovery succeeded.");
-            var recovery = await Command("restore", headV2.Revision, restored.Revision); Require(recovery.Code == 0 && (await store.HeadAsync())!.Version == 1, "Offline recovery failed.");
-            Console.WriteLine("PASS: Offline migration preserves conditional recovery; migrated hosting requires authentication.");
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }

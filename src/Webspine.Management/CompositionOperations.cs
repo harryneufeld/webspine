@@ -7,7 +7,7 @@ using Webspine.Core.Composition;
 namespace Webspine.Management;
 
 internal sealed class CompositionOperations(ICompositionDraftPersistence source, SqliteContentSource previews,
-    IDesignPackage package, ICompositionRenderer renderer, ILegacyCompositionConverter converter,
+    IDesignPackage package, ICompositionRenderer renderer,
     FrozenInputStore inputs, ILogger<CompositionOperations> logger)
 {
     public ICompositionDraftPersistence Source => source;
@@ -60,10 +60,6 @@ internal sealed class CompositionOperations(ICompositionDraftPersistence source,
             canWriteShared = Permissions.Has(user, "content:write") && Permissions.Has(user, "content:shared:write"),
             types = Registry.Descriptors.Select(Type).ToArray() };
     }
-    public CompositionWebsite ConvertLegacy(ContentSnapshot legacy, ImmutableArray<Block> sections,
-        Func<string, string, (string BlockId, string PlacementId)> identities) => converter.Convert(legacy, sections, identities);
-    public async ValueTask<BuiltArtifact> RehearseAsync(CapturedComposition captured, CancellationToken ct) =>
-        await renderer.BuildAsync(captured, await package.CaptureAsync(ct), cancellationToken: ct);
     public async Task<CompositionSnapshot> ReadAsync(CancellationToken ct)
     {
         source.CompositionCapabilities.Require(CompositionOperation.Read);

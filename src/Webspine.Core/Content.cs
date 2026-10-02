@@ -38,14 +38,6 @@ public interface IContentSource
 public sealed record DraftChange(string ExpectedRevision, string PageId, string SectionId,
     string Field, string Value);
 
-// Authoring capabilities extend the read/field contract without requiring read-only sources to write.
-public interface IWebsiteAuthoringSource : IContentSource
-{
-    Task<ContentSnapshot> UpdateWebsiteAsync(string expectedRevision, string title, string language, CancellationToken cancellationToken = default);
-    Task<ContentSnapshot> AddPageAsync(string expectedRevision, string title, string path, string description, CancellationToken cancellationToken = default);
-    Task<ContentSnapshot> EditPageAsync(string expectedRevision, string pageId, string title, string description, IReadOnlyDictionary<string, string> fields, CancellationToken cancellationToken = default);
-}
-
 public sealed class ContentValidationException(string message) : Exception(message);
 public sealed class SourceOperationNotSupportedException(string message) : Exception(message);
 

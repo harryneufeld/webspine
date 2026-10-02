@@ -1,0 +1,579 @@
+{
+  "id": "northline-studio",
+  "title": "Northline Studio",
+  "language": "en",
+  "assets": [
+    {
+      "id": "studio-illustration",
+      "file": "assets/studio.svg",
+      "contentType": "image/svg+xml"
+    }
+  ],
+  "layoutId": "standard",
+  "pages": [
+    {
+      "id": "home",
+      "path": "/",
+      "title": "Home",
+      "description": "Thoughtful services. Useful products. Built to last.",
+      "regions": [
+        {
+          "id": "header",
+          "placements": [
+            {
+              "id": "placement-3556e458838a8e8a5d4bdb5611eb93fe",
+              "kind": "shared",
+              "targetId": "site-header"
+            }
+          ]
+        },
+        {
+          "id": "main",
+          "placements": [
+            {
+              "id": "placement-46e816e5ba6fb97a94c52a3641796f5b",
+              "kind": "block",
+              "targetId": "title-4ea140588150773ce3aace786aeef7f4"
+            },
+            {
+              "id": "placement-2eb6afd238dc39c89c97343021e0263a",
+              "kind": "block",
+              "targetId": "block-2eb6afd238dc39c89c97343021e0263a"
+            },
+            {
+              "id": "placement-6104eaf9e9755caee8ac94ca6e1762c0",
+              "kind": "block",
+              "targetId": "block-6104eaf9e9755caee8ac94ca6e1762c0"
+            },
+            {
+              "id": "placement-31639724208c16aa01f8a9454d02d49f",
+              "kind": "block",
+              "targetId": "block-31639724208c16aa01f8a9454d02d49f"
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "placements": [
+            {
+              "id": "placement-07b96d838433f5f822ce738fdba3c6e8",
+              "kind": "shared",
+              "targetId": "site-footer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "services",
+      "path": "/services/",
+      "title": "Services",
+      "description": "From first questions to a better working day.",
+      "regions": [
+        {
+          "id": "header",
+          "placements": [
+            {
+              "id": "placement-d82f35ce3add1d7766e3583467ae4453",
+              "kind": "shared",
+              "targetId": "site-header"
+            }
+          ]
+        },
+        {
+          "id": "main",
+          "placements": [
+            {
+              "id": "placement-0df5f10095d10d127dcc2a4c47d93207",
+              "kind": "block",
+              "targetId": "title-ef1c4b45f2ed763283f8de890730defb"
+            },
+            {
+              "id": "placement-3dfc471d30e2b477d7e49ad11c212885",
+              "kind": "block",
+              "targetId": "block-3dfc471d30e2b477d7e49ad11c212885"
+            },
+            {
+              "id": "placement-156773219393715ccde8ee8a7a6d857a",
+              "kind": "block",
+              "targetId": "block-156773219393715ccde8ee8a7a6d857a"
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "placements": [
+            {
+              "id": "placement-9880c56e8545a9279c054048a62f49ce",
+              "kind": "shared",
+              "targetId": "site-footer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "products",
+      "path": "/products/",
+      "title": "Products",
+      "description": "Small tools for work that matters.",
+      "regions": [
+        {
+          "id": "header",
+          "placements": [
+            {
+              "id": "placement-f80ff41fc80c5b0e6f2495a3106a587b",
+              "kind": "shared",
+              "targetId": "site-header"
+            }
+          ]
+        },
+        {
+          "id": "main",
+          "placements": [
+            {
+              "id": "placement-7ef021d299b6f48bb0fbbe0689f0030f",
+              "kind": "block",
+              "targetId": "title-0a3e27b8ca818264d75c8d816c12922c"
+            },
+            {
+              "id": "placement-1764854455151d6ebfd76db04f609a96",
+              "kind": "block",
+              "targetId": "block-1764854455151d6ebfd76db04f609a96"
+            },
+            {
+              "id": "placement-e493eeba0f7d95f69a788ae808744746",
+              "kind": "block",
+              "targetId": "block-e493eeba0f7d95f69a788ae808744746"
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "placements": [
+            {
+              "id": "placement-577e7074f5fc13b1072f7ee4372f640a",
+              "kind": "shared",
+              "targetId": "site-footer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "about",
+      "path": "/about/",
+      "title": "About",
+      "description": "A small studio with a practical outlook.",
+      "regions": [
+        {
+          "id": "header",
+          "placements": [
+            {
+              "id": "placement-f7acbb1a3588d6f019b997b0b295e3fd",
+              "kind": "shared",
+              "targetId": "site-header"
+            }
+          ]
+        },
+        {
+          "id": "main",
+          "placements": [
+            {
+              "id": "placement-6c3d400561cc7007125820ccb21ce181",
+              "kind": "block",
+              "targetId": "title-a4262e1c9bcbc1721eb3fe1355815446"
+            },
+            {
+              "id": "placement-341f31698882598033597d2b825b8de4",
+              "kind": "block",
+              "targetId": "block-341f31698882598033597d2b825b8de4"
+            },
+            {
+              "id": "placement-1ebfc30d68d59513019b8d3092ce1d7e",
+              "kind": "block",
+              "targetId": "block-1ebfc30d68d59513019b8d3092ce1d7e"
+            },
+            {
+              "id": "placement-29ec0ad7c8019bc4c6e08bb31c040718",
+              "kind": "block",
+              "targetId": "block-29ec0ad7c8019bc4c6e08bb31c040718"
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "placements": [
+            {
+              "id": "placement-017976142d62067719b723a88590bf67",
+              "kind": "shared",
+              "targetId": "site-footer"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "contact",
+      "path": "/contact/",
+      "title": "Contact",
+      "description": "Let us hear what you have in mind.",
+      "regions": [
+        {
+          "id": "header",
+          "placements": [
+            {
+              "id": "placement-c083e34c0b3d03104aea6d833c47b7a8",
+              "kind": "shared",
+              "targetId": "site-header"
+            }
+          ]
+        },
+        {
+          "id": "main",
+          "placements": [
+            {
+              "id": "placement-eb0d70ee1a61228269af8a1e59b53f69",
+              "kind": "block",
+              "targetId": "title-093e7d5fdbaacfa92448861b11075b3f"
+            },
+            {
+              "id": "placement-5893809abebdfe1787f518cc2a4a2675",
+              "kind": "block",
+              "targetId": "block-5893809abebdfe1787f518cc2a4a2675"
+            },
+            {
+              "id": "placement-031c1082a85ec692cb11bc17107eb8ea",
+              "kind": "block",
+              "targetId": "block-031c1082a85ec692cb11bc17107eb8ea"
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "placements": [
+            {
+              "id": "placement-e47b7666186bce6994dddc29eb8a6d52",
+              "kind": "shared",
+              "targetId": "site-footer"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "id": "site-header-root",
+      "owner": {
+        "kind": "shared",
+        "id": "site-header"
+      },
+      "typeId": "site-header",
+      "typeVersion": 1,
+      "fields": {
+        "subtitle": "Independent studio",
+        "pageIds": [
+          "home",
+          "services",
+          "products",
+          "about",
+          "contact"
+        ]
+      },
+      "children": []
+    },
+    {
+      "id": "site-footer-root",
+      "owner": {
+        "kind": "shared",
+        "id": "site-footer"
+      },
+      "typeId": "site-footer",
+      "typeVersion": 1,
+      "fields": {
+        "message": "Draft preview · Not published"
+      },
+      "children": []
+    },
+    {
+      "id": "title-4ea140588150773ce3aace786aeef7f4",
+      "owner": {
+        "kind": "page",
+        "id": "home"
+      },
+      "typeId": "page-title",
+      "typeVersion": 1,
+      "fields": {},
+      "children": []
+    },
+    {
+      "id": "block-2eb6afd238dc39c89c97343021e0263a",
+      "owner": {
+        "kind": "page",
+        "id": "home"
+      },
+      "typeId": "text",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Good ideas deserve a clear direction.",
+        "text": "We help small businesses turn complex challenges into useful digital experiences. Explore our services, discover our products, and meet the people behind the work."
+      },
+      "children": []
+    },
+    {
+      "id": "block-6104eaf9e9755caee8ac94ca6e1762c0",
+      "owner": {
+        "kind": "page",
+        "id": "home"
+      },
+      "typeId": "image",
+      "typeVersion": 1,
+      "fields": {
+        "assetId": "studio-illustration",
+        "alternativeText": "Abstract illustration of a studio workspace with architectural shapes"
+      },
+      "children": []
+    },
+    {
+      "id": "block-31639724208c16aa01f8a9454d02d49f",
+      "owner": {
+        "kind": "page",
+        "id": "home"
+      },
+      "typeId": "cta",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "A little clarity goes a long way.",
+        "text": "Start with the challenge. We will help you find the next practical step.",
+        "label": "Explore our services",
+        "destination": "/services/"
+      },
+      "children": []
+    },
+    {
+      "id": "title-ef1c4b45f2ed763283f8de890730defb",
+      "owner": {
+        "kind": "page",
+        "id": "services"
+      },
+      "typeId": "page-title",
+      "typeVersion": 1,
+      "fields": {},
+      "children": []
+    },
+    {
+      "id": "block-3dfc471d30e2b477d7e49ad11c212885",
+      "owner": {
+        "kind": "page",
+        "id": "services"
+      },
+      "typeId": "cards",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "How we can help",
+        "items": [
+          {
+            "title": "Digital strategy",
+            "description": "A clear plan based on your business, your customers, and what you can realistically maintain.",
+            "assetId": null,
+            "destination": "/contact/"
+          },
+          {
+            "title": "Website design",
+            "description": "Readable, accessible websites with an identity that feels like your business.",
+            "assetId": null,
+            "destination": "/contact/"
+          },
+          {
+            "title": "Ongoing care",
+            "description": "Practical improvements and dependable maintenance as your needs change.",
+            "assetId": null,
+            "destination": "/contact/"
+          }
+        ]
+      },
+      "children": []
+    },
+    {
+      "id": "block-156773219393715ccde8ee8a7a6d857a",
+      "owner": {
+        "kind": "page",
+        "id": "services"
+      },
+      "typeId": "cta",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Tell us what you are working on.",
+        "text": "A conversation is a useful place to start.",
+        "label": "Get in touch",
+        "destination": "/contact/"
+      },
+      "children": []
+    },
+    {
+      "id": "title-0a3e27b8ca818264d75c8d816c12922c",
+      "owner": {
+        "kind": "page",
+        "id": "products"
+      },
+      "typeId": "page-title",
+      "typeVersion": 1,
+      "fields": {},
+      "children": []
+    },
+    {
+      "id": "block-1764854455151d6ebfd76db04f609a96",
+      "owner": {
+        "kind": "page",
+        "id": "products"
+      },
+      "typeId": "cards",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Our collection",
+        "items": [
+          {
+            "title": "Studio Planner",
+            "description": "A simple planning kit for turning the next big idea into manageable steps.",
+            "assetId": "studio-illustration",
+            "destination": "/contact/"
+          },
+          {
+            "title": "Brand Essentials",
+            "description": "A practical set of templates for a consistent business identity.",
+            "assetId": "studio-illustration",
+            "destination": "/contact/"
+          },
+          {
+            "title": "Website Starter",
+            "description": "A considered starting point for your next informational website.",
+            "assetId": "studio-illustration",
+            "destination": "/contact/"
+          }
+        ]
+      },
+      "children": []
+    },
+    {
+      "id": "block-e493eeba0f7d95f69a788ae808744746",
+      "owner": {
+        "kind": "page",
+        "id": "products"
+      },
+      "typeId": "text",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Want to know more?",
+        "text": "These are example products for the webspine demo. This website has no checkout or payment system."
+      },
+      "children": []
+    },
+    {
+      "id": "title-a4262e1c9bcbc1721eb3fe1355815446",
+      "owner": {
+        "kind": "page",
+        "id": "about"
+      },
+      "typeId": "page-title",
+      "typeVersion": 1,
+      "fields": {},
+      "children": []
+    },
+    {
+      "id": "block-341f31698882598033597d2b825b8de4",
+      "owner": {
+        "kind": "page",
+        "id": "about"
+      },
+      "typeId": "text",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "We value work that stays useful.",
+        "text": "Northline is a fictional independent studio. We use it to demonstrate a common business website, combining services, products, and a clear introduction to the company."
+      },
+      "children": []
+    },
+    {
+      "id": "block-1ebfc30d68d59513019b8d3092ce1d7e",
+      "owner": {
+        "kind": "page",
+        "id": "about"
+      },
+      "typeId": "text",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Clear thinking. Careful making.",
+        "text": "We prefer understandable systems, thoughtful design, and improvements that people can maintain."
+      },
+      "children": []
+    },
+    {
+      "id": "block-29ec0ad7c8019bc4c6e08bb31c040718",
+      "owner": {
+        "kind": "page",
+        "id": "about"
+      },
+      "typeId": "cta",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Good work starts with a conversation.",
+        "text": "Find our example contact details on the next page.",
+        "label": "Contact the studio",
+        "destination": "/contact/"
+      },
+      "children": []
+    },
+    {
+      "id": "title-093e7d5fdbaacfa92448861b11075b3f",
+      "owner": {
+        "kind": "page",
+        "id": "contact"
+      },
+      "typeId": "page-title",
+      "typeVersion": 1,
+      "fields": {},
+      "children": []
+    },
+    {
+      "id": "block-5893809abebdfe1787f518cc2a4a2675",
+      "owner": {
+        "kind": "page",
+        "id": "contact"
+      },
+      "typeId": "text",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Say hello",
+        "text": "Email: hello@example.invalid\nHours: Monday–Friday, 09:00–17:00\nThis is fictional demo information. No contact form submissions are collected."
+      },
+      "children": []
+    },
+    {
+      "id": "block-031c1082a85ec692cb11bc17107eb8ea",
+      "owner": {
+        "kind": "page",
+        "id": "contact"
+      },
+      "typeId": "cta",
+      "typeVersion": 1,
+      "fields": {
+        "heading": "Still exploring?",
+        "text": "Take another look at the ways we can help.",
+        "label": "View our services",
+        "destination": "/services/"
+      },
+      "children": []
+    }
+  ],
+  "sharedBlocks": [
+    {
+      "id": "site-header",
+      "rootBlockId": "site-header-root"
+    },
+    {
+      "id": "site-footer",
+      "rootBlockId": "site-footer-root"
+    }
+  ]
+}

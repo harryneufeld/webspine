@@ -1,5 +1,8 @@
 # 0016: Independent layouts and installed website starters
 
+Legacy authoring/migration policy superseded by [decision 0017](0017-v2-only-management-authoring.md), 2 October 2026. This record describes the decision at its original implementation; native v2 is now the sole authoring workflow.
+
+
 Accepted, 1 October 2026, issue #27.
 
 The second design proof exposed two remaining assumptions: Core required Regions named `header`, `main` and `footer`, and management loaded the demo fixture directly. Both prevented a package from owning its complete website structure.

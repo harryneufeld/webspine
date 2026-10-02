@@ -27,9 +27,3 @@ public interface ICompositionRenderer
     ValueTask<BuiltArtifact> BuildAsync(CapturedComposition content, FrozenDesignPackage design,
         string pathBase = "", CancellationToken cancellationToken = default);
 }
-
-public interface ILegacyCompositionConverter
-{
-    CompositionWebsite Convert(ContentSnapshot legacy, ImmutableArray<Block> sections,
-        Func<string, string, (string BlockId, string PlacementId)> identities);
-}

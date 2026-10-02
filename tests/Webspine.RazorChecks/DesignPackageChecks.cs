@@ -51,13 +51,9 @@ static class DesignPackageChecks
         Assert(package.ContentTypes.Descriptors.All(d => package.ContentTypes.Resolve(d.Id, d.Version).GetType().GetMethods().All(m => m.Name != "Render")), "Content definition contains rendering.");
         Console.WriteLine("PASS Configured packages reject unknown versions and missing/duplicate/incompatible typed mappings; definitions have no rendering");
 
-        var legacy = await new DemoContentSource(await File.ReadAllTextAsync(Path.Combine(DemoSite.FixtureDirectory, "site.json"))).ReadAsync();
-        var map = LegacyCompositionMapping.Identities(legacy).ToDictionary(m => (m.PageId, m.SectionId));
-        var website = new StudioLegacyConverter().Convert(legacy, LegacyCompositionMapping.Blocks(legacy),
-            (p, s) => { var m = map[(p, s)]; return (m.BlockId, m.PlacementId); });
-        var media = ImmutableDictionary.CreateBuilder<string, ImmutableArray<byte>>();
-        foreach (var asset in website.Assets) media.Add(asset.File, (await File.ReadAllBytesAsync(Path.Combine(DemoSite.FixtureDirectory, asset.File))).ToImmutableArray());
-        var capture = new CapturedComposition(new(2, legacy.Source, legacy.Revision, website), package.Design, media.ToImmutable());
+        var starter = Webspine.Examples.StudioExample.Start("Northline Studio", true);
+        var website = starter.Composition;
+        var capture = new CapturedComposition(new(2, new("proof", "fixture"), "studio-fixture", website), package.Design, starter.Assets);
         var frozen = await package.CaptureAsync();
         var first = await package.BuildAsync(capture, frozen, "/preview/fixed");
         var second = await package.BuildAsync(capture, frozen, "/preview/fixed");

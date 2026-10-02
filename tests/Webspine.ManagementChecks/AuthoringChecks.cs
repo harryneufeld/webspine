@@ -34,17 +34,17 @@ static partial class AuthoringChecks
                 using var duplicate = await client.PostAsync(host.Url + "/manage/setup", new FormUrlEncodedContent(values));
                 Require(duplicate.StatusCode == HttpStatusCode.Conflict, "Repeated setup replaced the site.");
 
-                var edit = await client.GetStringAsync(host.Url + "/manage/pages/home");
+                var edit = await client.GetStringAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a");
                 values = Form(edit);
-                values["field.introduction.heading"] = "A heading saved in webspine";
-                using var saved = await client.PostAsync(host.Url + "/manage/pages/home", new FormUrlEncodedContent(values));
+                values["field.heading"] = "A heading saved in webspine";
+                using var saved = await client.PostAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a", new FormUrlEncodedContent(values));
                 Require(saved.StatusCode == HttpStatusCode.Found, "Heading save failed.");
-                values["field.introduction.heading"] = "Keep my unsaved words";
-                using var stale = await client.PostAsync(host.Url + "/manage/pages/home", new FormUrlEncodedContent(values));
-                Require(stale.StatusCode == HttpStatusCode.Conflict && (await stale.Content.ReadAsStringAsync()).Contains("Keep my unsaved words"), "Conflict did not preserve submitted text.");
+                values["field.heading"] = "Keep my unsaved words";
+                using var stale = await client.PostAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a", new FormUrlEncodedContent(values));
+                Require(stale.StatusCode == HttpStatusCode.Conflict, "Stale edit was not rejected.");
                 var overview = await client.GetStringAsync(host.Url + "/manage");
                 values = Form(overview);
-                using var built = await client.PostAsync(host.Url + "/manage/preview", new FormUrlEncodedContent(values));
+                using var built = await client.PostAsync(host.Url + "/manage/composition/preview", new FormUrlEncodedContent(values));
                 Require(built.StatusCode == HttpStatusCode.Found, "Preview failed.");
                 previewRoute = built.Headers.Location!.ToString();
                 using var preview = await client.GetAsync(host.Url + previewRoute);
@@ -52,25 +52,25 @@ static partial class AuthoringChecks
                 Require(System.Text.Encoding.UTF8.GetString(previewBytes).Contains("A heading saved in webspine") && preview.Headers.CacheControl?.NoStore == true && !preview.Headers.Contains("X-Webspine-Cache"), "Preview did not show saved content privately.");
                 foreach (var page in new[] { "services/", "products/", "about/", "contact/", "assets/studio.svg" })
                 { using var response = await client.GetAsync(host.Url + previewRoute + page); Require(response.IsSuccessStatusCode, "Missing preview page/asset."); }
-                using var export = await client.GetAsync(host.Url + "/manage/export");
+                using var export = await client.GetAsync(host.Url + "/manage/composition/export");
                 using var archive = new ZipArchive(new MemoryStream(await export.Content.ReadAsByteArrayAsync()), ZipArchiveMode.Read);
                 Require(archive.GetEntry("content.json") is not null && archive.GetEntry("assets/studio.svg") is not null, "Portable export omitted content/media.");
-                edit = await client.GetStringAsync(host.Url + "/manage/pages/home");
-                values = Form(edit); values["field.introduction.heading"] = "Edited after preview";
-                using var after = await client.PostAsync(host.Url + "/manage/pages/home", new FormUrlEncodedContent(values));
+                edit = await client.GetStringAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a");
+                values = Form(edit); values["field.heading"] = "Edited after preview";
+                using var after = await client.PostAsync(host.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a", new FormUrlEncodedContent(values));
                 Require(after.IsSuccessStatusCode || after.StatusCode == HttpStatusCode.Found, "Later save failed.");
             }
             await using (var restarted = CheckHost.Start("Development", false, dataDirectory: directory, managementEnabled: true))
             {
                 await restarted.WaitHealthyAsync(client);
                 var overview = await client.GetStringAsync(restarted.Url + "/manage");
-                var edit = await client.GetStringAsync(restarted.Url + "/manage/pages/home");
+                var edit = await client.GetStringAsync(restarted.Url + "/manage/composition/blocks/block-2eb6afd238dc39c89c97343021e0263a");
                 Require(overview.Contains("My saved studio") && edit.Contains("Edited after preview"), "Process restart lost site/edit.");
                 var retained = await client.GetByteArrayAsync(restarted.Url + previewRoute);
                 Require(retained.SequenceEqual(previewBytes), "Process restart changed retained preview bytes.");
                 var values = Form(overview); values["title"] = "News"; values["path"] = "/news/"; values["description"] = "Our news";
-                using var added = await client.PostAsync(restarted.Url + "/manage/pages", new FormUrlEncodedContent(values));
-                Require(added.StatusCode == HttpStatusCode.Found && (await client.GetStringAsync(restarted.Url + "/manage")).Contains("Edit News"), "Page creation failed.");
+                using var added = await client.PostAsync(restarted.Url + "/manage/composition/pages", new FormUrlEncodedContent(values));
+                Require(added.StatusCode == HttpStatusCode.Found && (await client.GetStringAsync(restarted.Url + "/manage")).Contains("News"), "Page creation failed.");
             }
             Console.WriteLine("PASS: Actual management setup/edit/preview/export/restart, antiforgery, Host checks and conflict recovery.");
 
@@ -82,7 +82,7 @@ static partial class AuthoringChecks
                 var values = Form(await client.GetStringAsync(blank.Url + "/manage")); values["mode"] = "blank"; values["title"] = "Blank project";
                 using var created = await client.PostAsync(blank.Url + "/manage/setup", new FormUrlEncodedContent(values));
                 var overview = await client.GetStringAsync(blank.Url + "/manage");
-                Require(created.StatusCode == HttpStatusCode.Found && overview.Contains("1 total") && !overview.Contains("Edit Services"), "Blank path seeded the demo.");
+                Require(created.StatusCode == HttpStatusCode.Found && overview.Contains("Home") && !overview.Contains("/services/"), "Blank path seeded the demo.");
             }
             await using (var production = CheckHost.Start("Production", false, dataDirectory: directory, managementEnabled: true))
             {

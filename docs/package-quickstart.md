@@ -18,9 +18,9 @@ Use a separate directory and port for Studio:
 dotnet run --project src/Webspine.Management -- --urls http://127.0.0.1:9088 --environment Development --Management:Enabled true --Management:DataDirectory .local/studio --Design:Package studio --Design:Version 1
 ```
 
-Choose **Use demo**, then explicitly **Enable composition editing**. Studio keeps its existing five-page v1 setup until that migration. Its Header/Main/Footer document and card grid differ from Fieldwork's Brand/Content/Contact document, navigation rail and numbered service lists. Both use the same source, editor/API, renderer and artifact pipeline. One data directory owns one website; these commands are separate installations, not multi-tenant hosting.
+Choose **Use demo** to create five native v2 pages, or **Start blank** for one editable Home page. No enable/migration step is needed. Its Header/Main/Footer document and card grid differ from Fieldwork's Brand/Content/Contact document, navigation rail and numbered service lists. Both use the same source, editor/API, renderer and artifact pipeline. One data directory owns one website; these commands are separate installations, not multi-tenant hosting.
 
-Do not select Fieldwork against an existing Studio database as an automatic redesign. It has no migration mapping for that content. Incompatible authoring/new builds fail and retained previews remain readable. Select the original package to resume editing, or implement and rehearse an explicit migration on a copy.
+Do not select Fieldwork against an existing Studio database as an automatic redesign. Incompatible authoring/new builds fail and retained previews remain readable. Select the original package to resume editing its v2 data. Legacy v1 workspaces require a fresh v2 installation in a separate directory; legacy migration is not supported.
 
 ## Add a package project
 
@@ -77,9 +77,9 @@ Ordinary Razor expressions escape content. Do not use `MarkupString` for CMS tex
 
 ## Install and seed it explicitly
 
-Add the package project reference to the operator-controlled installation catalog (`Webspine.Examples` in the default host). Add one `InstalledDesign` entry with your package, supported legacy converter (or `UnsupportedLegacyConverter`), legacy support flag, readable setup labels and a starter function. `InstalledDesigns.Select` validates exact ID/version selection through the package catalog. Management consumes this registration through dependency injection.
+Add the package project reference to the operator-controlled installation catalog (`Webspine.Examples` in the default host). Add one `InstalledDesign` entry with your package, readable setup labels and a native v2 starter function. `InstalledDesigns.Select` validates exact ID/version selection through the package catalog. Management consumes this registration through dependency injection.
 
-The starter returns `WebsiteStarter`: exactly one v1 `WebsiteContent` or v2 `CompositionWebsite`, plus immutable media bytes keyed by declared file path. For a new layout, use native v2: supply each declared Region once per page, registered type versions, unique Block/placement IDs, explicit page/shared ownership and valid references. `FieldworkExample.Start` is a complete four-page and blank-site reference. All starter data is validated before an atomic first commit. Once committed, spinecms is the authoritative editable source; the starter is never a synchronized shadow source or a render-time lookup.
+The starter returns `WebsiteStarter`: a native v2 `CompositionWebsite`, plus immutable media bytes keyed by declared file path. For a new layout, use native v2: supply each declared Region once per page, registered type versions, unique Block/placement IDs, explicit page/shared ownership and valid references. `FieldworkExample.Start` is a complete four-page and blank-site reference. All starter data is validated before an atomic first commit. Once committed, spinecms is the authoritative editable source; the starter is never a synchronized shadow source or a render-time lookup.
 
 Select your installed ID using `--Design:Package my-site --Design:Version 1` against a new data directory. Unknown IDs/versions and missing/incompatible component mappings fail. Payload changes incompatible with stored values need new type versions and explicit migration; defaults initialize new Blocks/list items only.
 
