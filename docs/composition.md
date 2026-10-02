@@ -4,11 +4,11 @@ Implemented library slice for #14, 1 October 2026. `Webspine.Core.Composition` p
 
 ## Objects and placement
 
-`CompositionSnapshot` carries explicit `contractVersion: 2`, source identity, opaque revision and `CompositionWebsite`. A website selects one captured design layout. Each page supplies every declared Region exactly once, including empty Header/Footer Regions. Region ordering comes from the design; placement ordering comes from the CMS collections.
+`CompositionSnapshot` carries explicit `contractVersion: 2`, source identity, opaque revision and `CompositionWebsite`. A website selects one captured design layout. Each page supplies every declared Region exactly once, including empty Regions when allowed. Region names and ordering belong to the design; placement ordering comes from the CMS collections. Studio declares Header/Main/Footer; Fieldwork declares Brand/Content/Contact. Core does not require a particular Region name or document structure.
 
 `Block` contains a site-unique ID, explicit owner, registered type ID/version, typed JSON fields and ordered children. Page ownership uses `{ "kind": "page", "id": "home" }`. Shared ownership uses `{ "kind": "shared", "id": "branding" }`, where branding is a `SharedBlock` definition with a root Block ID. Each non-root Block has exactly one owning placement; each shared root has zero owning placements and is reached through explicit references. Shared definitions may remain unused but must still validate.
 
-`Placement` has a separate site-unique ID and either `kind: block` targeting an owned Block or `kind: shared` targeting a shared definition. Local targets must match the surrounding owner; shared references can cross owner boundaries. Moves preserve object and placement IDs. Sharing, detachment, deletion and conditional persistence are specified by decision 0009 but their editing operations are not implemented here.
+`Placement` has a separate site-unique ID and either `kind: block` targeting an owned Block or `kind: shared` targeting a shared definition. Local targets must match the surrounding owner; shared references can cross owner boundaries. Moves preserve object and placement IDs. Sharing, detachment, deletion and conditional persistence use the shared application operations described in [editing](composition-editing.md).
 
 ## Validation and bounds
 
@@ -20,7 +20,7 @@ Use `CompositionJson.Read` for content. Property names are exact camelCase; unkn
 
 ## Register a type
 
-Each Core `BlockDefinition<T>` binds a typed .NET payload to validation independently of presentation. `JsonRequired` declares required serialized members; validators declare bounds and semantic rules. The descriptor supplies type/schema/module versions, compatible contract version and whether children are permitted. Its legacy `RendererVersion` remains compatibility metadata (`none` for new pure definitions). A configured package separately maps each type/version to a compatible typed Razor component. Generic editing metadata remains #26.
+Each Core `BlockDefinition<T>` binds a typed .NET payload to validation independently of presentation. `JsonRequired` declares required serialized members; validators declare bounds and semantic rules. The descriptor supplies type/schema/module versions, compatible contract version and whether children are permitted. Its legacy `RendererVersion` remains compatibility metadata (`none` for new pure definitions). A configured package separately maps each type/version to a compatible typed Razor component. Optional [field metadata](field-metadata.md) drives generic editing/discovery without type-specific management forms.
 
 ```csharp
 public sealed record QuoteFields([property: JsonRequired] string Quote);

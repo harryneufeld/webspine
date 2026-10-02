@@ -150,8 +150,6 @@ public static class CompositionContract
         if (design.Layout.Regions.IsDefaultOrEmpty || design.Layout.Regions.Length > 10 || design.Layout.Regions.Any(r => r is null))
             CompositionRules.Fail("Invalid layout Regions.");
         var regions = Unique(design.Layout.Regions, r => r.Id);
-        if (!regions.ContainsKey("header") || !regions.ContainsKey("main") || !regions.ContainsKey("footer"))
-            CompositionRules.Fail("The default layout needs Header, Main and Footer.");
         void Types(ImmutableArray<string> types)
         {
             if (types.IsDefaultOrEmpty || types.Length > 100 || types.Distinct(StringComparer.Ordinal).Count() != types.Length)

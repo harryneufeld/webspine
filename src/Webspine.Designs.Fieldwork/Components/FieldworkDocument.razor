@@ -1,0 +1,21 @@
+@inherits RazorDocumentComponent
+<!DOCTYPE html>
+<html lang="@Context.Website.Language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Context.Page.Title · @Context.Website.Title</title>
+    <meta name="description" content="@Context.Page.Description" />
+    <link rel="stylesheet" href="@Context.DesignAsset("assets/fieldwork.css")" />
+    <script src="@Context.DesignAsset("assets/questions.js")" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="service-shell">
+        <header class="business-rail">@foreach (var placement in Context.Region("brand")) { <RazorBlock Context="Context" Placement="placement" /> }</header>
+        <main id="main" class="service-content" tabindex="-1">@foreach (var placement in Context.Region("content")) { <RazorBlock Context="Context" Placement="placement" /> }</main>
+        <aside class="contact-rail" aria-label="Get in touch">@foreach (var placement in Context.Region("contact")) { <RazorBlock Context="Context" Placement="placement" /> }</aside>
+        <footer class="service-footer"><span>@Context.Website.Title</span><span>Example business · Draft preview</span></footer>
+    </div>
+</body>
+</html>

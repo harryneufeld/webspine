@@ -2,5 +2,6 @@
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Webspine.Management/Webspine.Management.csproj" />
+    <ProjectReference Include="../../src/Webspine.Demo/Webspine.Demo.csproj" />
   </ItemGroup>
 </Project>

@@ -144,6 +144,21 @@ static class CompositionChecks
             var page = example.Content.Website.Pages[0];
             Reject(() => pipeline.Build(Site(example, example.Content.Website with { Pages = [page with { Regions = page.Regions.RemoveAt(0) }] })));
         }));
+        await check("Package-owned Region names preserve complete, unique and bounded layout validation", () => Test(() =>
+        {
+            var names = new[] { "brand", "body", "help" };
+            var design = example.Design with { Layout = new("independent", example.Design.Layout.Regions.Select((r, i) => r with { Id = names[i] }).ToImmutableArray()) };
+            var page = example.Content.Website.Pages[0] with { Regions = example.Content.Website.Pages[0].Regions.Select((r, i) => r with { Id = names[i] }).ToImmutableArray() };
+            var changed = Site(example with { Design = design }, example.Content.Website with { LayoutId = "independent", Pages = [page] });
+            CompositionContract.Validate(changed.Content, design, registry);
+            var singleRegion = Site(changed with { Design = design with { Layout = design.Layout with { Regions = [design.Layout.Regions[1]] } } },
+                changed.Content.Website with { Pages = [page with { Regions = [page.Regions[1]] }] });
+            CompositionContract.Validate(singleRegion.Content, singleRegion.Design, registry);
+            Reject(() => CompositionContract.Validate(changed.Content, design with { Layout = design.Layout with { Regions = [] } }, registry));
+            Reject(() => CompositionContract.Validate(changed.Content, design with { Layout = design.Layout with { Regions = design.Layout.Regions.Add(design.Layout.Regions[0]) } }, registry));
+            Reject(() => CompositionContract.Validate(changed.Content, design with { Layout = design.Layout with { Regions = Enumerable.Range(0, 11).Select(i => design.Layout.Regions[0] with { Id = "region-" + i }).ToImmutableArray() } }, registry));
+            Reject(() => CompositionContract.Validate(Site(changed, changed.Content.Website with { Pages = [page with { Regions = page.Regions.RemoveAt(0) }] }).Content, design, registry));
+        }));
         await check("A registered custom Block renders without engine type switches", () => Test(() =>
         {
             var custom = new BlockRegistration<QuoteFields>(new("quote", 1, 2, "example-quotes", "1", "quote-fields-v1", "1", false),

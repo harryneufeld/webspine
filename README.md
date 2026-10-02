@@ -10,7 +10,7 @@ The earlier `website-poc` sibling folder is a separate experiment. Its source, g
 
 ## Project documents
 
-The [Razor prototype](docs/razor-prototype.md) led to [configured static design packages](docs/decisions/0014-configured-static-design-packages.md). Composition previews now use the selected Studio Razor package; Core content definitions/validation are separate from website presentation. Private build inputs retain content, design/assets and executable dependency bytes. [Field metadata](docs/field-metadata.md) now drives board creation/forms and API discovery, demonstrated by a separate FAQ content module. Two independent website proofs remain #27.
+The [Razor prototype](docs/razor-prototype.md) led to [configured static design packages](docs/decisions/0014-configured-static-design-packages.md). Independent Studio and Fieldwork packages now provide different website structures on the same engine; Core content definitions/validation are separate from presentation. Private build inputs retain content, design/assets and executable dependency bytes. [Field metadata](docs/field-metadata.md) drives board creation/forms and API discovery, demonstrated by a separate FAQ module. The [package quickstart](docs/package-quickstart.md) explains how to run both designs and extend the architecture.
 
 An opt-in [composition v2 library](docs/composition.md) adds typed Blocks, nested Groups, Regions, shared references and component registration. [spinecms storage](docs/spinecms-storage.md) persists v2 and supports explicit migration/recovery on a copy. The [composition board and v2 API](docs/composition-editing.md) now support typed editing, shared-content authority, validated PNG uploads and retained previews. Existing sites are not automatically migrated; enable composition explicitly from the overview. The default replaceable CMS is named spinecms.
 
@@ -19,6 +19,7 @@ An opt-in [composition v2 library](docs/composition.md) adds typed Blocks, neste
 - [Content contract](docs/content-contract.md) and [extensions](docs/extensions.md): current contracts and modularity roadmap.
 - [Composition v2](docs/composition.md): registered types, source capabilities, examples and compatibility.
 - [Design packages](docs/design-packages.md): configured Razor presentation, capture and compatibility limits.
+- [Package quickstart](docs/package-quickstart.md): independent designs, custom content and preview verification.
 - [Field metadata](docs/field-metadata.md): generic authoring, custom FAQ registration and schema evolution.
 - [Delivery pipeline](docs/delivery.md): page modes, replaceable caching, HTTP behavior and current limits.
 - [Local management](docs/management.md): setup, editing, stored data and preview limitations.

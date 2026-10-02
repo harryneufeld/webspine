@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Webspine.Designs.Studio/Webspine.Designs.Studio.csproj" />
+    <ProjectReference Include="../Webspine.Designs.Fieldwork/Webspine.Designs.Fieldwork.csproj" />
+    <ProjectReference Include="../Webspine.Rendering.Legacy/Webspine.Rendering.Legacy.csproj" />
+    <EmbeddedResource Include="../../samples/five-page/site.json" LogicalName="example/site.json" />
+    <EmbeddedResource Include="../../samples/five-page/design/site.css" LogicalName="example/design/site.css" />
+    <EmbeddedResource Include="../../samples/five-page/assets/studio.svg" LogicalName="example/assets/studio.svg" />
+    <EmbeddedResource Include="Assets/*" LogicalName="example/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

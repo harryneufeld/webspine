@@ -9,7 +9,7 @@ using Webspine.Caching.Memory;
 using Webspine.Content.Sqlite;
 using Webspine.Core;
 using Webspine.Delivery;
-using Webspine.Demo;
+using Webspine.Examples;
 
 namespace Webspine.Management;
 
@@ -84,20 +84,18 @@ internal static class ManagementEndpoints
             var form = await context.Request.ReadFormAsync(context.RequestAborted);
             try
             {
-                WebsiteContent website;
-                var assets = ImmutableDictionary<string, ImmutableArray<byte>>.Empty;
                 var title = form["title"].ToString();
-                if (form["mode"] == "demo")
+                if (form["mode"] != "demo" && form["mode"] != "blank") throw new ContentValidationException("Choose Start blank or the installed example.");
+                var installation = context.RequestServices.GetRequiredService<InstalledDesign>();
+                var starter = installation.Start(title, form["mode"] == "demo");
+                if ((starter.Legacy is null) == (starter.Composition is null)) throw new ContentValidationException("A starter must provide exactly one supported content contract.");
+                if (starter.Composition is not null)
                 {
-                    var source = new DemoContentSource(await File.ReadAllTextAsync(Path.Combine(DemoSite.FixtureDirectory, "site.json"), context.RequestAborted));
-                    website = (await source.ReadAsync(context.RequestAborted)).Website with { Id = "site", Title = title };
-                    foreach (var asset in website.Assets)
-                        assets = assets.Add(asset.File, (await File.ReadAllBytesAsync(Path.Combine(DemoSite.FixtureDirectory, asset.File), context.RequestAborted)).ToImmutableArray());
+                    if (!Permissions.Has(context.User, "content:write") || (!starter.Composition.SharedBlocks.IsEmpty && !Permissions.Has(context.User, "content:shared:write")))
+                        return ManagementUi.Problem("Creating this site requires content and shared-content editing permission.", 403);
+                    await store.CreateCompositionAsync(starter.Composition, installation.Package.Design, starter.Assets, context.RequestAborted);
                 }
-                else if (form["mode"] == "blank")
-                    website = new("site", title, "en", [new("home", "/", "Home", "Welcome to your website", [new TextSection("introduction", "Tell your story", "Add your first words here.")])], []);
-                else throw new ContentValidationException("Choose Start blank or Use demo.");
-                await store.CreateAsync(website, assets, context.RequestAborted);
+                else await store.CreateAsync(starter.Legacy!, starter.Assets, context.RequestAborted);
                 return Results.Redirect("/manage");
             }
             catch (SiteAlreadyExistsException error) { return ManagementUi.Problem(error.Message, 409); }
@@ -135,8 +133,8 @@ internal static class ManagementEndpoints
                 await operations.AddPageAsync(form["revision"].ToString(), form["title"].ToString(), form["path"].ToString(), form["description"].ToString(), context.RequestAborted);
                 return Results.Redirect("/manage");
             }
-            catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException)
-            { return ManagementUi.Problem(error.Message, error is ContentValidationException ? 422 : 409); }
+            catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException or SourceOperationNotSupportedException)
+            { return ManagementUi.Problem(error.Message, error is SourceOperationNotSupportedException ? 501 : error is ContentValidationException ? 422 : 409); }
         });
         app.MapPost("/manage/preview", async (HttpContext context) =>
         {
@@ -146,8 +144,8 @@ internal static class ManagementEndpoints
                 var preview = await operations.PreviewAsync(form["revision"].ToString(), "/manage/preview/", context.RequestAborted);
                 return Results.Redirect("/manage/preview/" + preview.Id + "/");
             }
-            catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException)
-            { return ManagementUi.Problem(error.Message, error is ContentValidationException ? 422 : 409); }
+            catch (Exception error) when (error is RevisionConflictException or ContentValidationException or SiteNotInitializedException or SourceOperationNotSupportedException)
+            { return ManagementUi.Problem(error.Message, error is SourceOperationNotSupportedException ? 501 : error is ContentValidationException ? 422 : 409); }
         });
         app.MapMethods("/manage/preview/{id}/{**path}", ["GET", "HEAD"], async (string id, string? path, HttpContext context) =>
         {
@@ -162,7 +160,7 @@ internal static class ManagementEndpoints
             using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
             {
                 var entry = zip.CreateEntry("content.json");
-                await using (var target = entry.Open()) await JsonSerializer.SerializeAsync(target, captured.Snapshot, DemoContentSource.Json, context.RequestAborted);
+                await using (var target = entry.Open()) await JsonSerializer.SerializeAsync(target, captured.Snapshot, new JsonSerializerOptions(JsonSerializerDefaults.Web), context.RequestAborted);
                 foreach (var (file, bytes) in captured.Assets)
                 {
                     await using var target = zip.CreateEntry(file).Open();
