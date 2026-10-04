@@ -26,6 +26,22 @@ For the existing homepage's headline and subline, edit the `headline_line_*`,
 Changing a page title belongs in `site/pages.php`; changing its visual layout
 belongs in its selected theme. Keep content keys stable when changing wording.
 
+## Custom entities and persistence
+
+Add custom entities, e.g. products or blog entries, in `site/plugins/<feature>/`,
+without changing core.
+Define repository interfaces and register implementations via
+`$app->services->set(Products::class, $repository)`; consume them with `get()`.
+Load plugin files explicitly and enable the plugin in `config/local.php`.
+Keep SQL in the implementation, use parameterized queries and validation, and
+store data in a plugin-owned SQLite file such as `storage/products.sqlite`.
+Themes receive data through services/props; reuse Settings/Pages when suitable.
+
+Provide an explicit, transactional, idempotent plugin CLI installer/migrator;
+back up first. Never migrate during requests, registration, or core updates.
+There is no generic entity API or automatic plugin installer yet. Core updates
+preserve custom plugins and data; schema migrations remain plugin-owned.
+
 ## Reusable components
 
 Reuse an existing component before duplicating markup. Components live only in
