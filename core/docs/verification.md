@@ -3,7 +3,7 @@
 Verified on Windows with official portable PHP 8.3.35, PDO SQLite, ZipArchive,
 and OpenSSL. The local development runtime is ignored and is not in releases.
 
-- 60 dependency-free integration checks pass (php core/tests/run.php).
+- 82 dependency-free integration checks pass (php core/tests/run.php).
 - PHP syntax checks pass across framework, providers, theme, and CLI files.
 - Live HTTP checks return 200 for home, docs, example plugin, SQLite page,
   health, CSS, and bootstrap download; private paths and PHP assets return 404;
@@ -41,6 +41,13 @@ generated .dist/ files are excluded from both archive types and ignored by Git.
 
 Reusable component checks cover explicit props, escaped
 output, layout-free rendering, rejected traversal, and missing components.
+
+Entity checks cover declaration without writes, explicit CLI installation,
+persistent CRUD, defaults and nullable fields, strict type/range/length validation,
+entity isolation, bounded pagination, stale revision conflicts, transactional
+rollback, definition mismatch rejection, optional provider capability, and
+record/definition preservation through core activation. The catalog plugin is
+an optional declaration example; no public mutation endpoints were added.
 
 Windows can hold the running PHP CLI file against rename. Activation normally
 uses atomic rename; Windows falls back to a verified overwrite for locked

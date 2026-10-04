@@ -20,6 +20,7 @@ framework; changing a theme should not silently discard website content.
 | `core/bin/`, `core/tests/`, `core/docs/` | System tools, tests, and guides |
 | `.dist/` | Generated releases; ignored by Git and excluded from archives |
 | SQLite through Pages | Persistent plain-text pages and their titles |
+| Entities service | Declared custom records with shared CRUD; see entities.md |
 
 Plugin IDs must be unique across core/plugins/ and site/plugins/. A custom
 provider uses its own ID and is selected explicitly in config/local.php;

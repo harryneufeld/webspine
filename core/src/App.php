@@ -39,6 +39,10 @@ final class App {
         try {
             $status = $this->services->get(Storage::class)->health();
             if (!$status['ok']) return $status;
+            if ($this->services->has(\Webspine\Contracts\Entities::class)) {
+                $entities = $this->services->get(\Webspine\Contracts\Entities::class)->health();
+                if (!$entities['ok']) return ['ok'=>false, 'entities'=>$entities];
+            }
             $this->theme->active();
             // Check the pages defined by this site, without assuming specific templates.
             $this->site->checkRendering();

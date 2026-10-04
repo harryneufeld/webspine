@@ -19,12 +19,15 @@ try {
         echo json_encode((new \Webspine\Updater($root))->apply($argv[2]), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
     } elseif (in_array($command, ['rollback', 'recover'], true)) {
         echo json_encode((new \Webspine\Updater($root))->rollback($command === 'recover'), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
-    } elseif (in_array($command, ['install', 'theme', 'health'], true)) {
+    } elseif (in_array($command, ['install', 'entities:install', 'theme', 'health'], true)) {
         $app = new \Webspine\App($root);
         if ($command === 'install') {
             $app->install();
             if (!$app->health()['ok']) throw new RuntimeException('Installed schema but health check failed.');
             echo "Installed. Existing content and settings preserved.\n";
+        } elseif ($command === 'entities:install') {
+            $app->services->get(\Webspine\Contracts\Entities::class)->install();
+            echo "Entity storage and declared entities installed. Existing records preserved.\n";
         } elseif ($command === 'theme') {
             $id = $argv[2] ?? throw new InvalidArgumentException('Usage: theme <theme-id>');
             $app->theme->validate($id);
@@ -40,7 +43,7 @@ try {
         }
     } else {
         if ($command !== 'help') throw new InvalidArgumentException('Unknown command: ' . $command);
-        echo "webspine CLI\n\ninstall                 Explicit, idempotent installation\ntheme <id>              Switch active theme\nhealth                  Check services and rendering\npackage [--full]        Create core release or bootstrap ZIP\nupdate <archive>        Apply a trusted local core release\nrollback                Restore the previous core\nrecover                 Restore after interrupted activation\n";
+        echo "webspine CLI\n\ninstall                 Explicit, idempotent installation\ntheme <id>              Switch active theme\nentities:install        Explicitly install declared entity storage\nhealth                  Check services and rendering\npackage [--full]        Create core release or bootstrap ZIP\nupdate <archive>        Apply a trusted local core release\nrollback                Restore the previous core\nrecover                 Restore after interrupted activation\n";
     }
 } catch (Throwable $e) { fwrite(STDERR, 'webspine: ' . $e->getMessage() . "\n"); exit(1); }
 finally { if (is_resource($lock)) { flock($lock, LOCK_UN); fclose($lock); } }

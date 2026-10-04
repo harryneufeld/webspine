@@ -66,6 +66,7 @@ try {
     check('Persistent pages escape title and body', function () use ($app) { $r = $app->handle('GET','/pages/custom-page'); return $r->status === 200 && str_contains($r->body, '&lt;script&gt;') && !str_contains($r->body, '<script>alert'); });
     check('Parameterized queries do not interpolate injected slugs', fn() => $pages->find("' OR 1=1 --") === null);
     check('Page writes validate identity and title', fn() => expectError(fn() => $pages->put('../bad', '', '')));
+    (require __DIR__ . '/entities.php')($base, $site);
     check('Home uses shared layout and correct brand', fn() => str_contains($app->handle('GET','/')->body, 'web<strong>spine</strong>'));
     check('Components escape explicit props and omit the page layout', function () use ($app) {
         $html = $app->theme->component('wordmark', ['href'=>'/','prefix'=>'<script>','bold'=>'spine','label'=>'"unsafe']);
@@ -108,6 +109,7 @@ try {
     $memory = new App($site, ['providers'=>['storage'=>'memory','mail'=>null], 'plugins'=>['field-notes']]);
     $memory->install(); $memory->services->get(Pages::class)->put('memory','From memory','No SQL involved.');
     check('Substitute provider supplies settings and pages without SQLite', fn() => $memory->health()['storage']['provider'] === 'memory' && str_contains($memory->handle('GET','/pages/memory')->body,'No SQL involved.'));
+    check('Entity capability is optional for substitute providers', fn() => !$memory->services->has(\Webspine\Contracts\Entities::class) && expectError(fn() => $memory->services->get(\Webspine\Contracts\Entities::class), 'unavailable'));
     Files::json($site . '/site/plugins/memory/plugin.json', ['id'=>'memory','version'=>'0.1.0','api'=>99,'provider'=>'storage','dependencies'=>[]]);
     check('Incompatible plugin APIs are rejected', fn() => expectError(fn() => new App($site,['providers'=>['storage'=>'memory'], 'plugins'=>[]])));
     copyTree($source . '/core/tests/fixtures/memory', $site . '/site/plugins/memory');
@@ -121,6 +123,12 @@ try {
             foreach ($m['files'] as $path=>$hash) if (hash_file('sha256',$source . '/' . $path) !== $hash) return false;
         } return true;
     });
+    // Keep entity data in the installed site while exercising core updates.
+    $entityConfig = require $site . '/config/example.php'; $entityConfig['plugins'][] = 'catalog';
+    Files::write($site . '/config/example.php', '<?php return ' . var_export($entityConfig, true) . ';');
+    $app = new App($site); $entityService = $app->services->get(\Webspine\Contracts\Entities::class);
+    $entityService->install();
+    $retainedProduct = $entityService->create('products', ['name'=>'Preserved product','price_cents'=>2500]);
     $full = Release::package($site,true);
     check('Generated release artifacts are absent from the bootstrap inventory', function () use ($full) {
         $z = new ZipArchive(); $z->open($full); $ok = true;
@@ -191,6 +199,7 @@ try {
     check('CLI activates a newer core and removes stale framework files', function()use($release,$site){ $r=cli($site,['update',$release]);if($r['code']!==0)throw new RuntimeException($r['err']);return json_decode($r['out'],true)['to']==='0.1.1' && !is_file($site.'/core/stale.php') && (require $site.'/core/version.php')['version']==='0.1.1';});
     check('Update preserves site content, routes, identity, config, themes, plugins, and database', function()use($siteOwned,$site,$dbHash){foreach($siteOwned as $path=>$hash)if(hash_file('sha256',$site.'/'.$path)!==$hash)return false;return hash_file('sha256',$site.'/storage/site.sqlite')===$dbHash;});
     check('Custom site routes and title still work after core activation', fn() => (new App($site))->handle('GET','/about-us')->status === 200 && str_contains((new App($site))->handle('GET','/about-us')->body,'My independent website'));
+    check('Core activation preserves declared entity definitions and records', fn() => (new App($site))->services->get(\Webspine\Contracts\Entities::class)->read('products',$retainedProduct['id']) === $retainedProduct);
     check('Updates reject the installed version and downgrade', fn()=>expectError(fn()=>$updater->apply($release),'newer'));
     check('Rollback restores deleted framework files and previous version', function()use($updater,$site){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']==='0.1.0';});
     Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '0.1.2', 'api' => 1, 'php' => '8.3.0'];\n");
@@ -208,6 +217,6 @@ try {
     check('Recovered site has healthy persistent data', fn()=>cli($site,['health'])['code']===0 && (new App($site))->services->get(Settings::class)->get('custom')==='preserved');
     check('Portable release paths reject Windows device aliases', fn()=>!Files::safe('core/con.php') && !Files::safe('core/../config') && !Files::safe('core/file.'));
 } catch(Throwable $e) { $failed++; echo 'FAIL test setup: '.$e->getMessage()."\n".$e->getTraceAsString()."\n"; }
-finally { unset($app,$storage,$settings,$pages,$memory,$smtp); gc_collect_cycles(); removeFixture($base,$source.'/storage'); }
+finally { unset($app,$storage,$settings,$pages,$memory,$smtp,$entityService); gc_collect_cycles(); removeFixture($base,$source.'/storage'); }
 echo "\n$passed passed, $failed failed.\n";
 exit($failed ? 1 : 0);

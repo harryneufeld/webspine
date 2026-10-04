@@ -30,17 +30,17 @@ belongs in its selected theme. Keep content keys stable when changing wording.
 
 Add custom entities, e.g. products or blog entries, in `site/plugins/<feature>/`,
 without changing core.
-Define repository interfaces and register implementations via
-`$app->services->set(Products::class, $repository)`; consume them with `get()`.
-Load plugin files explicitly and enable the plugin in `config/local.php`.
-Keep SQL in the implementation, use parameterized queries and validation, and
-store data in a plugin-owned SQLite file such as `storage/products.sqlite`.
-Themes receive data through services/props; reuse Settings/Pages when suitable.
-
-Provide an explicit, transactional, idempotent plugin CLI installer/migrator;
-back up first. Never migrate during requests, registration, or core updates.
-There is no generic entity API or automatic plugin installer yet. Core updates
-preserve custom plugins and data; schema migrations remain plugin-owned.
+Use `$app->services->get(\Webspine\Contracts\Entities::class)` and `define()`
+typed fields in plugin registration. Then use shared `create/read/list/update/
+delete` operations; SQLite stores validated records without per-entity SQL.
+Enable the plugin in private config and explicitly run
+`php core/bin/console.php entities:install`. See `site/plugins/catalog/` and
+`core/docs/entities.md` for the working example and API. Declarations never
+write during registration; only empty entities can be redefined by the installer.
+No automatic field migration, forms, or authentication is provided. Reuse
+Settings/Pages when suitable; specialized queries can use plugin-owned
+repositories. Themes receive data through services/props. Core updates preserve
+entity data and do not install or migrate it.
 
 ## Reusable components
 

@@ -4,10 +4,11 @@ namespace Webspine\Providers;
 use Webspine\Contracts\{Storage, Settings, Pages};
 final class SQLiteStorage implements Storage, Settings, Pages {
     private ?\PDO $db = null;
+    private ?SQLiteEntities $entities = null;
     public function __construct(private string $path) {}
     private function db(bool $install = false): \PDO {
         if ($this->db) return $this->db;
-        if (!$install && !is_file($this->path)) throw new \RuntimeException('Site is not installed. Run php bin/console.php install.');
+        if (!$install && !is_file($this->path)) throw new \RuntimeException('Site is not installed. Run php core/bin/console.php install.');
         if ($install && !is_dir(dirname($this->path)) && !mkdir(dirname($this->path), 0700, true)) throw new \RuntimeException('Cannot create storage.');
         $db = new \PDO('sqlite:' . $this->path, null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
         $db->exec('PRAGMA busy_timeout = 5000');
@@ -39,6 +40,10 @@ final class SQLiteStorage implements Storage, Settings, Pages {
     }
     public function settings(): Settings { return $this; }
     public function pages(): Pages { return $this; }
+    public function entities(): \Webspine\Contracts\Entities {
+        require_once __DIR__ . '/SQLiteEntities.php';
+        return $this->entities ??= new SQLiteEntities(fn() => $this->db());
+    }
     public function get(string $key, ?string $default = null): ?string {
         $q = $this->db()->prepare('SELECT value FROM settings WHERE key = ?'); $q->execute([$key]);
         $v = $q->fetchColumn(); return $v === false ? $default : $v;

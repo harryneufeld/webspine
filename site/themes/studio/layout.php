@@ -29,7 +29,8 @@ $brandProps = ['href' => $copy['href_'], 'prefix' => $site->meta['brand_prefix']
 <main id="main"><?= $content ?></main>
 <footer class="site-footer shell">
     <div class="footer-main"><?= $app->theme->component('wordmark', $brandProps) ?><p><?= e($copy['a_solid_foundation']) ?><br><?= e($copy['room_to_make_it_yours']) ?></p><div class="footer-links"><a href="<?= e($copy['href_docs']) ?>"><?= e($copy['documentation_2']) ?></a><a href="<?= e($copy['href_download']) ?>"><?= e($copy['download_source']) ?></a><a href="<?= e($copy['href_field_notes']) ?>"><?= e($copy['example_plugin']) ?></a></div></div>
-    <div class="footer-bottom"><span><?= e($copy['small_by_design_open_by_default']) ?></span><span><?= e($copy['mit_licensed_v']) ?><?= e($app->version['version']) ?> <?= e($copy['bootstrap']) ?></span><a href="<?= e($copy['href_docs_roadmap']) ?>"><?= e($copy['built_for_what_comes_next']) ?> <span aria-hidden="true">↗</span></a></div>
+    <p class="footer-starter"><?= e($copy['built_with']) ?> <?= e($site->meta['brand_prefix']) ?><strong><?= e($site->meta['brand_bold']) ?></strong>. <?= e($copy['starter_site_note']) ?></p>
+    <div class="footer-bottom"><span><?= e($copy['small_by_design_open_by_default']) ?></span><span><?= e($copy['mit_licensed_v']) ?><?= e($app->version['version']) ?></span><a href="<?= e($copy['href_docs_roadmap']) ?>"><?= e($copy['built_for_what_comes_next']) ?> <span aria-hidden="true">↗</span></a></div>
 </footer>
 <div class="toast" role="status" aria-live="polite"></div>
 </body>

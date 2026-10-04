@@ -8,9 +8,16 @@ with your preferred AI app, working directly with understandable project files.
 Bring an app with project-file access, such as ChatGPT Desktop, Claude Code, or
 OpenCode. The project is independent of any AI vendor and remains editable by hand.
 
+webspine is deliberately lean and readable, so you and your AI can maintain and
+extend your own site without relying on future webspine releases. You own the
+code and can take it in your own direction.
+
 HTML, CSS, vanilla JavaScript, PHP 8.3+, and SQLite.
 No Composer, npm, frontend framework, or required build.
 The brand is lowercase, one word; only **spine** is bold.
+
+Simple hosting, too: use a standard PHP host with SQLite support. No Node.js
+server, npm installation, or frontend build pipeline is needed.
 
 ## Start
 
@@ -62,6 +69,7 @@ is shared by the header and footer. See the component guideline in `AGENTS.md`.
 
 ```sh
 php core/bin/console.php theme studio
+php core/bin/console.php entities:install  # explicitly install enabled entity declarations
 php core/bin/console.php package --full    # downloadable bootstrap, includes theme/providers
 php core/bin/console.php package           # core-only update archive
 php core/bin/console.php update /path/to/newer-core-release.zip
@@ -91,6 +99,7 @@ PHPMailer 7.1.1 is LGPL-2.1; Manrope is SIL OFL-1.1. The project is MIT.
 
 Implemented: routing/responses, plugin loading, contracts/registry/hooks, SQLite
 settings/pages, recorded installation schema, theme selection/layouts/assets,
+declarative entities with validated SQLite CRUD and explicit installation,
 optional SMTP, example feature plugin, CLI tools, reversible local core updates,
 and dependency-free integration checks including storage substitution.
 

@@ -25,8 +25,9 @@ return [
     'href_field_notes' => '/field-notes',
     'example_plugin' => 'Example plugin ↗',
     'small_by_design_open_by_default' => 'Small by design. Open by default.',
+    'built_with' => 'Built with',
+    'starter_site_note' => 'This is the default Studio theme and starter content included with the project. Make it your own.',
     'mit_licensed_v' => 'MIT licensed · v',
-    'bootstrap' => 'bootstrap',
     'href_docs_roadmap' => '/docs#roadmap',
     'built_for_what_comes_next' => 'Built for what comes next',
 ];
