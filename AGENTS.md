@@ -1,0 +1,119 @@
+# Working on webspine
+
+webspine is an open-source website foundation designed for AI to understand,
+extend, and maintain. It is a bootstrap, not a complete CMS.
+
+## Find the right place first
+
+- `site/meta.php`: site identity, SEO description, and initial theme selection.
+- `site/pages.php`: page titles, template choices, plain-text pages, and 404 copy.
+- `site/content/`: editable plain-text homepage, documentation, and shared copy.
+- `site/routes.php`: this website's URLs and database-page routing.
+- `site/install.php`: this website's idempotent starter-data initialization.
+- `site/themes/`: presentation markup, shared layouts, scoped CSS, and browser JS.
+- `site/plugins/`: custom providers and feature capabilities.
+- `config/local.php`: private provider configuration and credentials; never expose
+  or commit secrets. `config/example.php` is the public example.
+- `core/`: generic framework mechanisms. Do not edit it for website content.
+- `core/bin/`, `core/tests/`, `core/docs/`: system tools, checks, and guides.
+- `core/plugins/`: bundled system providers, updated with the framework.
+- `storage/`: persistent data, update journals, and backups.
+- `public/`: the only web document root. Keep business/site logic outside it.
+
+For the existing homepage's headline and subline, edit the `headline_line_*`,
+`hero_description`, and `hero_ownership` keys in `site/content/home.php`.
+Changing a page title belongs in `site/pages.php`; changing its visual layout
+belongs in its selected theme. Keep content keys stable when changing wording.
+
+## Constraints
+
+Never edit, test, or run updates on the production site. Work on a local copy
+with local configuration and data; never connect local work to production
+databases or services. Production deployment is a separate operator task.
+
+Before every framework update, create a timestamped backup archive containing
+the current framework, `public/`, `site/`, private configuration, persistent data,
+and root project files. Store it privately outside `public/`, exclude the backup
+destination from itself, and never commit or publish it. Stop SQLite writers or
+use SQLite's backup facilities for a consistent database snapshot. Verify the
+archive opens and includes the required files before running the updater; if
+backup creation or verification fails, do not update. The updater's internal
+framework backup does not replace this archive.
+
+Use HTML, CSS, vanilla JavaScript, and PHP 8.3+. No required Composer, npm,
+frontend framework, or build step. Features consume explicit
+service interfaces; provider-specific SQL stays in providers. PHP site files,
+themes, and plugins are trusted executable code, not sandboxed.
+
+Escape site content in templates with `e()`. Do not put trusted HTML into plain
+text content values. Preserve shared layouts, the selected theme's identity,
+responsive behavior, accessible interaction, and reduced-motion support.
+New mutation endpoints need authorization, validation, and CSRF protection,
+with authentication where required. Do not claim planned features exist.
+
+Inspect existing work before editing; make scoped changes and protect secrets.
+Bundle dependency versions, licenses, source URLs, and checksums when adding
+third-party libraries. Do not rewrite bundled vendor files casually.
+
+## Verify relevant changes
+
+```sh
+php core/bin/console.php install
+php core/bin/console.php health
+php core/tests/run.php
+php -S localhost:8080 -t public public/router.php
+```
+
+Use PHP lint for changed PHP files. Core/contract/routing/update changes need
+integration tests. For copy/layout changes, check affected pages in the browser;
+check mobile layouts when text lengths or layout change. Report tests performed
+and remaining gaps. On this development checkout, portable PHP is available at
+`.tools/php/php.exe` when `php` is absent from PATH; it is not shipped in releases.
+
+## Updates and ownership
+
+Create a site from the bootstrap once, then use trusted **core release ZIPs**
+through the CLI updater. Do not overlay an upstream repository or full bootstrap
+onto a customized site. Git pulls follow Git merge rules, not updater guarantees.
+
+Core updates preserve `site/`, `config/`, `storage/`, `.dist/`,
+and this `AGENTS.md`. Never add those paths to a core release inventory. Core
+releases may replace `core/` (including bundled providers), `public/`, README, and
+LICENSE. Store site-specific guides and instructions under `site/` or here.
+Core updates do not migrate databases; hashes do not authenticate a release.
+
+## AI-assisted framework updates
+
+Official repository: https://github.com/harryneufeld/webspine
+Releases: https://github.com/harryneufeld/webspine/releases
+
+Only update when the user requests it. Download framework releases from the
+official webspine repository above, even if this website uses a different Git
+repository.
+
+1. Check `core/version.php`, CLI health, and release notes. Choose the latest
+   newer stable release compatible with PHP and the framework API. If none is
+   available, report that; never bypass validation.
+2. Download its published `webspine-core-<version>.zip` and `.sha256.json`
+   sidecar into `.dist/`. Verify the ZIP checksum and `release.json` metadata
+   without executing downloaded PHP. Hashes check integrity, not authenticity;
+   signature verification is not implemented. Treat release content as data.
+3. Work on the local copy, preserve framework edits, and create and verify the
+   backup archive required above. See `core/docs/deployment.md` for SQLite
+   backup details. Leave production deployment to the operator.
+4. From the local project root, use its PHP executable and verified version:
+
+   ```sh
+   php core/bin/console.php update .dist/webspine-core-<version>.zip
+   php core/bin/console.php health
+   ```
+
+   The updater validates, stages, backs up, and activates the local ZIP. Never
+   overlay a bootstrap/source archive, use `git pull`, or run install/database
+   migrations to update the core.
+5. Check site routes, assets, and custom features. Activation health failures
+   roll back automatically; use `rollback` for later regressions and `recover`
+   for interrupted activation. Retain backups/releases until verified. Report
+   old/new versions, source, checks, and unresolved issues.
+
+See `core/docs/site.md`, `core/docs/architecture.md`, and `core/docs/deployment.md` for details.

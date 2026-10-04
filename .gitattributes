@@ -1,0 +1,4 @@
+* text=auto eol=lf
+core/vendor/** -text
+site/themes/studio/assets/fonts/** -text
+*.woff2 binary

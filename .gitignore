@@ -1,0 +1,6 @@
+/.tools/
+/config/local.php
+/storage/*
+!/storage/.gitkeep
+/.dist/
+/.test-output/
