@@ -1,4 +1,7 @@
-<?php $copy = $site->content('layout'); ?>
+<?php
+$copy = $site->content('layout');
+$brandProps = ['href' => $copy['href_'], 'prefix' => $site->meta['brand_prefix'], 'bold' => $site->meta['brand_bold']];
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -14,7 +17,7 @@
 <body class="ws <?= e($page ?? '') ?>">
 <a class="skip-link" href="<?= e($copy['href_main']) ?>"><?= e($copy['skip_to_content']) ?></a>
 <header class="site-header shell">
-    <a class="wordmark" href="<?= e($copy['href_']) ?>" aria-label="<?= e($site->meta['name'] . ' home') ?>"><?= e($site->meta['brand_prefix']) ?><strong><?= e($site->meta['brand_bold']) ?></strong><span class="brand-dot" aria-hidden="true"></span></a>
+    <?= $app->theme->component('wordmark', $brandProps + ['label' => $site->meta['name'] . $copy['home_label_suffix']]) ?>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav"><?= e($copy['menu']) ?> <span aria-hidden="true">+</span></button>
     <nav class="primary-nav" id="primary-nav" aria-label="<?= e($copy['aria_label_main_navigation']) ?>">
         <a href="<?= e($copy['href_framework']) ?>"<?= ($page ?? '') === 'home' ? ' class="active"' : '' ?>><?= e($copy['the_framework']) ?></a>
@@ -25,7 +28,7 @@
 </header>
 <main id="main"><?= $content ?></main>
 <footer class="site-footer shell">
-    <div class="footer-main"><a class="wordmark" href="<?= e($copy['href_']) ?>"><?= e($site->meta['brand_prefix']) ?><strong><?= e($site->meta['brand_bold']) ?></strong><span class="brand-dot" aria-hidden="true"></span></a><p><?= e($copy['a_solid_foundation']) ?><br><?= e($copy['room_to_make_it_yours']) ?></p><div class="footer-links"><a href="<?= e($copy['href_docs']) ?>"><?= e($copy['documentation_2']) ?></a><a href="<?= e($copy['href_download']) ?>"><?= e($copy['download_source']) ?></a><a href="<?= e($copy['href_field_notes']) ?>"><?= e($copy['example_plugin']) ?></a></div></div>
+    <div class="footer-main"><?= $app->theme->component('wordmark', $brandProps) ?><p><?= e($copy['a_solid_foundation']) ?><br><?= e($copy['room_to_make_it_yours']) ?></p><div class="footer-links"><a href="<?= e($copy['href_docs']) ?>"><?= e($copy['documentation_2']) ?></a><a href="<?= e($copy['href_download']) ?>"><?= e($copy['download_source']) ?></a><a href="<?= e($copy['href_field_notes']) ?>"><?= e($copy['example_plugin']) ?></a></div></div>
     <div class="footer-bottom"><span><?= e($copy['small_by_design_open_by_default']) ?></span><span><?= e($copy['mit_licensed_v']) ?><?= e($app->version['version']) ?> <?= e($copy['bootstrap']) ?></span><a href="<?= e($copy['href_docs_roadmap']) ?>"><?= e($copy['built_for_what_comes_next']) ?> <span aria-hidden="true">↗</span></a></div>
 </footer>
 <div class="toast" role="status" aria-live="polite"></div>

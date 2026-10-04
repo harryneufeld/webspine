@@ -53,6 +53,30 @@ by this site's installer. Core updates never run the site installer. The
 release-download capability is optional and selected through private config;
 its fallback copy is site-owned. Remove its navigation links if you disable it.
 
+## Reusable components
+
+Components live only in `site/themes/<id>/components/<name>.php`. Text and data
+stay in the existing site content files and are passed as explicit props.
+For example, the Studio header and footer share the `wordmark` component:
+
+```php
+$copy = $site->content('layout');
+echo $app->theme->component('wordmark', [
+    'href' => $copy['href_'],
+    'prefix' => $site->meta['brand_prefix'],
+    'bold' => $site->meta['brand_bold'],
+]);
+```
+
+The renderer returns HTML without a page layout. Templates receive an explicit
+`$props` array and escape plain-text values with `e()`; they do not inherit page
+variables. Names use lowercase letters, digits, and hyphens, starting with a
+letter. Missing components fail explicitly. Component CSS/JS remains in the
+theme's assets with scoped classes and unique IDs for repeated interactions.
+Reuse useful patterns without requiring a component for every element. These
+are server-rendered PHP templates, with no frontend runtime or build step.
+Component templates are site-owned and preserved by core updates.
+
 ## Safe framework updates
 
 1. Start a new website from a full bootstrap ZIP.

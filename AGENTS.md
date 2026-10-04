@@ -8,6 +8,7 @@ extend, and maintain. It is a bootstrap, not a complete CMS.
 - `site/meta.php`: site identity, SEO description, and initial theme selection.
 - `site/pages.php`: page titles, template choices, plain-text pages, and 404 copy.
 - `site/content/`: editable plain-text homepage, documentation, and shared copy.
+- `site/themes/<id>/components/`: reusable presentation templates for that theme.
 - `site/routes.php`: this website's URLs and database-page routing.
 - `site/install.php`: this website's idempotent starter-data initialization.
 - `site/themes/`: presentation markup, shared layouts, scoped CSS, and browser JS.
@@ -24,6 +25,21 @@ For the existing homepage's headline and subline, edit the `headline_line_*`,
 `hero_description`, and `hero_ownership` keys in `site/content/home.php`.
 Changing a page title belongs in `site/pages.php`; changing its visual layout
 belongs in its selected theme. Keep content keys stable when changing wording.
+
+## Reusable components
+
+Reuse an existing component before duplicating markup. Components live only in
+`site/themes/<id>/components/<name>.php`. Keep text/data in the existing site
+content files and pass it with `$app->theme->component('name', $props)`.
+Components receive only
+the explicit `$props` array, return HTML without a page layout, and must escape
+plain-text values with `e()`. The wordmark is the working example, shared by the
+header and footer; its brand values come from `site/meta.php`.
+
+Keep components focused, use scoped theme styles, and give repeated interactive
+instances unique IDs. Extract patterns when reuse is useful; do not turn every
+element into a component. Components own presentation; plugins own capabilities.
+No React, build step, or client-side component runtime is needed.
 
 ## Constraints
 

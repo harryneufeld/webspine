@@ -6,6 +6,7 @@ return [
     'href_main' => '#main',
     'skip_to_content' => 'Skip to content',
     'href_' => '/',
+    'home_label_suffix' => ' home',
     'menu' => 'Menu',
     'aria_label_main_navigation' => 'Main navigation',
     'href_framework' => '/#framework',

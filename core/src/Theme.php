@@ -20,6 +20,17 @@ final class Theme {
         $this->validate($id);
         return $id;
     }
+    public function component(string $name, array $props = []): string {
+        if (!preg_match('/^[a-z][a-z0-9-]*$/D', $name)) throw new \InvalidArgumentException('Invalid component identity.');
+        $file = $this->app->root . '/site/themes/' . $this->active() . '/components/' . $name . '.php';
+        if (!is_file($file)) throw new \RuntimeException('Missing theme component: ' . $name);
+        // Explicit props only; components do not inherit page template variables.
+        return (static function (string $file, array $props): string {
+            ob_start();
+            try { require $file; return ob_get_clean(); }
+            catch (\Throwable $e) { ob_end_clean(); throw $e; }
+        })($file, $props);
+    }
     public function render(string $template, array $data = [], int $status = 200): Response {
         $theme = $this->active();
         if (!preg_match('/^[a-z-]+$/D', $template)) throw new \RuntimeException('Invalid template.');

@@ -67,6 +67,12 @@ try {
     check('Parameterized queries do not interpolate injected slugs', fn() => $pages->find("' OR 1=1 --") === null);
     check('Page writes validate identity and title', fn() => expectError(fn() => $pages->put('../bad', '', '')));
     check('Home uses shared layout and correct brand', fn() => str_contains($app->handle('GET','/')->body, 'web<strong>spine</strong>'));
+    check('Components escape explicit props and omit the page layout', function () use ($app) {
+        $html = $app->theme->component('wordmark', ['href'=>'/','prefix'=>'<script>','bold'=>'spine','label'=>'"unsafe']);
+        return str_contains($html, '&lt;script&gt;') && str_contains($html, '&quot;unsafe') && !str_contains($html, '<html') && !str_contains($html, '<script>');
+    });
+    check('Content and component identities reject traversal', fn() => expectError(fn() => $app->site->content('components/../meta')) && expectError(fn() => $app->theme->component('../layout')));
+    check('Missing components fail explicitly', fn() => expectError(fn() => $app->theme->component('missing'), 'Missing theme component'));
     check('Documentation route is live', fn() => str_contains($app->handle('GET','/docs')->body, 'docs-search'));
     check('Feature route registers through action hook', fn() => str_contains($app->handle('GET','/field-notes')->body, 'app.ready'));
     check('Unknown paths return 404', fn() => $app->handle('GET','/not-a-route')->status === 404);

@@ -53,6 +53,11 @@ in `site/pages.php`, and identity in `site/meta.php`. Theme templates escape and
 present those values. Providers install schema; `site/install.php` seeds this
 website explicitly and idempotently. See `AGENTS.md` and `core/docs/site.md`.
 
+Reusable presentation components live in `site/themes/<id>/components/`.
+Pass text/data from existing site content files and render them through
+`$app->theme->component('name', $props)` with explicit inputs. The Studio wordmark
+is shared by the header and footer. See the component guideline in `AGENTS.md`.
+
 ## Commands
 
 ```sh

@@ -3,7 +3,7 @@
 Verified on Windows with official portable PHP 8.3.35, PDO SQLite, ZipArchive,
 and OpenSSL. The local development runtime is ignored and is not in releases.
 
-- 57 dependency-free integration checks pass (php core/tests/run.php).
+- 60 dependency-free integration checks pass (php core/tests/run.php).
 - PHP syntax checks pass across framework, providers, theme, and CLI files.
 - Live HTTP checks return 200 for home, docs, example plugin, SQLite page,
   health, CSS, and bootstrap download; private paths and PHP assets return 404;
@@ -38,6 +38,9 @@ The consolidated layout is verified: bundled providers, CLI tools, tests, and
 guides live under core/; customization lives under site/. Candidate probes load
 staged system providers, conflicting custom provider IDs are rejected, and
 generated .dist/ files are excluded from both archive types and ignored by Git.
+
+Reusable component checks cover explicit props, escaped
+output, layout-free rendering, rejected traversal, and missing components.
 
 Windows can hold the running PHP CLI file against rename. Activation normally
 uses atomic rename; Windows falls back to a verified overwrite for locked
