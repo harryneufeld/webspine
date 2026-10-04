@@ -1,23 +1,17 @@
 # web**spine**
 
-Your own AI-driven website.
+**Your own AI-driven website.**
 
-An open-source website foundation designed for AI to understand, extend, and
-maintain. The core goal is to let you build and maintain your own website entirely
-with your preferred AI app, working directly with understandable project files.
-Bring an app with project-file access, such as ChatGPT Desktop, Claude Code, or
-OpenCode. The project is independent of any AI vendor and remains editable by hand.
+A lean, open-source foundation for building and maintaining your website with
+your choice of AI. Clear boundaries between content, themes, components, and
+plugins give your AI guardrails to keep the code organized and maintainable.
 
-webspine is deliberately lean and readable, so you and your AI can maintain and
-extend your own site without relying on future webspine releases. You own the
-code and can take it in your own direction.
+Built with plain PHP, HTML, CSS, and JavaScript. No frontend framework, Node.js
+runtime, or build step—just straightforward deployment on a PHP web server with
+SQLite support.
 
-HTML, CSS, vanilla JavaScript, PHP 8.3+, and SQLite.
-No Composer, npm, frontend framework, or required build.
-The brand is lowercase, one word; only **spine** is bold.
-
-Simple hosting, too: use a standard PHP host with SQLite support. No Node.js
-server, npm installation, or frontend build pipeline is needed.
+You own the code and can keep developing it independently of future webspine
+releases.
 
 ## Start
 
