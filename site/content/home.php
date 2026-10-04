@@ -124,7 +124,7 @@ return [
     'php_s_localhost_8080_t_public_public' => 'php -S localhost:8080 -t public public/router.php',
     'open_localhost_8080_make_something_good' => 'Open localhost:8080. Make something good.',
     'honestly_where_we_are' => '/ HONESTLY, WHERE WE ARE',
-    'the_bootstrap_not_a_complete_cms' => 'THE BOOTSTRAP, NOT A COMPLETE CMS',
+    'the_bootstrap_not_a_complete_cms' => 'A LEAN WEBSITE FOUNDATION',
     'a_foundation' => 'A foundation,',
     'with_a_future' => 'with a future.',
     'the_essentials_are_here_routing_sqlite_persistence' => 'The essentials are here: routing, SQLite persistence, themes, plugins, SMTP, and reversible local core updates.',

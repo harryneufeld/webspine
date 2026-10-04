@@ -276,7 +276,7 @@
 }
 
 .ws .text-link {
-  font-size:12px;
+  font-size:14px;
   font-weight:700;
   display:inline-flex;
   align-items:center;
@@ -298,7 +298,7 @@
   align-items:center;
   gap:9px;
   font-family:var(--mono);
-  font-size:10px;
+  font-size:12px;
   color:var(--muted);
   margin-top:25px;
 }
@@ -533,7 +533,7 @@
 }
 
 .ws .strip-label,.ws .strip-end {
-  font-size:10px;
+  font-size:12px;
   line-height:1.6;
   color:var(--muted);
 }
@@ -566,7 +566,7 @@
   padding-left:35px;
   border-left:1px solid var(--line);
   font-family:var(--mono);
-  font-size:9px;
+  font-size:12px;
 }
 
 .ws .intro-section {
@@ -576,7 +576,7 @@
 
 .ws .section-number {
   font-family:var(--mono);
-  font-size:10px;
+  font-size:13px;
   letter-spacing:1.2px;
   font-weight:400;
   display:flex;
@@ -586,7 +586,7 @@
 
 .ws .section-number>span {
   color:var(--muted);
-  font-size:9px;
+  font-size:13px;
 }
 
 .ws .intro-layout {
@@ -623,7 +623,7 @@
 
 .ws .intro-prose>p {
   color:var(--muted);
-  font-size:13px;
+  font-size:15px;
   line-height:1.9;
 }
 
@@ -668,7 +668,7 @@
 }
 
 .ws .principle-rows p {
-  font-size:12px;
+  font-size:14px;
   color:var(--muted);
   line-height:1.9;
   max-width:285px;
@@ -696,7 +696,7 @@
 }
 
 .ws .architecture-heading p {
-  font-size:12px;
+  font-size:14px;
   color:#bac4b7;
   line-height:1.8;
   padding-bottom:4px;
@@ -756,7 +756,7 @@
 
 .ws .architecture-tab small {
   display:block;
-  font-size:11px;
+  font-size:12px;
   color:#b4c0ad;
   margin-top:5px;
 }
@@ -841,7 +841,7 @@
   gap:12px;
   padding:13px 24px;
   border-top:1px solid #3c513b;
-  font-size:10px;
+  font-size:12px;
   color:#bbcab1;
 }
 
@@ -853,7 +853,7 @@
   display:flex;
   align-items:center;
   gap:9px;
-  font-size:10px;
+  font-size:13px;
   color:#b5c1af;
   margin-top:32px;
   padding-top:19px;
@@ -891,7 +891,7 @@
 }
 
 .ws .quickstart-layout p {
-  font-size:13px;
+  font-size:15px;
   color:var(--muted);
   line-height:1.8;
   margin-top:21px;
@@ -970,7 +970,7 @@
   gap:9px;
   padding:14px 23px;
   font-family:var(--mono);
-  font-size:9px;
+  font-size:12px;
 }
 
 .ws .roadmap-section {
@@ -987,7 +987,7 @@
 
 .ws .bootstrap-label {
   font-family:var(--mono);
-  font-size:8px;
+  font-size:12px;
   letter-spacing:.6px;
   border:1px solid var(--line);
   padding:6px 9px;
@@ -1007,7 +1007,7 @@
 }
 
 .ws .roadmap-layout p {
-  font-size:12px;
+  font-size:14px;
   line-height:1.85;
   color:var(--muted);
   margin-bottom:12px;
@@ -1066,7 +1066,7 @@
 
 .ws .footer-main p {
   color:var(--muted);
-  font-size:11px;
+  font-size:14px;
   line-height:1.8;
 }
 
@@ -1074,7 +1074,7 @@
   margin-left:auto;
   display:flex;
   gap:27px;
-  font-size:10px;
+  font-size:14px;
   padding-top:5px;
 }
 
@@ -1086,7 +1086,7 @@
   max-width:65ch;
   margin:0 0 28px;
   color:var(--muted);
-  font-size:12px;
+  font-size:14px;
   line-height:1.8;
 }
 
@@ -1097,7 +1097,7 @@
   gap:20px;
   padding-block:22px;
   font-family:var(--mono);
-  font-size:8px;
+  font-size:12px;
   color:var(--muted);
 }
 
@@ -1162,7 +1162,7 @@
 
 .ws .docs-banner p {
   margin-top:22px;
-  font-size:14px;
+  font-size:15px;
   color:var(--muted);
 }
 
@@ -1181,7 +1181,7 @@
 
 .ws .docs-sidebar label {
   font-family:var(--mono);
-  font-size:9px;
+  font-size:12px;
   color:var(--muted);
   display:block;
   margin-bottom:8px;
@@ -1197,7 +1197,7 @@
   background:transparent;
   border-radius:4px;
   padding:11px 35px 11px 12px;
-  font-size:11px;
+  font-size:14px;
   color:var(--ink);
   width:100%;
   min-height:44px;
@@ -1216,7 +1216,7 @@
 }
 
 .ws .docs-sidebar nav a {
-  font-size:11px;
+  font-size:14px;
   padding:9px 8px;
   min-height:37px;
   border-left:2px solid transparent;
@@ -1232,7 +1232,7 @@
   border-top:1px solid var(--line);
   margin-top:25px;
   font-family:var(--mono);
-  font-size:9px;
+  font-size:12px;
   color:var(--muted);
   line-height:1.8;
 }
@@ -1255,7 +1255,7 @@
 
 .ws .doc-index {
   font-family:var(--mono);
-  font-size:9px;
+  font-size:12px;
   color:var(--muted);
   letter-spacing:1px;
 }
@@ -1267,7 +1267,7 @@
 }
 
 .ws .doc-section p,.ws .doc-section li {
-  font-size:13px;
+  font-size:15px;
   line-height:1.95;
   color:var(--muted);
 }
@@ -1291,7 +1291,7 @@
   background:#e8eddf;
   padding:3px 5px;
   border-radius:3px;
-  font-size:11px;
+  font-size:13px;
   color:var(--ink);
   overflow-wrap:anywhere;
 }
@@ -1306,7 +1306,7 @@
 
 .ws .doc-code pre {
   padding:26px;
-  font-size:11px;
+  font-size:13px;
 }
 
 .ws .doc-code .copy-button {
@@ -1324,7 +1324,7 @@
   border-left:3px solid #89aa48;
   background:#e9eddf;
   padding:18px 22px;
-  font-size:12px;
+  font-size:14px;
   color:#3e5039;
   line-height:1.9;
   margin-block:23px;
@@ -1332,7 +1332,7 @@
 
 .ws .doc-callout code {
   font-family:var(--mono);
-  font-size:11px;
+  font-size:13px;
 }
 
 .ws .directory-table {
@@ -1345,7 +1345,7 @@
   gap:16px;
   padding:13px 2px;
   border-bottom:1px solid var(--line);
-  font-size:12px;
+  font-size:14px;
 }
 
 .ws .directory-table code {
@@ -1370,7 +1370,7 @@
   align-self:start;
   text-align:center;
   border-radius:3px;
-  font-size:10px;
+  font-size:12px;
   padding:5px 9px;
   margin-top:15px;
 }
@@ -1552,7 +1552,7 @@
     gap:20px;
   }
   .ws .text-link {
-    font-size:10px;
+    font-size:14px;
     gap:10px;
   }
   .ws .release-note {
@@ -1564,7 +1564,7 @@
     padding:4px;
   }
   .ws .hero-footnote {
-    font-size:8px;
+    font-size:12px;
   }
   .ws .structural-layer {
     width:230px;
@@ -1633,7 +1633,7 @@
     gap:15px;
   }
   .ws .strip-label,.ws .strip-end {
-    font-size:8px;
+    font-size:12px;
   }
   .ws .stack-list small {
     display:none;
@@ -1645,7 +1645,7 @@
     font-size:16px;
   }
   .ws .intro-prose>p {
-    font-size:12px;
+    font-size:15px;
   }
   .ws h2 {
     font-size:42px;
@@ -1661,7 +1661,7 @@
     font-size:14px;
   }
   .ws .principle-rows p {
-    font-size:11px;
+    font-size:14px;
   }
   .ws .architecture-workbench {
     gap:30px;
@@ -1674,21 +1674,21 @@
     font-size:20px;
   }
   .ws .architecture-tab small {
-    font-size:9px;
+    font-size:12px;
   }
   .ws .architecture-panel pre {
     padding:23px 18px;
     font-size:9px;
   }
   .ws .panel-caption {
-    font-size:9px;
+    font-size:12px;
     padding-inline:16px;
   }
   .ws .architecture-note {
-    font-size:9px;
+    font-size:13px;
   }
   .ws .architecture-heading p {
-    font-size:11px;
+    font-size:14px;
   }
   .ws .quickstart-layout {
     gap:30px;
@@ -1698,7 +1698,7 @@
     padding:22px 15px;
   }
   .ws .terminal-result {
-    font-size:8px;
+    font-size:12px;
     padding-inline:15px;
   }
   .ws .roadmap-layout {
@@ -1712,16 +1712,16 @@
   }
   .ws .footer-links {
     gap:20px;
-    font-size:9px;
+    font-size:14px;
   }
   .ws .footer-main {
     gap:28px;
   }
   .ws .footer-main p {
-    font-size:10px;
+    font-size:14px;
   }
   .ws .footer-bottom {
-    font-size:7px;
+    font-size:12px;
   }
   .ws .docs-layout {
     grid-template-columns:180px 1fr;
@@ -1732,18 +1732,18 @@
   }
   .ws .doc-code pre {
     padding:23px 17px;
-    font-size:10px;
+    font-size:13px;
   }
   .ws .docs-sidebar nav a {
-    font-size:10px;
+    font-size:14px;
     padding-inline:4px;
   }
   .ws .search-wrap input {
-    font-size:10px;
+    font-size:14px;
   }
   .ws .directory-table>div {
     grid-template-columns:85px 1fr;
-    font-size:11px;
+    font-size:14px;
   }
 }
 
@@ -1828,13 +1828,13 @@
     margin-top:25px;
   }
   .ws .text-link {
-    font-size:11px;
+    font-size:14px;
   }
   .ws .release-note {
     font-size:10px;
   }
   .ws .hero-footnote {
-    font-size:9px;
+    font-size:12px;
     margin-top:20px;
   }
   .ws .hero-art {
@@ -1916,7 +1916,7 @@
   .ws .strip-label {
     border:none;
     padding:0;
-    font-size:9px;
+    font-size:12px;
   }
   .ws .strip-label br {
     display:none;
@@ -1925,7 +1925,7 @@
     margin-left:auto;
     border:0;
     padding:0;
-    font-size:8px;
+    font-size:12px;
   }
   .ws .strip-end br {
     display:none;
@@ -1960,7 +1960,7 @@
     margin-bottom:15px;
   }
   .ws .intro-prose>p {
-    font-size:13px;
+    font-size:15px;
   }
   .ws .principle-rows {
     grid-template-columns:1fr;
@@ -1988,7 +1988,7 @@
     margin-bottom:6px;
   }
   .ws .principle-rows p {
-    font-size:12px;
+    font-size:14px;
     max-width:100%;
   }
   .ws .architecture-inner {
@@ -2000,7 +2000,7 @@
   }
   .ws .architecture-heading p {
     margin-top:20px;
-    font-size:12px;
+    font-size:14px;
   }
   .ws .architecture-workbench {
     grid-template-columns:1fr;
@@ -2050,12 +2050,12 @@
     padding-inline:15px;
   }
   .ws .panel-caption {
-    font-size:9px;
+    font-size:12px;
   }
   .ws .architecture-note {
     flex-wrap:wrap;
     gap:8px;
-    font-size:9px;
+    font-size:13px;
     margin-top:25px;
     padding-top:15px;
   }
@@ -2068,7 +2068,7 @@
   .ws .architecture-note a {
     margin-left:15px;
     flex-basis:100%;
-    font-size:10px;
+    font-size:14px;
   }
   .ws .quickstart-section {
     padding-block:48px;
@@ -2079,7 +2079,7 @@
     margin-top:25px;
   }
   .ws .quickstart-layout p {
-    font-size:13px;
+    font-size:15px;
     margin-top:18px;
   }
   .ws .terminal pre {
@@ -2089,7 +2089,7 @@
     overflow-wrap:anywhere;
   }
   .ws .terminal-result {
-    font-size:8px;
+    font-size:12px;
     line-height:1.7;
     padding:13px 16px;
   }
@@ -2101,7 +2101,7 @@
     gap:14px;
   }
   .ws .bootstrap-label {
-    font-size:7px;
+    font-size:12px;
   }
   .ws .roadmap-layout {
     grid-template-columns:1fr;
@@ -2112,7 +2112,7 @@
     font-size:36px;
   }
   .ws .roadmap-layout p {
-    font-size:12px;
+    font-size:14px;
     max-width:100%;
   }
   .ws .closing-section {
@@ -2141,21 +2141,21 @@
   }
   .ws .footer-main p {
     justify-self:end;
-    font-size:10px;
+    font-size:14px;
   }
   .ws .footer-links {
     grid-column:span 2;
     margin:0;
     gap:25px;
     flex-wrap:wrap;
-    font-size:9px;
+    font-size:14px;
   }
   .ws .footer-bottom {
     display:flex;
     flex-wrap:wrap;
     gap:10px;
     justify-content:space-between;
-    font-size:7px;
+    font-size:12px;
     padding-block:18px;
   }
   .ws .footer-bottom>a {
@@ -2169,7 +2169,7 @@
     letter-spacing:-2px;
   }
   .ws .docs-banner p {
-    font-size:12px;
+    font-size:15px;
   }
   .ws .docs-layout {
     grid-template-columns:1fr;
@@ -2187,7 +2187,7 @@
     gap:0 10px;
   }
   .ws .docs-sidebar nav a {
-    font-size:10px;
+    font-size:14px;
     min-height:40px;
   }
   .ws .docs-sidebar-note {
@@ -2197,28 +2197,28 @@
     margin-bottom:15px;
   }
   .ws .search-wrap input {
-    font-size:12px;
+    font-size:14px;
   }
   .ws .doc-section h2 {
     font-size:31px;
   }
   .ws .doc-section p,.ws .doc-section li {
-    font-size:12px;
+    font-size:15px;
   }
   .ws .doc-code pre {
-    font-size:10px;
+    font-size:13px;
     padding:22px 16px;
   }
   .ws .doc-code:has(.copy-button) pre {
     padding-top:38px;
   }
   .ws .directory-table>div {
-    font-size:10px;
+    font-size:14px;
     grid-template-columns:77px 1fr;
     gap:10px;
   }
   .ws .doc-callout {
-    font-size:11px;
+    font-size:14px;
     padding:16px;
   }
   .ws .roadmap-list>div {
