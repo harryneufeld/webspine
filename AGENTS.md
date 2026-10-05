@@ -99,6 +99,8 @@ php -S localhost:8080 -t public public/router.php
 Framework tests use fixed fixtures in `core/tests/fixtures/website/`, not the
 customizable site. Keep site-specific checks in `site/tests/`; extend them as the
 website changes. Site tests must use explicit local config and disposable data.
+Hosting/routing configuration changes also need `sh core/tests/hosting/run.sh`
+(Docker/Compose); development-server tests do not verify Apache/nginx behavior.
 
 Use PHP lint for changed PHP files. Core/contract/routing/update changes need
 integration tests. For copy/layout changes, check affected pages in the browser;

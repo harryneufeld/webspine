@@ -113,4 +113,4 @@ The starter targets WCAG 2.2 AA and progressively enhanced interaction. A full
 assistive-technology audit is still needed. Future mutation endpoints require
 authentication, authorization, validation, and CSRF protection.
 
-See `core/docs/architecture.md`, `core/docs/deployment.md`, and `core/docs/contributing.md`.
+See `core/docs/architecture.md`, [deployment and server configurations](core/docs/deployment.md), and `core/docs/contributing.md`.
