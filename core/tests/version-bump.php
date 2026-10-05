@@ -3,8 +3,8 @@ declare(strict_types=1);
 // Read version metadata as text; never execute PHP from a Git revision.
 function releaseVersion(string $source): string {
     $number = '(?:0|[1-9][0-9]*)';
-    preg_match_all("/'version'\\s*=>\\s*'($number\\.$number\\.$number)'/", $source, $matches);
-    if (count($matches[1]) !== 1) throw new RuntimeException('Expected exactly one stable major.minor.patch version.');
+    preg_match_all("/'version'\\s*=>\\s*'([^']*)'/", $source, $matches);
+    if (count($matches[1]) !== 1 || !preg_match("/^$number\\.$number\\.$number$/D", $matches[1][0])) throw new RuntimeException('Expected exactly one stable major.minor.patch version.');
     return $matches[1][0];
 }
 function requireVersionBump(string $base, string $head): void {
@@ -29,11 +29,11 @@ try {
             try { requireVersionBump($base, $head); $accepted = true; } catch (RuntimeException) { $accepted = false; }
             if ($accepted !== $expected) throw new RuntimeException('Incorrect version ordering.');
         }
-        foreach (["<?php return ['version'=>'01.2.3'];", "<?php return ['version'=>'1.2'];", "<?php return ['version'=>'1.2.3-rc1'];", "<?php return ['version'=>'1.2.3','version'=>'1.2.4'];"] as $invalid) {
+        foreach (["<?php return ['version'=>'01.2.3'];", "<?php return ['version'=>'1.2'];", "<?php return ['version'=>'1.2.3-rc1'];", "<?php return ['version'=>'1.2.3','version'=>'1.2.4'];", "<?php return ['version'=>'1.2.3','version'=>'bad'];"] as $invalid) {
             try { releaseVersion($invalid); throw new LogicException('Malformed version accepted.'); } catch (RuntimeException) {}
         }
         if (releaseVersion("<?php throw new Exception('must not execute'); return ['version'=>'0.1.3'];") !== '0.1.3') throw new RuntimeException('Text parsing failed.');
-        echo "11 version checks passed.\n";
+        echo "12 version checks passed.\n";
     } else {
         if (count($argv) !== 3) throw new RuntimeException('Usage: php core/tests/version-bump.php <base-ref> <head-ref>');
         $base = revisionVersion($argv[1]); $head = revisionVersion($argv[2]);
