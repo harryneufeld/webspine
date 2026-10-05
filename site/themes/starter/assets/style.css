@@ -27,6 +27,7 @@
 .ws-starter nav { display: flex; gap: 28px; flex-wrap: wrap; font-size: 16px; }
 .ws-starter nav a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
 .ws-starter nav a[aria-current] { text-decoration: underline; }
+.ws-starter .indexing-notice { margin-top: 24px; padding: 16px 20px; border-left: 3px solid var(--accent); background: #f1e9dc; font-size: 16px; overflow-wrap: anywhere; }
 .ws-starter h1, .ws-starter h2, .ws-starter h3, .ws-starter p { margin: 0; }
 .ws-starter h1 { font-size: clamp(48px, 7.5vw, 94px); font-weight: 550; line-height: 1.06; letter-spacing: -.06em; max-width: 11ch; }
 .ws-starter .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 72px; align-items: end; padding-block: 100px 112px; }

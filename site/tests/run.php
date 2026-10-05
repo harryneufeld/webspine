@@ -37,6 +37,31 @@ try {
         $response = $app->handle('GET','/pages/example');
         return $response->status === 200 && str_contains($response->body, '&lt;script&gt;Title') && str_contains($response->body, '&lt;img') && !str_contains($response->body, '<img');
     });
+    siteCheck('Starter disables indexing and shows its launch reminder on every page', function () use ($app): bool {
+        if (($app->site->meta['indexable'] ?? null) !== false) return false;
+        foreach (['/','/about','/contact','/pages/example','/missing'] as $path) {
+            $html = $app->handle('GET',$path)->body;
+            if (!str_contains($html,'<meta name="robots" content="noindex">') || !str_contains($html,'class="indexing-notice wrap"') || !str_contains($html,'Enable it in site/meta.php')) return false;
+        }
+        return true;
+    });
+    siteCheck('Explicit launch setting removes noindex and reminder; invalid values stay disabled', function () use ($app): bool {
+        $saved = $app->site->meta;
+        try {
+            $app->site->meta['indexable'] = true;
+            foreach (['/','/about','/contact','/pages/example','/missing'] as $path) {
+                $html = $app->handle('GET',$path)->body;
+                if (str_contains($html,'name="robots"') || str_contains($html,'indexing-notice')) return false;
+            }
+            foreach ([null,'true',1] as $invalid) {
+                $app->site->meta['indexable'] = $invalid;
+                $html = $app->handle('GET','/')->body;
+                if (!str_contains($html,'content="noindex"') || !str_contains($html,'class="indexing-notice wrap"')) return false;
+            }
+            unset($app->site->meta['indexable']);
+            return str_contains($app->handle('GET','/')->body,'content="noindex"');
+        } finally { $app->site->meta = $saved; }
+    });
 } catch (Throwable $error) { $failed++; echo "FAIL setup: {$error->getMessage()}\n"; }
 finally {
     unset($app); gc_collect_cycles();

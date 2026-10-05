@@ -1,5 +1,6 @@
 <?php
 $copy = $site->content('layout');
+$indexable = ($site->meta['indexable'] ?? false) === true;
 $brandProps = ['href' => '/', 'prefix' => $site->meta['brand_prefix'], 'bold' => $site->meta['brand_bold'], 'label' => $site->meta['name'] . ' home'];
 ?>
 <!doctype html>
@@ -8,6 +9,7 @@ $brandProps = ['href' => '/', 'prefix' => $site->meta['brand_prefix'], 'bold' =>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="<?= e($site->meta['description']) ?>">
+    <?php if (!$indexable): ?><meta name="robots" content="noindex"><?php endif; ?>
     <title><?= e($title) ?> · <?= e($site->meta['name']) ?></title>
     <link rel="icon" href="/assets/theme/<?= e($theme) ?>/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/theme/<?= e($theme) ?>/style.css?v=<?= e(substr(hash_file('sha256', $directory . '/assets/style.css'), 0, 12)) ?>">
@@ -22,6 +24,11 @@ $brandProps = ['href' => '/', 'prefix' => $site->meta['brand_prefix'], 'bold' =>
         <?php endforeach; ?>
     </nav>
 </header>
+<?php if (!$indexable): ?>
+<aside class="indexing-notice wrap" aria-label="<?= e($copy['indexing_label']) ?>">
+    <p><?= e($copy['indexing_notice']) ?></p>
+</aside>
+<?php endif; ?>
 <main id="main" class="wrap"><?= $content ?></main>
 <footer class="site-footer wrap">
     <?= $app->theme->component('wordmark', $brandProps) ?>

@@ -9,5 +9,7 @@ return [
         ['label' => 'Contact', 'href' => '/contact', 'page' => 'contact'],
     ],
     'footer' => 'Your site. Your next chapter.',
+    'indexing_notice' => 'Search indexing is disabled. Enable it in site/meta.php when your site is ready.',
+    'indexing_label' => 'Search indexing',
     'credit' => 'Made with',
 ];
