@@ -1,0 +1,47 @@
+services:
+  maintenance:
+    build: {context: ., args: {PHP_BASE: "php:8.3-fpm-bookworm"}}
+    entrypoint: ["php", "/source/core/tests/hosting/fixture.php"]
+    volumes:
+      - ../..:/source/core:ro
+      - ../../../public:/source/public:ro
+      - ../../../README.md:/source/README.md:ro
+      - ../../../LICENSE:/source/LICENSE:ro
+      - ../../../AGENTS.md:/source/AGENTS.md:ro
+      - ../../../.gitignore:/source/.gitignore:ro
+      - ../../../.gitattributes:/source/.gitattributes:ro
+      - app:/srv/webspine
+      - work:/work
+  check:
+    build: {context: ., args: {PHP_BASE: "php:8.3-fpm-bookworm"}}
+    entrypoint: ["php", "/check.php"]
+    volumes:
+      - ./check.php:/check.php:ro
+      - work:/work:ro
+  apache:
+    build: {context: ., args: {PHP_BASE: "php:8.3-apache-bookworm"}}
+    volumes:
+      - app:/srv/webspine
+      - ../../docs/hosting/apache.conf:/etc/apache2/sites-enabled/000-default.conf:ro
+  fpm:
+    build: {context: ., args: {PHP_BASE: "php:8.3-fpm-bookworm"}}
+    volumes: ["app:/srv/webspine"]
+  nginx:
+    image: nginx:1.28-alpine
+    command: ["nginx", "-c", "/work/nginx.conf", "-g", "daemon off;"]
+    volumes: ["app:/srv/webspine:ro", "work:/work:ro"]
+  backend:
+    image: nginx:1.28-alpine
+    command: ["nginx", "-c", "/work/backend.conf", "-g", "daemon off;"]
+    volumes: ["app:/srv/webspine:ro", "work:/work:ro"]
+  cloudpanel:
+    image: nginx:1.28-alpine
+    command: ["nginx", "-c", "/work/cloudpanel.conf", "-g", "daemon off;"]
+    volumes: ["app:/srv/webspine:ro", "work:/work:ro"]
+  cloudpanel-broken:
+    image: nginx:1.28-alpine
+    command: ["nginx", "-c", "/work/cloudpanel-broken.conf", "-g", "daemon off;"]
+    volumes: ["app:/srv/webspine:ro", "work:/work:ro"]
+volumes:
+  app:
+  work:
