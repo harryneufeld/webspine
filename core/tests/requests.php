@@ -2,6 +2,19 @@
 declare(strict_types=1);
 use Webspine\{App, Request, Response, Router, HttpError};
 return static function (App $app): void {
+    check('PHP-FPM empty content length is absent; invalid/oversized lengths fail', static function (): bool {
+        $saved = $_SERVER;
+        try {
+            $_SERVER = ['REQUEST_METHOD'=>'GET','REQUEST_URI'=>'/','CONTENT_LENGTH'=>''];
+            $request = Request::fromGlobals();
+            if ($request->body !== '' || $request->header('Content-Length') !== null) return false;
+            foreach (['invalid'=>400,'65537'=>413] as $length=>$status) {
+                $_SERVER['CONTENT_LENGTH'] = (string) $length;
+                try { Request::fromGlobals(); return false; } catch (HttpError $e) { if ($e->status !== $status) return false; }
+            }
+            return true;
+        } finally { $_SERVER = $saved; }
+    });
     check('Request preserves URI, decodes path/query, and normalizes headers', static function (): bool {
         $r = new Request('get', '/search%2Dpage?q=a%20b&tag[]=one&tag[]=two&q=last', ['X-Example'=>'value']);
         return $r->method === 'GET' && $r->path === '/search-page' && $r->uri === '/search%2Dpage?q=a%20b&tag[]=one&tag[]=two&q=last' && $r->query('q') === 'last' && $r->query('tag') === ['one','two'] && $r->query('missing','fallback') === 'fallback' && $r->header('x-example') === 'value';

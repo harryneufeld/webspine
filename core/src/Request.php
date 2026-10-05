@@ -36,9 +36,12 @@ final class Request {
         foreach ($_SERVER as $key => $value) {
             if (str_starts_with($key, 'HTTP_')) $headers[str_replace('_', '-', substr($key, 5))] = (string) $value;
         }
-        foreach (['CONTENT_TYPE','CONTENT_LENGTH'] as $key) if (isset($_SERVER[$key])) $headers[str_replace('_', '-', $key)] = (string) $_SERVER[$key];
+        foreach (['CONTENT_TYPE','CONTENT_LENGTH'] as $key) if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') $headers[str_replace('_', '-', $key)] = (string) $_SERVER[$key];
         $length = $_SERVER['CONTENT_LENGTH'] ?? null;
-        if ($length !== null && (!preg_match('/^[0-9]+$/D', (string) $length) || (float) $length > self::MAX_BODY)) throw new HttpError(413, 'Request body too large or invalid length.');
+        if ($length !== null && $length !== '') {
+            if (!preg_match('/^[0-9]+$/D', (string) $length)) throw new HttpError(400, 'Invalid content length.');
+            if ((float) $length > self::MAX_BODY) throw new HttpError(413, 'Request body too large.');
+        }
         $body = file_get_contents('php://input', false, null, 0, self::MAX_BODY + 1);
         if ($body === false) throw new HttpError(400, 'Cannot read request body.');
         return new self($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/', $headers, $body, $_SERVER['REMOTE_ADDR'] ?? null);
