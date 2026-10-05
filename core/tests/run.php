@@ -81,6 +81,7 @@ try {
     });
     check('Content and component identities reject traversal', fn() => expectError(fn() => $app->site->content('components/../meta')) && expectError(fn() => $app->theme->component('../layout')));
     check('Missing components fail explicitly', fn() => expectError(fn() => $app->theme->component('missing'), 'Missing theme component'));
+    (require __DIR__ . '/templates.php')($app, $site);
     check('Site-defined route renders through its theme', fn() => str_contains($app->handle('GET','/docs')->body, 'Fixture documentation'));
     check('Feature route registers through action hook', fn() => str_contains($app->handle('GET','/field-notes')->body, 'app.ready'));
     check('Unknown paths return 404', fn() => $app->handle('GET','/not-a-route')->status === 404);
