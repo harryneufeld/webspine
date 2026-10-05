@@ -29,3 +29,8 @@ Do not describe planned functionality as implemented. Keep README, in-site
 documentation, and release version aligned. For core releases increment the
 semantic version and keep API 1 for compatible changes. Breaking API changes
 need a future compatibility/migration policy; the current updater rejects them.
+
+Framework tests use `core/tests/fixtures/website/`, never the live/customizable
+site. Website checks belong in `site/tests/` and should use disposable data and
+explicit local configuration. Run both suites when changing the starter. The
+repository ships only the minimal Starter theme; webspine.org is independent.

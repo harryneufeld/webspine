@@ -1,13 +1,13 @@
 # Working on webspine
 
 webspine is an open-source website foundation designed for AI to understand,
-extend, and maintain. It is a bootstrap, not a complete CMS.
+extend, and maintain. The repository ships a minimal starter; webspine.org is a separate website.
 
 ## Find the right place first
 
 - `site/meta.php`: site identity, SEO description, and initial theme selection.
 - `site/pages.php`: page titles, template choices, plain-text pages, and 404 copy.
-- `site/content/`: editable plain-text homepage, documentation, and shared copy.
+- `site/content/`: editable homepage and shared plain-text copy.
 - `site/themes/<id>/components/`: reusable presentation templates for that theme.
 - `site/routes.php`: this website's URLs and database-page routing.
 - `site/install.php`: this website's idempotent starter-data initialization.
@@ -21,8 +21,7 @@ extend, and maintain. It is a bootstrap, not a complete CMS.
 - `storage/`: persistent data, update journals, and backups.
 - `public/`: the only web document root. Keep business/site logic outside it.
 
-For the existing homepage's headline and subline, edit the `headline_line_*`,
-`hero_description`, and `hero_ownership` keys in `site/content/home.php`.
+Edit the homepage's `headline`, `intro`, and `items` in `site/content/home.php`.
 Changing a page title belongs in `site/pages.php`; changing its visual layout
 belongs in its selected theme. Keep content keys stable when changing wording.
 
@@ -93,8 +92,13 @@ third-party libraries. Do not rewrite bundled vendor files casually.
 php core/bin/console.php install
 php core/bin/console.php health
 php core/tests/run.php
+php site/tests/run.php
 php -S localhost:8080 -t public public/router.php
 ```
+
+Framework tests use fixed fixtures in `core/tests/fixtures/website/`, not the
+customizable site. Keep site-specific checks in `site/tests/`; extend them as the
+website changes. Site tests must use explicit local config and disposable data.
 
 Use PHP lint for changed PHP files. Core/contract/routing/update changes need
 integration tests. For copy/layout changes, check affected pages in the browser;

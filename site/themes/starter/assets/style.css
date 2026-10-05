@@ -1,0 +1,61 @@
+/* A small, scoped starting point. Change these tokens to establish your identity. */
+.ws-starter {
+  --paper: #faf7f0;
+  --ink: #332a24;
+  --muted: #685c53;
+  --line: #d8cfc2;
+  --accent: #9a4126;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 18px;
+  line-height: 1.65;
+}
+.ws-starter * { box-sizing: border-box; }
+.ws-starter a { color: inherit; text-underline-offset: .25em; }
+.ws-starter a:hover { color: var(--accent); }
+.ws-starter :focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
+.ws-starter ::selection { background: #e9c7ab; }
+.ws-starter .wrap { width: min(1120px, calc(100% - 64px)); margin-inline: auto; }
+.ws-starter .skip-link { position: absolute; top: -100px; left: 24px; background: var(--ink); color: var(--paper); padding: 12px 20px; z-index: 2; }
+.ws-starter .skip-link:focus { top: 16px; }
+.ws-starter .site-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 32px; border-bottom: 1px solid var(--line); }
+.ws-starter .wordmark { font-size: 27px; letter-spacing: -1px; text-decoration: none; white-space: nowrap; }
+.ws-starter .wordmark strong { font-weight: 750; }
+.ws-starter .wordmark span { color: var(--accent); }
+.ws-starter nav { display: flex; gap: 28px; flex-wrap: wrap; font-size: 16px; }
+.ws-starter nav a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
+.ws-starter nav a[aria-current] { text-decoration: underline; }
+.ws-starter h1, .ws-starter h2, .ws-starter h3, .ws-starter p { margin: 0; }
+.ws-starter h1 { font-size: clamp(48px, 7.5vw, 94px); font-weight: 550; line-height: 1.06; letter-spacing: -.06em; max-width: 11ch; }
+.ws-starter .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 72px; align-items: end; padding-block: 100px 112px; }
+.ws-starter .hero-intro p { color: var(--muted); max-width: 34ch; }
+.ws-starter .action-link { display: inline-flex; align-items: center; gap: 28px; min-height: 48px; margin-top: 24px; font-weight: 600; font-size: 16px; }
+.ws-starter .action-link span { color: var(--accent); font-size: 24px; }
+.ws-starter .example-section { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; border-top: 1px solid var(--line); padding-block: 52px 96px; }
+.ws-starter h2 { font-size: clamp(28px, 3vw, 38px); font-weight: 550; line-height: 1.2; letter-spacing: -.04em; }
+.ws-starter .section-intro p { margin-top: 16px; color: var(--muted); max-width: 30ch; }
+.ws-starter .example-list { list-style: none; padding: 0; margin: 0; }
+.ws-starter .example-list li { padding-block: 22px; border-bottom: 1px solid var(--line); }
+.ws-starter .example-list li:first-child { padding-top: 0; }
+.ws-starter h3 { font-size: 20px; font-weight: 600; }
+.ws-starter .example-list p { color: var(--muted); font-size: 16px; margin-top: 6px; }
+.ws-starter .page { padding-block: 88px 120px; min-height: 60vh; }
+.ws-starter .page h1 { max-width: 16ch; font-size: clamp(44px, 6vw, 72px); }
+.ws-starter .page p { max-width: 60ch; margin-top: 32px; color: var(--muted); overflow-wrap: anywhere; }
+.ws-starter .site-footer { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-block: 32px; }
+.ws-starter .site-footer p { font-size: 16px; color: var(--muted); }
+.ws-starter .credit { margin-left: auto; font-size: 14px; }
+@media (max-width: 720px) {
+  .ws-starter .wrap { width: calc(100% - 40px); }
+  .ws-starter .site-header { align-items: start; flex-wrap: wrap; padding-block: 20px; gap: 12px 24px; }
+  .ws-starter nav { gap: 20px; }
+  .ws-starter .hero, .ws-starter .example-section { grid-template-columns: 1fr; gap: 32px; }
+  .ws-starter .hero { padding-block: 56px 64px; }
+  .ws-starter .hero-intro p { max-width: 42ch; }
+  .ws-starter .example-section { padding-block: 36px 56px; }
+  .ws-starter .page { padding-block: 56px 80px; }
+  .ws-starter .site-footer { gap: 12px 24px; }
+  .ws-starter .credit { margin-left: 0; }
+}

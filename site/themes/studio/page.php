@@ -1,2 +1,0 @@
-<?php $copy = $site->content('page'); ?>
-<section class="content-page shell"><div class="section-number"><?= e(!empty($notFound) ? $copy['not_found_label'] : $copy['page_label']) ?></div><h1><?= e($title) ?></h1><p class="page-body"><?= nl2br(e($body)) ?></p><div class="hero-actions"><a class="button button-ink" href="<?= e($copy['href_']) ?>"><?= e($copy['back_to_the_start']) ?> <span aria-hidden="true">↗</span></a><a class="text-link" href="<?= e($copy['href_docs']) ?>"><?= e($copy['read_the_docs']) ?></a></div></section>

@@ -44,11 +44,18 @@ function mutateZip(string $original, string $destination, callable $mutate): str
     copy($original, $destination); $z = new ZipArchive(); $z->open($destination); $mutate($z); $z->close(); return $destination;
 }
 $source = dirname(__DIR__, 2);
+$initialVersion = (require $source . '/core/version.php')['version'];
+$versionParts = array_map('intval', explode('.', $initialVersion));
+$upgradeVersion = implode('.', [$versionParts[0], $versionParts[1], $versionParts[2] + 1]);
+$laterVersion = implode('.', [$versionParts[0], $versionParts[1], $versionParts[2] + 2]);
 $base = $source . '/storage/test-' . bin2hex(random_bytes(6));
 $site = $base . '/site'; $candidate = $base . '/candidate';
 mkdir($base, 0700, true);
 try {
-    foreach (['core','public','site','config'] as $directory) copyTree($source . '/' . $directory, $site . '/' . $directory);
+    foreach (['core','public'] as $directory) copyTree($source . '/' . $directory, $site . '/' . $directory);
+    copyTree(__DIR__ . '/fixtures/website/site', $site . '/site');
+    mkdir($site . '/config');
+    copy(__DIR__ . '/fixtures/website/config/example.php', $site . '/config/example.php');
     foreach (['README.md','LICENSE','AGENTS.md','.gitignore'] as $file) copy($source . '/' . $file, $site . '/' . $file);
     mkdir($site . '/storage'); mkdir($site . '/.dist'); touch($site . '/storage/.gitkeep'); touch($site . '/.dist/.gitkeep');
     $app = new App($site);
@@ -74,26 +81,26 @@ try {
     });
     check('Content and component identities reject traversal', fn() => expectError(fn() => $app->site->content('components/../meta')) && expectError(fn() => $app->theme->component('../layout')));
     check('Missing components fail explicitly', fn() => expectError(fn() => $app->theme->component('missing'), 'Missing theme component'));
-    check('Documentation route is live', fn() => str_contains($app->handle('GET','/docs')->body, 'docs-search'));
+    check('Site-defined route renders through its theme', fn() => str_contains($app->handle('GET','/docs')->body, 'Fixture documentation'));
     check('Feature route registers through action hook', fn() => str_contains($app->handle('GET','/field-notes')->body, 'app.ready'));
     check('Unknown paths return 404', fn() => $app->handle('GET','/not-a-route')->status === 404);
-    check('Mutation requests return 405', fn() => $app->handle('POST','/')->status === 405 && $app->handle('POST','/assets/theme/studio/app.js')->status === 405);
+    check('Mutation requests return 405', fn() => $app->handle('POST','/')->status === 405 && $app->handle('POST','/assets/theme/test-theme/app.js')->status === 405);
     check('Public health discloses only generic status', fn() => $app->handle('GET','/health')->body === '{"status":"ok"}');
-    check('Theme CSS is served with proper type', fn() => $app->handle('GET','/assets/theme/studio/style.css')->headers['Content-Type'] === 'text/css');
-    check('Asset traversal and PHP serving are rejected', fn() => $app->handle('GET','/assets/theme/studio/../layout.php')->status === 404 && $app->handle('GET','/assets/theme/studio/layout.php')->status === 404);
+    check('Theme CSS is served with proper type', fn() => $app->handle('GET','/assets/theme/test-theme/style.css')->headers['Content-Type'] === 'text/css');
+    check('Asset traversal and PHP serving are rejected', fn() => $app->handle('GET','/assets/theme/test-theme/../layout.php')->status === 404 && $app->handle('GET','/assets/theme/test-theme/layout.php')->status === 404);
     check('Private paths are not served', fn() => $app->handle('GET','/config/example.php')->status === 404 && $app->handle('GET','/storage/site.sqlite')->status === 404 && $app->handle('GET','/site/content/home.php')->status === 404);
     check('Registry rejects implementations of the wrong contract', fn() => expectError(fn() => (new Registry())->set(Storage::class, new stdClass())));
     check('Registry rejects duplicate services', fn() => expectError(fn() => $app->services->set(Storage::class, $storage)));
     check('Missing optional mail service is explicit', fn() => !$app->services->has(Mail::class) && expectError(fn() => $app->services->get(Mail::class)));
-    check('Theme IDs reject traversal', fn() => expectError(fn() => $app->theme->validate('../studio')));
+    check('Theme IDs reject traversal', fn() => expectError(fn() => $app->theme->validate('../test-theme')));
     mkdir($site . '/site/plugins/sqlite');
     check('Custom plugins cannot shadow a bundled system provider', fn() => expectError(fn() => new App($site), 'Ambiguous plugin identity'));
     rmdir($site . '/site/plugins/sqlite');
-    copyTree($site . '/site/themes/studio', $site . '/site/themes/alternate');
+    copyTree($site . '/site/themes/test-theme', $site . '/site/themes/alternate');
     Files::json($site . '/site/themes/alternate/theme.json', ['id'=>'alternate','version'=>'0.1.0','api'=>1,'dependencies'=>[]]);
     check('CLI switches theme through persistent settings', function () use ($site) { $r = cli($site,['theme','alternate']); return $r['code'] === 0 && (new App($site))->theme->active() === 'alternate'; });
-    cli($site, ['theme','studio']);
-    check('Failed theme selection preserves the previous theme', fn() => cli($site,['theme','missing'])['code'] !== 0 && (new App($site))->theme->active() === 'studio');
+    cli($site, ['theme','test-theme']);
+    check('Failed theme selection preserves the previous theme', fn() => cli($site,['theme','missing'])['code'] !== 0 && (new App($site))->theme->active() === 'test-theme');
     // A different website can choose completely different template names.
     $savedSitePages = file_get_contents($site . '/site/pages.php');
     $savedSiteRoutes = file_get_contents($site . '/site/routes.php');
@@ -104,7 +111,7 @@ try {
     Files::write($site . '/site/routes.php', "<?php return static function (\\Webspine\\App \$app): void { \$app->router->get('/', fn()=>\$app->site->render('home')); };");
     $settings->set('theme','minimal');
     check('A site can use another theme without starter home or docs templates', fn() => (new App($site))->health()['ok'] && str_contains((new App($site))->handle('GET','/')->body,'Independent presentation'));
-    Files::write($site . '/site/pages.php', $savedSitePages); Files::write($site . '/site/routes.php', $savedSiteRoutes); $settings->set('theme','studio');
+    Files::write($site . '/site/pages.php', $savedSitePages); Files::write($site . '/site/routes.php', $savedSiteRoutes); $settings->set('theme','test-theme');
     copyTree($source . '/core/tests/fixtures/memory', $site . '/site/plugins/memory');
     $memory = new App($site, ['providers'=>['storage'=>'memory','mail'=>null], 'plugins'=>['field-notes']]);
     $memory->install(); $memory->services->get(Pages::class)->put('memory','From memory','No SQL involved.');
@@ -118,12 +125,12 @@ try {
     check('Bundled SMTP implements the mail contract', fn() => $smtp->services->get(Mail::class) instanceof Mail);
     check('SMTP validates recipients before connecting', fn() => expectError(fn() => $smtp->services->get(Mail::class)->send('bad-address','hello','body')));
     check('Bundled dependencies match recorded checksums', function () use ($source) {
-        foreach (['core/vendor/dependencies.json','site/themes/studio/assets/fonts/dependency.json'] as $file) {
+        foreach (['core/vendor/dependencies.json'] as $file) {
             $m = json_decode(file_get_contents($source . '/' . $file), true, 32, JSON_THROW_ON_ERROR);
             foreach ($m['files'] as $path=>$hash) if (hash_file('sha256',$source . '/' . $path) !== $hash) return false;
         } return true;
     });
-    // Keep entity data in the installed site while exercising core updates.
+    // Keep entity data in the installed fixture while exercising core updates.
     $entityConfig = require $site . '/config/example.php'; $entityConfig['plugins'][] = 'catalog';
     Files::write($site . '/config/example.php', '<?php return ' . var_export($entityConfig, true) . ';');
     $app = new App($site); $entityService = $app->services->get(\Webspine\Contracts\Entities::class);
@@ -135,10 +142,10 @@ try {
         for ($i = 0; $i < $z->numFiles; $i++) if (str_starts_with($z->getNameIndex($i), '.dist/')) $ok = false;
         $z->close(); return $ok;
     });
-    check('Bootstrap includes site files but excludes private config and data', function () use ($full) { $z=new ZipArchive(); $z->open($full); $ok=$z->locateName('config/local.php')===false && $z->locateName('storage/site.sqlite')===false && $z->locateName('site/content/home.php')!==false && $z->locateName('site/themes/studio/home.php')!==false && $z->locateName('core/plugins/sqlite/plugin.php')!==false; $z->close(); return $ok; });
+    check('Bootstrap includes site files but excludes private config and data', function () use ($full) { $z=new ZipArchive(); $z->open($full); $ok=$z->locateName('config/local.php')===false && $z->locateName('storage/site.sqlite')===false && $z->locateName('site/content/home.php')!==false && $z->locateName('site/themes/test-theme/home.php')!==false && $z->locateName('core/plugins/sqlite/plugin.php')!==false; $z->close(); return $ok; });
     check('Download route serves a real ZIP', fn() => str_starts_with($app->handle('GET','/download')->body,'PK') && $app->handle('GET','/download')->headers['Content-Type']==='application/zip');
     copyTree($site, $candidate);
-    Files::write($candidate . '/core/version.php', "<?php\nreturn ['version' => '0.1.1', 'api' => 1, 'php' => '8.3.0'];\n");
+    Files::write($candidate . '/core/version.php', "<?php\nreturn ['version' => '$upgradeVersion', 'api' => 1, 'php' => '8.3.0'];\n");
     $release = Release::package($candidate);
     check('Core release includes bundled providers, tools, tests, and guides', function () use ($release) {
         $z = new ZipArchive(); $z->open($release); $ok = true;
@@ -148,7 +155,7 @@ try {
     $providerFile = file_get_contents($candidate . '/core/plugins/sqlite/plugin.php');
     Files::write($candidate . '/core/plugins/sqlite/plugin.php', "<?php throw new RuntimeException('Candidate provider rejected');");
     $badProviderRelease = Release::package($candidate);
-    check('Candidate health probes execute staged system providers', fn() => expectError(fn() => (new Updater($site))->apply($badProviderRelease), 'Candidate provider rejected') && (require $site . '/core/version.php')['version'] === '0.1.0');
+    check('Candidate health probes execute staged system providers', fn() => expectError(fn() => (new Updater($site))->apply($badProviderRelease), 'Candidate provider rejected') && (require $site . '/core/version.php')['version'] === $initialVersion);
     Files::write($candidate . '/core/plugins/sqlite/plugin.php', $providerFile);
     $release = Release::package($candidate);
     check('Core release excludes every site-owned directory', function () use ($release) {
@@ -176,7 +183,7 @@ try {
     Files::write($site . '/core/stale.php', '<?php // stale managed file');
     $dbHash = hash_file('sha256',$site . '/storage/site.sqlite');
     $siteOwned = [];
-    foreach (['AGENTS.md','site/themes/studio/home.php','site/plugins/field-notes/plugin.php','config/example.php','site/meta.php','site/pages.php','site/routes.php','site/install.php','site/content/home.php','site/content/docs.php','site/content/layout.php'] as $p) $siteOwned[$p]=hash_file('sha256',$site.'/'.$p);
+    foreach (['AGENTS.md','site/themes/test-theme/home.php','site/plugins/field-notes/plugin.php','config/example.php','site/meta.php','site/pages.php','site/routes.php','site/install.php','site/content/home.php','site/content/docs.php','site/content/layout.php'] as $p) $siteOwned[$p]=hash_file('sha256',$site.'/'.$p);
     Files::write($site . '/config/local.php', file_get_contents($site . '/config/example.php')); $siteOwned['config/local.php']=hash_file('sha256',$site.'/config/local.php');
     $updater = new Updater($site);
     check('Bootstrap ZIPs are rejected as core updates', fn() => expectError(fn() => $updater->apply($full)));
@@ -196,24 +203,24 @@ try {
     check('Incompatible core API is rejected', fn() => expectError(fn() => $updater->apply($bad),'Incompatible'));
     $bad = mutateZip($release,$base.'/linked.zip',function(ZipArchive $z){ $z->setExternalAttributesName('core/src/Router.php',ZipArchive::OPSYS_UNIX,0120777<<16);});
     check('Archive symlinks are rejected', fn() => expectError(fn() => $updater->apply($bad),'links'));
-    check('CLI activates a newer core and removes stale framework files', function()use($release,$site){ $r=cli($site,['update',$release]);if($r['code']!==0)throw new RuntimeException($r['err']);return json_decode($r['out'],true)['to']==='0.1.1' && !is_file($site.'/core/stale.php') && (require $site.'/core/version.php')['version']==='0.1.1';});
+    check('CLI activates a newer core and removes stale framework files', function()use($release,$site,$upgradeVersion){ $r=cli($site,['update',$release]);if($r['code']!==0)throw new RuntimeException($r['err']);return json_decode($r['out'],true)['to']===$upgradeVersion && !is_file($site.'/core/stale.php') && (require $site.'/core/version.php')['version']===$upgradeVersion;});
     check('Update preserves site content, routes, identity, config, themes, plugins, and database', function()use($siteOwned,$site,$dbHash){foreach($siteOwned as $path=>$hash)if(hash_file('sha256',$site.'/'.$path)!==$hash)return false;return hash_file('sha256',$site.'/storage/site.sqlite')===$dbHash;});
     check('Custom site routes and title still work after core activation', fn() => (new App($site))->handle('GET','/about-us')->status === 200 && str_contains((new App($site))->handle('GET','/about-us')->body,'My independent website'));
     check('Core activation preserves declared entity definitions and records', fn() => (new App($site))->services->get(\Webspine\Contracts\Entities::class)->read('products',$retainedProduct['id']) === $retainedProduct);
     check('Updates reject the installed version and downgrade', fn()=>expectError(fn()=>$updater->apply($release),'newer'));
-    check('Rollback restores deleted framework files and previous version', function()use($updater,$site){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']==='0.1.0';});
-    Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '0.1.2', 'api' => 1, 'php' => '8.3.0'];\n");
+    check('Rollback restores deleted framework files and previous version', function()use($updater,$site,$initialVersion){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']===$initialVersion;});
+    Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '$laterVersion', 'api' => 1, 'php' => '8.3.0'];\n");
     $appFile=file_get_contents($candidate.'/core/src/App.php');
     Files::write($candidate.'/core/src/App.php',str_replace('$status = $this->services->get(Storage::class)->health();',"if (is_file(\$this->root . '/core/activation-failure')) throw new \\RuntimeException('Injected activation failure');\n            ".'$status = $this->services->get(Storage::class)->health();',$appFile));
     Files::write($candidate.'/core/activation-failure','Only visible after activation');
     $failureRelease=Release::package($candidate);
-    check('Post-activation health failure automatically restores the old core', fn()=>expectError(fn()=>$updater->apply($failureRelease),'previous core restored') && (require $site.'/core/version.php')['version']==='0.1.0' && !is_file($site.'/core/activation-failure') && !is_file($site.'/storage/update-pending.json'));
+    check('Post-activation health failure automatically restores the old core', fn()=>expectError(fn()=>$updater->apply($failureRelease),'previous core restored') && (require $site.'/core/version.php')['version']===$initialVersion && !is_file($site.'/core/activation-failure') && !is_file($site.'/storage/update-pending.json'));
     Files::write($candidate.'/core/src/App.php',$appFile); unlink($candidate.'/core/activation-failure');
     $good=Release::package($candidate);$updater->apply($good);
     $journal=json_decode(file_get_contents($site.'/storage/update-last.json'),true);
     Files::json($site.'/storage/update-pending.json',$journal);
     check('CLI refuses normal work during interrupted activation', fn()=>cli($site,['health'])['code']!==0);
-    check('Recovery restores the verified previous core', function()use($site){$r=cli($site,['recover']);if($r['code']!==0)throw new RuntimeException($r['err'].$r['out']);return (require $site.'/core/version.php')['version']==='0.1.0' && !is_file($site.'/storage/update-pending.json');});
+    check('Recovery restores the verified previous core', function()use($site,$initialVersion){$r=cli($site,['recover']);if($r['code']!==0)throw new RuntimeException($r['err'].$r['out']);return (require $site.'/core/version.php')['version']===$initialVersion && !is_file($site.'/storage/update-pending.json');});
     check('Recovered site has healthy persistent data', fn()=>cli($site,['health'])['code']===0 && (new App($site))->services->get(Settings::class)->get('custom')==='preserved');
     check('Portable release paths reject Windows device aliases', fn()=>!Files::safe('core/con.php') && !Files::safe('core/../config') && !Files::safe('core/file.'));
 } catch(Throwable $e) { $failed++; echo 'FAIL test setup: '.$e->getMessage()."\n".$e->getTraceAsString()."\n"; }

@@ -23,7 +23,7 @@ template choices, and plain-text page copy. site/content/ contains editable text
 catalogs; site/routes.php owns URLs. Theme markup reads and escapes those values.
 Site.php provides generic loading and rendering without hardcoded homepage,
 documentation, download, or 404 copy. /health remains a generic framework route;
-release-download is an optional feature plugin. Health renders the site's own
+feature plugins add optional capabilities. Health renders the site's own
 page definitions instead of requiring specific starter templates.
 
 Settings stores active theme identity. Theme validation checks manifest identity
