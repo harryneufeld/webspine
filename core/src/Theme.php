@@ -37,14 +37,30 @@ final class Theme {
         $directory = $this->app->root . '/site/themes/' . $theme;
         $file = $directory . '/' . $template . '.php';
         if (!is_file($file)) throw new \RuntimeException('Missing theme template.');
-        $app = $this->app;
-        $site = $app->site;
-        extract($data, EXTR_SKIP);
-        ob_start();
-        try { require $file; $content = ob_get_clean(); } catch (\Throwable $e) { ob_end_clean(); throw $e; }
-        ob_start();
-        try { require $directory . '/layout.php'; $html = ob_get_clean(); } catch (\Throwable $e) { ob_end_clean(); throw $e; }
+        $context = ['app'=>$this->app, 'site'=>$this->app->site, 'theme'=>$theme,
+            'directory'=>$directory, 'template'=>$template, 'status'=>$status, 'content'=>''];
+        $content = $this->renderFile($file, $data, $context);
+        $context['content'] = $content;
+        $html = $this->renderFile($directory . '/layout.php', $data, $context);
         return new Response($html, $status);
+    }
+    private function renderFile(string $file, array $data, array $context): string {
+        // Fresh local scope for each file; preserve original data and renderer context.
+        return (static function (string $__file, array $data, array $__context): string {
+            $__level = ob_get_level();
+            extract($__context, EXTR_SKIP);
+            $file = $__file;
+            extract(array_filter($data, static fn($key) => is_string($key) && !str_starts_with($key, '__'), ARRAY_FILTER_USE_KEY), EXTR_SKIP);
+            ob_start();
+            try {
+                require $__file;
+                while (ob_get_level() > $__level + 1) ob_end_flush();
+                return ob_get_clean();
+            } catch (\Throwable $e) {
+                while (ob_get_level() > $__level) ob_end_clean();
+                throw $e;
+            }
+        })($file, $data, $context);
     }
     public function asset(string $path): Response {
         $id = $this->active();
