@@ -44,6 +44,10 @@ function mutateZip(string $original, string $destination, callable $mutate): str
     copy($original, $destination); $z = new ZipArchive(); $z->open($destination); $mutate($z); $z->close(); return $destination;
 }
 $source = dirname(__DIR__, 2);
+$initialVersion = (require $source . '/core/version.php')['version'];
+$versionParts = array_map('intval', explode('.', $initialVersion));
+$upgradeVersion = implode('.', [$versionParts[0], $versionParts[1], $versionParts[2] + 1]);
+$laterVersion = implode('.', [$versionParts[0], $versionParts[1], $versionParts[2] + 2]);
 $base = $source . '/storage/test-' . bin2hex(random_bytes(6));
 $site = $base . '/site'; $candidate = $base . '/candidate';
 mkdir($base, 0700, true);
@@ -141,7 +145,7 @@ try {
     check('Bootstrap includes site files but excludes private config and data', function () use ($full) { $z=new ZipArchive(); $z->open($full); $ok=$z->locateName('config/local.php')===false && $z->locateName('storage/site.sqlite')===false && $z->locateName('site/content/home.php')!==false && $z->locateName('site/themes/test-theme/home.php')!==false && $z->locateName('core/plugins/sqlite/plugin.php')!==false; $z->close(); return $ok; });
     check('Download route serves a real ZIP', fn() => str_starts_with($app->handle('GET','/download')->body,'PK') && $app->handle('GET','/download')->headers['Content-Type']==='application/zip');
     copyTree($site, $candidate);
-    Files::write($candidate . '/core/version.php', "<?php\nreturn ['version' => '0.1.1', 'api' => 1, 'php' => '8.3.0'];\n");
+    Files::write($candidate . '/core/version.php', "<?php\nreturn ['version' => '$upgradeVersion', 'api' => 1, 'php' => '8.3.0'];\n");
     $release = Release::package($candidate);
     check('Core release includes bundled providers, tools, tests, and guides', function () use ($release) {
         $z = new ZipArchive(); $z->open($release); $ok = true;
@@ -151,7 +155,7 @@ try {
     $providerFile = file_get_contents($candidate . '/core/plugins/sqlite/plugin.php');
     Files::write($candidate . '/core/plugins/sqlite/plugin.php', "<?php throw new RuntimeException('Candidate provider rejected');");
     $badProviderRelease = Release::package($candidate);
-    check('Candidate health probes execute staged system providers', fn() => expectError(fn() => (new Updater($site))->apply($badProviderRelease), 'Candidate provider rejected') && (require $site . '/core/version.php')['version'] === '0.1.0');
+    check('Candidate health probes execute staged system providers', fn() => expectError(fn() => (new Updater($site))->apply($badProviderRelease), 'Candidate provider rejected') && (require $site . '/core/version.php')['version'] === $initialVersion);
     Files::write($candidate . '/core/plugins/sqlite/plugin.php', $providerFile);
     $release = Release::package($candidate);
     check('Core release excludes every site-owned directory', function () use ($release) {
@@ -199,24 +203,24 @@ try {
     check('Incompatible core API is rejected', fn() => expectError(fn() => $updater->apply($bad),'Incompatible'));
     $bad = mutateZip($release,$base.'/linked.zip',function(ZipArchive $z){ $z->setExternalAttributesName('core/src/Router.php',ZipArchive::OPSYS_UNIX,0120777<<16);});
     check('Archive symlinks are rejected', fn() => expectError(fn() => $updater->apply($bad),'links'));
-    check('CLI activates a newer core and removes stale framework files', function()use($release,$site){ $r=cli($site,['update',$release]);if($r['code']!==0)throw new RuntimeException($r['err']);return json_decode($r['out'],true)['to']==='0.1.1' && !is_file($site.'/core/stale.php') && (require $site.'/core/version.php')['version']==='0.1.1';});
+    check('CLI activates a newer core and removes stale framework files', function()use($release,$site,$upgradeVersion){ $r=cli($site,['update',$release]);if($r['code']!==0)throw new RuntimeException($r['err']);return json_decode($r['out'],true)['to']===$upgradeVersion && !is_file($site.'/core/stale.php') && (require $site.'/core/version.php')['version']===$upgradeVersion;});
     check('Update preserves site content, routes, identity, config, themes, plugins, and database', function()use($siteOwned,$site,$dbHash){foreach($siteOwned as $path=>$hash)if(hash_file('sha256',$site.'/'.$path)!==$hash)return false;return hash_file('sha256',$site.'/storage/site.sqlite')===$dbHash;});
     check('Custom site routes and title still work after core activation', fn() => (new App($site))->handle('GET','/about-us')->status === 200 && str_contains((new App($site))->handle('GET','/about-us')->body,'My independent website'));
     check('Core activation preserves declared entity definitions and records', fn() => (new App($site))->services->get(\Webspine\Contracts\Entities::class)->read('products',$retainedProduct['id']) === $retainedProduct);
     check('Updates reject the installed version and downgrade', fn()=>expectError(fn()=>$updater->apply($release),'newer'));
-    check('Rollback restores deleted framework files and previous version', function()use($updater,$site){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']==='0.1.0';});
-    Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '0.1.2', 'api' => 1, 'php' => '8.3.0'];\n");
+    check('Rollback restores deleted framework files and previous version', function()use($updater,$site,$initialVersion){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']===$initialVersion;});
+    Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '$laterVersion', 'api' => 1, 'php' => '8.3.0'];\n");
     $appFile=file_get_contents($candidate.'/core/src/App.php');
     Files::write($candidate.'/core/src/App.php',str_replace('$status = $this->services->get(Storage::class)->health();',"if (is_file(\$this->root . '/core/activation-failure')) throw new \\RuntimeException('Injected activation failure');\n            ".'$status = $this->services->get(Storage::class)->health();',$appFile));
     Files::write($candidate.'/core/activation-failure','Only visible after activation');
     $failureRelease=Release::package($candidate);
-    check('Post-activation health failure automatically restores the old core', fn()=>expectError(fn()=>$updater->apply($failureRelease),'previous core restored') && (require $site.'/core/version.php')['version']==='0.1.0' && !is_file($site.'/core/activation-failure') && !is_file($site.'/storage/update-pending.json'));
+    check('Post-activation health failure automatically restores the old core', fn()=>expectError(fn()=>$updater->apply($failureRelease),'previous core restored') && (require $site.'/core/version.php')['version']===$initialVersion && !is_file($site.'/core/activation-failure') && !is_file($site.'/storage/update-pending.json'));
     Files::write($candidate.'/core/src/App.php',$appFile); unlink($candidate.'/core/activation-failure');
     $good=Release::package($candidate);$updater->apply($good);
     $journal=json_decode(file_get_contents($site.'/storage/update-last.json'),true);
     Files::json($site.'/storage/update-pending.json',$journal);
     check('CLI refuses normal work during interrupted activation', fn()=>cli($site,['health'])['code']!==0);
-    check('Recovery restores the verified previous core', function()use($site){$r=cli($site,['recover']);if($r['code']!==0)throw new RuntimeException($r['err'].$r['out']);return (require $site.'/core/version.php')['version']==='0.1.0' && !is_file($site.'/storage/update-pending.json');});
+    check('Recovery restores the verified previous core', function()use($site,$initialVersion){$r=cli($site,['recover']);if($r['code']!==0)throw new RuntimeException($r['err'].$r['out']);return (require $site.'/core/version.php')['version']===$initialVersion && !is_file($site.'/storage/update-pending.json');});
     check('Recovered site has healthy persistent data', fn()=>cli($site,['health'])['code']===0 && (new App($site))->services->get(Settings::class)->get('custom')==='preserved');
     check('Portable release paths reject Windows device aliases', fn()=>!Files::safe('core/con.php') && !Files::safe('core/../config') && !Files::safe('core/file.'));
 } catch(Throwable $e) { $failed++; echo 'FAIL test setup: '.$e->getMessage()."\n".$e->getTraceAsString()."\n"; }
