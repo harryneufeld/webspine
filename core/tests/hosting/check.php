@@ -29,7 +29,7 @@ function waitForServer(string $host, int $status): void {
 }
 $mode = $argv[1] ?? '';
 $versions = json_decode(file_get_contents('/work/versions.json'), true, 32, JSON_THROW_ON_ERROR);
-if (!in_array($mode, ['initial','updated','denied'], true)) throw new RuntimeException('Unknown check phase');
+if (!in_array($mode, ['initial','updated','restored','denied'], true)) throw new RuntimeException('Unknown check phase');
 foreach (['apache','nginx','cloudpanel'] as $host) {
     waitForServer($host, $mode === 'denied' ? 503 : 200);
     if ($mode === 'denied') {
@@ -57,11 +57,11 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
         return $data['php'] >= 80300 && $data['extensions'] === [true,true,true] && $data['opcache'] && $data['cached'] && $data['timestamp_checks'] === '0' && $data['storage_writable'] && !$data['core_writable'];
     });
     hostingCheck($host . ' SQLite writes and data persist across update/restart', static function () use ($host, $mode): bool {
-        if ($mode === 'updated' && (json_decode(request($host, '/hosting-probe')['body'], true)['saved'] ?? '') !== 'preserved') return false;
+        if ($mode !== 'initial' && (json_decode(request($host, '/hosting-probe')['body'], true)['saved'] ?? '') !== 'preserved') return false;
         return request($host, '/hosting-write')['status'] === 200 && json_decode(request($host, '/hosting-probe')['body'], true)['saved'] === 'preserved';
     });
     hostingCheck($host . ' expected core version after activation/rollback and worker restart', static function () use ($host, $mode, $versions): bool {
-        return json_decode(request($host, '/hosting-probe')['body'], true)['version'] === $versions[$mode];
+        return json_decode(request($host, '/hosting-probe')['body'], true)['version'] === $versions[$mode === 'updated' ? 'updated' : 'initial'];
     });
     foreach ($versions['assets'] as $ext => $type) {
         hostingCheck($host . ' ' . $ext . ' asset bytes, MIME, and cache header', static function () use ($host,$ext,$type): bool {
@@ -90,7 +90,10 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
     }
 }
 if ($mode !== 'denied') {
-    hostingCheck('CloudPanel generic static rule still serves physical public files', static fn() => request('cloudpanel', '/control.css')['body'] === 'static-control');
+    hostingCheck($mode === 'updated' ? 'Core update removes unlisted files from managed public directory' : 'CloudPanel generic static rule serves physical public files', static function () use ($mode): bool {
+        $r = request('cloudpanel', '/control.css');
+        return $mode === 'updated' ? $r['status'] === 404 : $r['status'] === 200 && $r['body'] === 'static-control';
+    });
     hostingCheck('CloudPanel original static regex reproduces missing theme assets', static fn() => request('cloudpanel-broken', '/assets/theme/test-theme/probe.css')['status'] === 404 && request('cloudpanel-broken', '/')['status'] === 200);
 }
 echo "$passed passed, $failed failed ($mode).\n";

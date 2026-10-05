@@ -2,7 +2,7 @@ name: Hosting integration
 on:
   pull_request:
   push:
-    branches: [main, 'codex/deployment-server-tests']
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
