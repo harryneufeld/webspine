@@ -63,6 +63,7 @@ if ($mode === 'prepare') {
     }
     $assets = ['css'=>'text/css','js'=>'text/javascript','svg'=>'image/svg+xml','woff2'=>'font/woff2','png'=>'image/png','jpg'=>'image/jpeg','webp'=>'image/webp'];
     foreach ($assets as $ext => $_) file_put_contents('/srv/webspine/site/themes/test-theme/assets/probe.' . $ext, 'asset-' . $ext);
+    foreach (['ico','avif','gif','pdf'] as $ext) file_put_contents('/srv/webspine/site/themes/test-theme/assets/probe.' . $ext, 'blocked-' . $ext);
     file_put_contents('/srv/webspine/public/control.css', 'static-control');
     file_put_contents('/srv/webspine/site/themes/test-theme/assets/blocked.php', '<?php echo "HOSTING_PRIVATE_SENTINEL";');
     symlink('/srv/webspine/config/local.php', '/srv/webspine/site/themes/test-theme/assets/escape.css');

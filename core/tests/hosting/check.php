@@ -73,7 +73,7 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
         $r = request($host, '/assets/theme/test-theme/probe.css', 'HEAD');
         return $r['status'] === 200 && $r['body'] === '' && str_starts_with($r['headers']['content-type'], 'text/css');
     });
-    foreach (['/missing','/assets/theme/test-theme/missing.css','/assets/theme/test-theme/blocked.php','/assets/theme/test-theme/escape.css','/assets/theme/wrong/probe.css'] as $path) {
+    foreach (['/missing','/assets/theme/test-theme/missing.css','/assets/theme/test-theme/blocked.php','/assets/theme/test-theme/escape.css','/assets/theme/wrong/probe.css','/assets/theme/test-theme/probe.ico','/assets/theme/test-theme/probe.avif','/assets/theme/test-theme/probe.gif','/assets/theme/test-theme/probe.pdf'] as $path) {
         hostingCheck($host . ' missing/unsafe resource ' . $path, static fn() => request($host, $path)['status'] === 404);
     }
     foreach (['/assets/theme/test-theme/%2e%2e/layout.php','/assets/theme/test-theme/%2e%2e/%2e%2e/%2e%2e/%2e%2e/config/local.php','/assets/theme/test-theme/%252e%252e/layout.php','/assets/theme/test-theme/%2e%2e%5clayout.php','/assets/theme/test-theme/probe.css%00'] as $path) {

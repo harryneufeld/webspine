@@ -3,14 +3,20 @@ services:
     build: {context: ., args: {PHP_BASE: "php:8.3-fpm-bookworm"}}
     entrypoint: ["php", "/source/core/tests/hosting/fixture.php"]
     volumes:
-      - ../../..:/source:ro
+      - ../..:/source/core:ro
+      - ../../../public:/source/public:ro
+      - ../../../README.md:/source/README.md:ro
+      - ../../../LICENSE:/source/LICENSE:ro
+      - ../../../AGENTS.md:/source/AGENTS.md:ro
+      - ../../../.gitignore:/source/.gitignore:ro
+      - ../../../.gitattributes:/source/.gitattributes:ro
       - app:/srv/webspine
       - work:/work
   check:
     build: {context: ., args: {PHP_BASE: "php:8.3-fpm-bookworm"}}
-    entrypoint: ["php", "/source/core/tests/hosting/check.php"]
+    entrypoint: ["php", "/check.php"]
     volumes:
-      - ../../..:/source:ro
+      - ./check.php:/check.php:ro
       - work:/work:ro
   apache:
     build: {context: ., args: {PHP_BASE: "php:8.3-apache-bookworm"}}
