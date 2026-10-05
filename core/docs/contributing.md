@@ -26,7 +26,7 @@ must keep compatible content keys/templates or explicitly adapt them. Never
 include site-owned paths in a core-release inventory. See core/docs/site.md.
 
 Do not describe planned functionality as implemented. Keep README, in-site
-documentation, and release version aligned. Every PR, including documentation,
+documentation, and release version aligned. Every framework PR, including documentation,
 must raise `core/version.php` above the current target branch. The required
 `Version bump` CI check rejects unchanged/decreased or malformed versions; strict
 branch protection requires the PR to be up to date, preventing two PRs from
