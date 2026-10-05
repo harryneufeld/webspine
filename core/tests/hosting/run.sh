@@ -27,8 +27,13 @@ docker compose run --rm check initial
 docker compose stop apache fpm
 docker compose run --rm maintenance update
 docker compose up -d apache fpm
+# Docker may reassign a stopped container's address; refresh resolved upstreams.
+docker compose exec nginx nginx -s reload -c /work/nginx.conf
+docker compose exec backend nginx -s reload -c /work/backend.conf
 docker compose run --rm check updated
 docker compose stop apache fpm
 docker compose run --rm maintenance rollback
 docker compose up -d apache fpm
+docker compose exec nginx nginx -s reload -c /work/nginx.conf
+docker compose exec backend nginx -s reload -c /work/backend.conf
 docker compose run --rm check initial
