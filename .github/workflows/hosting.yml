@@ -1,0 +1,16 @@
+name: Hosting integration
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  servers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real Apache, nginx, and CloudPanel-style routing
+        run: sh core/tests/hosting/run.sh

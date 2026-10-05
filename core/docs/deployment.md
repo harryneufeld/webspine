@@ -1,48 +1,82 @@
 # Deployment
 
-Use PHP 8.3+, PDO SQLite, ZipArchive for releases, and OpenSSL for SMTP.
-Serve public/ only. Never serve the repository root. Keep database files on a
-local filesystem; network filesystems are unsupported. Supply HTTPS at the web
-server or proxy. This bootstrap assumes deployment at the URL root.
+Requires PHP 8.3+ (CLI and web worker), PDO/PDO SQLite, ZipArchive for releases,
+and OpenSSL for SMTP. Point the document root to `public/`, never the project
+root. Deployment currently assumes the **domain root**, not a URL subdirectory.
+Use HTTPS and a local-disk SQLite database; network filesystems are unsupported.
 
-Apache: public/.htaccess requires mod_rewrite and AllowOverride for routing and
-Options. Disable indexes and ensure no alternative aliases expose private paths.
+## Server configurations
 
-nginx example (adjust paths and PHP-FPM socket):
+Adjust paths, domain, and PHP-FPM endpoint in these versioned, copyable examples;
+TLS certificates and HTTP-to-HTTPS redirects are hosting settings.
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name example.com;
-    root /srv/webspine/public;
-    # Configure TLS certificates here.
-    location / { rewrite ^ /index.php last; }
-    location = /index.php {
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-    location ~ \.php$ { return 404; }
-    location ~ /\. { deny all; }
-}
+- **[Apache](hosting/apache.conf):** enable PHP (mod_php or a PHP-FPM handler),
+  `mod_rewrite`, and `AllowOverride FileInfo Indexes Options` for `public/`.
+  Keep the shipped `.htaccess`; do not alias private project directories.
+- **[nginx](hosting/nginx.conf):** route requests to `public/index.php`, configure
+  PHP-FPM, and retain `REQUEST_URI`/`QUERY_STRING` through `fastcgi_params`.
+- **CloudPanel:** select PHP 8.3+, set the site's root directory to `public/`,
+  and verify `{{root}}` resolves there in both server blocks. Replace the
+  relevant [frontend locations](hosting/cloudpanel-frontend.conf) and
+  [backend locations](hosting/cloudpanel-backend.conf), keeping generated TLS,
+  proxy, PHP settings, and ports. Remove conflicting `try_files`, PHP locations,
+  or file-exists shortcuts; validate in the Vhost Editor before saving.
+
+CloudPanel's generic static regex must start with `^(?!/assets/)`, as in the
+example. `/assets/` URLs are served through PHP from
+`site/themes/<theme>/assets/`, outside `public/`; they must reach the application
+handler. CORS and HTTP/3 headers are separate hosting settings, not this routing
+fix. The frontend example retains `{{varnish_proxy_pass}}`; verify your generated
+proxy chain and purge any enabled Varnish cache after deployment.
+
+## Permissions and installation
+
+Let the PHP worker read code/config and write **only `storage/`**, including the
+SQLite database, sidecars, and update lock. Common starting permissions: code
+folders `755`, code files `644`, private config `750`/`640` with the worker's group,
+shared storage folders `2770` and files `660`. Adjust ownership for your host;
+never use `777`. The maintenance operator needs code write access for updates.
+
+Run `php core/bin/console.php install` and `health` with the same PHP version and
+storage group before serving. Check `/health`, pages, and theme assets; public
+health is generic, while detailed CLI output must remain private.
+
+## Updates and backups
+
+Test on a local clone first. Before updating, drain/stop PHP workers and other
+SQLite writers; create and verify a private full-site backup including code,
+`public/`, `site/`, config, data, and root files. Exclude the archive destination.
+For a live SQLite snapshot use SQLite backup facilities; copying an active
+database file is unsafe. The updater's core backup does not replace this archive.
+
+Apply only a trusted core ZIP using `php core/bin/console.php update <zip>`, then
+run `health`. Restart PHP-FPM or Apache PHP workers **before restoring traffic**
+to clear OPcache, even with timestamp checks enabled. CLI `opcache_reset()` does
+not clear the web workers' cache. Purge proxy caches and recheck pages/assets.
+Use `recover` after interrupted activation; retain verified backups until done.
+Never expose configuration, SMTP credentials, or backups through the web root.
+
+## Real-server checks
+
+With Docker Engine and Compose v2 on a local machine or CI, run:
+
+```sh
+sh core/tests/hosting/run.sh
 ```
 
-The web worker needs read access to code/config and write access to storage/.
-Keep configuration and SQLite private. Give only the maintenance operator write
-access to framework files. A runtime user should not download/apply updates.
+This uses disposable fixtures/volumes, no host ports or private configuration.
+It runs actual Apache + PHP and nginx + PHP-FPM, plus CloudPanel-style frontend/
+backend nginx rules from the examples above. Checks cover pages, query strings,
+redirects, permitted asset MIME types, HEAD/404s, traversal/symlink rejection,
+private files, writable/read-only storage, and update/rollback after restarting
+workers with warmed OPcache and timestamp validation disabled. A negative control
+reproduces CloudPanel's unpatched asset failure. Docker is test tooling only.
 
-Install via CLI before serving. Make separate backups of config, themes,
-plugins, and persistent data. Do not copy a live SQLite file while writers are
-active; use SQLite's backup facilities or stop writers. No online backup command
-is provided. Monitor /health (generic public status only); detailed CLI health
-may contain filesystem errors and must remain private.
+The suite does **not** install the CloudPanel control panel or verify a host's
+TLS, HTTP/3, CORS, Varnish, ACLs, or generated settings. Validate those on a local
+CloudPanel staging instance; PHP development-server tests are not server checks.
 
-Drain PHP workers before updates and reset OPcache afterwards. Requests and CLI
-commands cooperate with a filesystem lock, but cached bytecode can outlive a
-file replacement. Test releases with your chosen site/plugins/theme on a clone of the
-site before production. Run recover after an interrupted activation. Retain
-private backup directories until successful deployment is verified.
-
-SMTP is optional and uses TLS. Never commit SMTP credentials. No credentials
-are in release packages. PHP's development server is local-only development
-tooling, not a production server.
+References: [Apache overrides](https://httpd.apache.org/docs/2.4/mod/overrides.html),
+[nginx FastCGI](https://nginx.org/en/docs/http/ngx_http_fastcgi_module.html),
+[CloudPanel PHP/root](https://www.cloudpanel.io/docs/v2/php/applications/other/),
+[PHP OPcache](https://www.php.net/manual/en/opcache.configuration.php).
