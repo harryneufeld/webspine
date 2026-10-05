@@ -102,13 +102,6 @@ website changes. Site tests must use explicit local config and disposable data.
 Hosting/routing configuration changes also need `sh core/tests/hosting/run.sh`
 (Docker/Compose); development-server tests do not verify Apache/nginx behavior.
 
-Every PR to the official framework repository must raise `core/version.php`
-above the current target branch, including documentation-only PRs. Keep the
-installed version unchanged for website-only work in a customized site's repo.
-Use a patch bump for compatible fixes; retain the API for
-compatible changes. Recheck the version after rebasing. The required `Version
-bump` CI check enforces this; do not bypass or remove it.
-
 Use PHP lint for changed PHP files. Core/contract/routing/update changes need
 integration tests. For copy/layout changes, check affected pages in the browser;
 check mobile layouts when text lengths or layout change. Report tests performed
