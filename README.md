@@ -24,13 +24,16 @@ php core/bin/console.php health
 php -S localhost:8080 -t public public/router.php
 ```
 
-Visit http://localhost:8080. Site-owned content presented by the Studio theme
-includes the project homepage, searchable documentation, architecture tabs, and an example
-plugin at `/field-notes`. A plain-text database page is at `/pages/hello`.
+Visit http://localhost:8080. The minimal Starter theme includes a homepage,
+About and Contact pages, a shared layout, and reusable components. It uses system
+fonts and works without JavaScript. Replace the example content with your own.
+The marketing website at webspine.org is maintained separately and is not shipped.
 
 Copy `config/example.php` to `config/local.php` to customize providers. Do not
 commit credentials. The example configuration works with local SQLite and no mail.
 Install is explicit and idempotent. Normal requests never install or migrate.
+No feature plugins are enabled by default. Optional examples in `site/plugins/`
+show a hook-based route (`field-notes`) and entity declarations (`catalog`).
 
 ## Boundaries
 
@@ -56,20 +59,21 @@ website explicitly and idempotently. See `AGENTS.md` and `core/docs/site.md`.
 
 Reusable presentation components live in `site/themes/<id>/components/`.
 Pass text/data from existing site content files and render them through
-`$app->theme->component('name', $props)` with explicit inputs. The Studio wordmark
+`$app->theme->component('name', $props)` with explicit inputs. The Starter wordmark
 is shared by the header and footer. See the component guideline in `AGENTS.md`.
 
 ## Commands
 
 ```sh
-php core/bin/console.php theme studio
+php core/bin/console.php theme starter
 php core/bin/console.php entities:install  # explicitly install enabled entity declarations
 php core/bin/console.php package --full    # downloadable bootstrap, includes theme/providers
 php core/bin/console.php package           # core-only update archive
 php core/bin/console.php update /path/to/newer-core-release.zip
 php core/bin/console.php rollback
 php core/bin/console.php recover           # interrupted activation recovery
-php core/tests/run.php
+php core/tests/run.php               # framework checks with independent fixtures
+php site/tests/run.php               # checks for your customized website
 ```
 
 Core updates validate exact inventories, hashes, PHP/API compatibility, and
@@ -86,8 +90,12 @@ guarantee. The site's root `AGENTS.md` is preserved; framework docs and README a
 update-owned.
 
 Bundled dependencies and per-file SHA-256 inventories are recorded in
-`core/vendor/dependencies.json` and `site/themes/studio/assets/fonts/dependency.json`.
-PHPMailer 7.1.1 is LGPL-2.1; Manrope is SIL OFL-1.1. The project is MIT.
+`core/vendor/dependencies.json`. PHPMailer 7.1.1 is LGPL-2.1.
+The starter has no third-party font or frontend dependencies. The project is MIT.
+
+Framework tests use their own small site fixtures and do not depend on your
+content, theme, private configuration, or database. Customize `site/tests/run.php`
+for your website; its starter checks use a throwaway SQLite database.
 
 ## Status
 
@@ -99,7 +107,7 @@ and dependency-free integration checks including storage substitution.
 
 Planned: MariaDB/PostgreSQL adapters and data transfer; separate extension
 updates; signed online updates, potentially operated by AI; content/admin editing,
-authentication, public forms, and uploads. **This is a bootstrap, not a complete CMS.**
+authentication, public forms, and uploads.
 
 The starter targets WCAG 2.2 AA and progressively enhanced interaction. A full
 assistive-technology audit is still needed. Future mutation endpoints require
