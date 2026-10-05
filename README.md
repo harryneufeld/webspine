@@ -102,15 +102,18 @@ for your website; its starter checks use a throwaway SQLite database.
 Implemented: routing/responses, plugin loading, contracts/registry/hooks, SQLite
 settings/pages, recorded installation schema, theme selection/layouts/assets,
 declarative entities with validated SQLite CRUD and explicit installation,
-optional SMTP, example feature plugin, CLI tools, reversible local core updates,
+optional SMTP, bounded request context and opt-in POST routes, a copyable
+[protected contact form](core/docs/examples/contact-form/README.md), example feature plugin,
+CLI tools, reversible local core updates,
 and dependency-free integration checks including storage substitution.
 
 Planned: MariaDB/PostgreSQL adapters and data transfer; separate extension
 updates; signed online updates, potentially operated by AI; content/admin editing,
-authentication, public forms, and uploads.
+authentication, a general form builder, and uploads.
 
 The starter targets WCAG 2.2 AA and progressively enhanced interaction. A full
 assistive-technology audit is still needed. Future mutation endpoints require
-authentication, authorization, validation, and CSRF protection.
+authorization, validation, and CSRF protection, with authentication for privileged
+actions and abuse protection for public inquiries.
 
 See `core/docs/architecture.md`, [deployment and server configurations](core/docs/deployment.md), and `core/docs/contributing.md`.

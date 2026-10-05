@@ -7,10 +7,11 @@ if (!$lock || !flock($lock, LOCK_SH)) { http_response_code(503); exit('Temporari
 try {
     if (is_file($root . '/storage/update-pending.json')) { http_response_code(503); exit('Update recovery required.'); }
     require $root . '/core/bootstrap.php';
+    $request = \Webspine\Request::fromGlobals();
     $app = new \Webspine\App($root);
-    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-    $path = is_string($path) ? rawurldecode($path) : '/';
-    $app->handle($_SERVER['REQUEST_METHOD'] ?? 'GET', $path)->send(($_SERVER['REQUEST_METHOD'] ?? '') === 'HEAD');
+    $app->handle($request)->send($request->method === 'HEAD');
+} catch (\Webspine\HttpError $e) {
+    (new \Webspine\Response($e->getMessage(), $e->status, ['Content-Type'=>'text/plain; charset=utf-8','Cache-Control'=>'no-store']))->send(($_SERVER['REQUEST_METHOD'] ?? '') === 'HEAD');
 } catch (Throwable $e) {
     error_log('webspine request failed: ' . $e->getMessage());
     http_response_code(503);

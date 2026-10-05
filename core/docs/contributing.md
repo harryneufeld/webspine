@@ -12,8 +12,9 @@ templates at desktop and mobile sizes. Check keyboard navigation, focus,
 contrast, reduced motion, layout overflow, and accessible names. Report gaps
 honestly; automated checks are not a WCAG certification or security audit.
 
-Every new mutation endpoint needs authentication, authorization, validation,
-and CSRF defenses before release. Escape untrusted output and use parameterized
+Every new mutation endpoint needs authorization, validation, and CSRF defenses
+before release, with authentication for privileged actions. Explicitly public
+inquiries also need abuse protection. Escape untrusted output and use parameterized
 queries. Review third-party PHP extensions as executable trusted code.
 
 Do not replace an existing theme's identity with a generic design. Shared
