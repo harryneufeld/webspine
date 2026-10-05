@@ -42,8 +42,9 @@ keys, or provide an explicit mapping. A completely different website can replace
 these definitions and use different templates. Core requires only a shared
 layout and site-defined pages; it does not require home.php or docs.php.
 
-Site routes return a callable receiving App. They can register exact routes or
-trusted regex patterns through Router::getPattern. Handlers return Response, or
+Site routes return a callable receiving App. Register GET/POST routes or trusted
+regex patterns through Router::getPattern/postPattern. See [request context and
+protected POST examples](requests.md). Handlers return Response, or
 null for the site-defined not-found page. The core /health route is reserved for
 generic status. Site.pages uses a conventional `not-found` entry for 404 output.
 

@@ -19,6 +19,10 @@ for server in nginx backend cloudpanel cloudpanel-broken; do
     docker compose exec "$server" nginx -t -c "/work/$server.conf"
 done
 docker compose run --rm check initial
+for server in apache nginx cloudpanel; do
+    docker compose run --rm maintenance reset-contact
+    docker compose run --rm form-check "$server"
+done
 docker compose run --rm maintenance deny-storage
 docker compose run --rm check denied
 docker compose run --rm maintenance allow-storage
@@ -31,9 +35,17 @@ docker compose up -d apache fpm
 docker compose exec nginx nginx -s reload -c /work/nginx.conf
 docker compose exec backend nginx -s reload -c /work/backend.conf
 docker compose run --rm check updated
+for server in apache nginx cloudpanel; do
+    docker compose run --rm maintenance reset-contact
+    docker compose run --rm form-check "$server"
+done
 docker compose stop apache fpm
 docker compose run --rm maintenance rollback
 docker compose up -d apache fpm
 docker compose exec nginx nginx -s reload -c /work/nginx.conf
 docker compose exec backend nginx -s reload -c /work/backend.conf
 docker compose run --rm check restored
+for server in apache nginx cloudpanel; do
+    docker compose run --rm maintenance reset-contact
+    docker compose run --rm form-check "$server"
+done

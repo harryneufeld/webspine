@@ -1,0 +1,7 @@
+.contact-form { max-width: 40rem; margin-block: 2rem; }
+.contact-form form { display: grid; gap: .75rem; }
+.contact-form input:not([type="hidden"]), .contact-form textarea, .contact-form button { font: inherit; padding: .75rem; border: 1px solid currentColor; border-radius: .25rem; max-width: 100%; min-width: 0; }
+.contact-form textarea { resize: vertical; }
+.contact-form button { justify-self: start; cursor: pointer; }
+.contact-form :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.contact-form [aria-invalid="true"] { border-width: 2px; }

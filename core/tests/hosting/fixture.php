@@ -53,11 +53,16 @@ if ($mode === 'prepare') {
     copyHostingTree('/source/core/tests/fixtures/website/site', '/srv/webspine/site');
     mkdir('/srv/webspine/config'); mkdir('/srv/webspine/storage'); mkdir('/srv/webspine/.dist');
     foreach (['README.md','LICENSE','AGENTS.md','.gitignore','.gitattributes'] as $file) copy('/source/' . $file, '/srv/webspine/' . $file);
-    $config = "<?php /* HOSTING_PRIVATE_SENTINEL */ return ['providers'=>['storage'=>'sqlite','mail'=>null], 'plugins'=>[], 'sqlite'=>['path'=>'storage/site.sqlite']];\n";
+    $config = "<?php /* HOSTING_PRIVATE_SENTINEL */ return ['providers'=>['storage'=>'sqlite','mail'=>'capture-mail'], 'plugins'=>['contact-form'], 'sqlite'=>['path'=>'storage/site.sqlite'], 'contact_form'=>['recipient'=>'owner@example.test','secure_cookie'=>false,'max_attempts'=>20]];\n";
     file_put_contents('/srv/webspine/config/example.php', $config);
     file_put_contents('/srv/webspine/config/local.php', $config);
     rename('/srv/webspine/site/routes.php', '/srv/webspine/site/base-routes.php');
     copy(__DIR__ . '/routes.php', '/srv/webspine/site/routes.php');
+    mkdir('/srv/webspine/site/plugins/contact-form');
+    foreach (['plugin.php','plugin.json','ContactForm.php'] as $file) copy('/source/core/docs/examples/contact-form/'.$file,'/srv/webspine/site/plugins/contact-form/'.$file);
+    copy('/source/core/docs/examples/contact-form/template.php','/srv/webspine/site/themes/test-theme/contact-form.php');
+    copy('/source/core/docs/examples/contact-form/content.php','/srv/webspine/site/content/contact-form.php');
+    copy('/source/core/docs/examples/contact-form/contact-form.css','/srv/webspine/site/themes/test-theme/assets/contact-form.css');
     foreach (['core/private.txt','storage/private.txt','site/content/private.txt','.dist/private.txt','private.txt'] as $file) {
         file_put_contents('/srv/webspine/' . $file, 'HOSTING_PRIVATE_SENTINEL');
     }
@@ -95,6 +100,8 @@ if ($mode === 'prepare') {
     $broken = str_replace('^(?!/assets/)', '^', $frontend);
     file_put_contents('/work/cloudpanel-broken.conf', nginxConfig("server { listen 80; root /srv/webspine/public;\n" . $broken . "\n}"));
     echo "Prepared isolated fixtures and configs from versioned examples.\n";
+} elseif ($mode === 'reset-contact') {
+    foreach (['storage/contact-form/rate.json','storage/captured-mail.jsonl'] as $file) if (is_file('/srv/webspine/'.$file)) unlink('/srv/webspine/'.$file);
 } elseif ($mode === 'deny-storage' || $mode === 'allow-storage') {
     storageMode($mode === 'allow-storage');
 } elseif ($mode === 'update' || $mode === 'rollback') {

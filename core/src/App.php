@@ -49,11 +49,17 @@ final class App {
             return ['ok' => true, 'version' => $this->version['version'], 'api' => $this->version['api'], 'storage' => $status];
         } catch (\Throwable $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
     }
-    public function handle(string $method, string $path): Response {
-        if (!in_array($method, ['GET', 'HEAD'], true)) return new Response('Method not allowed', 405, ['Allow' => 'GET, HEAD']);
-        if (str_starts_with($path, '/assets/')) return $this->theme->asset($path);
-        $response = $this->router->dispatch($method, $path);
-        if ($response) return $response;
-        return $this->site->render('not-found');
+    public function handle(string|Request $method, ?string $path = null): Response {
+        try {
+            $request = $method instanceof Request ? $method : new Request($method, $path ?? '/');
+            if (str_starts_with($request->path, '/assets/')) {
+                if (!in_array($request->method, ['GET','HEAD'], true)) return new Response('Method not allowed', 405, ['Allow'=>'GET, HEAD']);
+                return $this->theme->asset($request->path);
+            }
+            $response = $this->router->dispatch($request->method, $request->path, $request);
+            return $response ?? $this->site->render('not-found');
+        } catch (HttpError $e) {
+            return new Response($e->getMessage(), $e->status, ['Content-Type'=>'text/plain; charset=utf-8','Cache-Control'=>'no-store']);
+        }
     }
 }

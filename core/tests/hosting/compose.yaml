@@ -18,6 +18,11 @@ services:
     volumes:
       - ./check.php:/check.php:ro
       - work:/work:ro
+  form-check:
+    build: {context: ., args: {PHP_BASE: "php:8.3-fpm-bookworm"}}
+    entrypoint: ["php", "/form-check.php"]
+    volumes:
+      - ./form-check.php:/form-check.php:ro
   apache:
     build: {context: ., args: {PHP_BASE: "php:8.3-apache-bookworm"}}
     volumes:
