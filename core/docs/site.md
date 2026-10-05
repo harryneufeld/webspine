@@ -53,6 +53,20 @@ by this site's installer. Core updates never run the site installer. The
 starter enables no feature plugins by default. Optional field-notes and catalog
 examples demonstrate hook-based routes and entity declarations.
 
+## Template data
+
+Page templates and layouts run in separate local scopes, each receiving the
+original `$data` array and ordinary aliases such as `$title` and `$body`.
+Reserved variables are `$app`, `$site`, `$theme`, `$directory`, `$file` (the
+current file), `$template`, `$status`, `$data`, `$content`, and names starting
+with `__`. Access colliding fields explicitly, e.g. `e($data['content'])`.
+`$content` is empty in the page and contains rendered page HTML in the layout.
+
+Page-local assignments do not reach the layout. Pass shared values in the render
+data instead; themes that relied on leaked page variables must adapt. Escape
+plain-text data with `e()`; only rendered page HTML belongs in `$content`.
+Scope isolation is not a sandbox: PHP themes remain trusted executable code.
+
 ## Reusable components
 
 Components live only in `site/themes/<id>/components/<name>.php`. Text and data

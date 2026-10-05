@@ -26,8 +26,12 @@ must keep compatible content keys/templates or explicitly adapt them. Never
 include site-owned paths in a core-release inventory. See core/docs/site.md.
 
 Do not describe planned functionality as implemented. Keep README, in-site
-documentation, and release version aligned. For core releases increment the
-semantic version and keep API 1 for compatible changes. Breaking API changes
+documentation, and release version aligned. Every PR, including documentation,
+must raise `core/version.php` above the current target branch. The required
+`Version bump` CI check rejects unchanged/decreased or malformed versions; strict
+branch protection requires the PR to be up to date, preventing two PRs from
+merging the same version. Rebase and adjust the version when needed. Use a patch
+bump for compatible fixes and keep API 1 for compatible changes. Breaking API changes
 need a future compatibility/migration policy; the current updater rejects them.
 
 Framework tests use `core/tests/fixtures/website/`, never the live/customizable
