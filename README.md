@@ -99,6 +99,12 @@ for your website; its starter checks use a throwaway SQLite database.
 
 ## Status
 
+The starter disables search indexing with `noindex` and displays a reminder.
+When ready to launch, set `'indexable' => true` in `site/meta.php`; the Starter
+theme removes both the directive and reminder. Search engines decide whether
+to index eligible pages. No `robots.txt` or sitemap is generated automatically.
+See [deployment and indexing](core/docs/deployment.md#search-indexing).
+
 Implemented: routing/responses, plugin loading, contracts/registry/hooks, SQLite
 settings/pages, recorded installation schema, theme selection/layouts/assets,
 declarative entities with validated SQLite CRUD and explicit installation,
