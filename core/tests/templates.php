@@ -7,15 +7,15 @@ return static function (App $app, string $root): void {
     try {
         Files::write($directory . '/scope.php', <<<'PHP'
 <?php
-if (!$app instanceof \Webspine\App || !$site instanceof \Webspine\Site || $theme !== 'test-theme' || basename($directory) !== 'test-theme' || basename($file) !== 'scope.php' || $template !== 'scope' || $status !== 201 || $content !== '') throw new RuntimeException('Renderer context was replaced');
-foreach (['content','app','site','theme','directory','file','template','status','data','__file','__context','__level'] as $key) echo '<p>' . e($data[$key]) . '</p>';
+if (!$app instanceof \Webspine\App || !$site instanceof \Webspine\Site || !$ui instanceof \Webspine\ThemeContext || $ui->id() !== 'test-theme' || $theme !== 'test-theme' || basename($directory) !== 'test-theme' || basename($file) !== 'scope.php' || $template !== 'scope' || $status !== 201 || $content !== '') throw new RuntimeException('Renderer context was replaced');
+foreach (['content','app','site','theme','ui','directory','file','template','status','data','__file','__context','__level'] as $key) echo '<p>' . e($data[$key]) . '</p>';
 ?>
 <h1><?= e($title) ?></h1>
 PHP);
         Files::write($directory . '/layout.php', '<title><?= e($title) ?></title><main><?= $content ?></main><aside><?= e($data["content"]) ?></aside>');
         check('Reserved renderer collisions remain accessible through explicit data', static function () use ($app): bool {
             $data = ['title'=>'Original'];
-            foreach (['content','app','site','theme','directory','file','template','status','data','__file','__context','__level'] as $key) $data[$key] = '<' . $key . '>';
+            foreach (['content','app','site','theme','ui','directory','file','template','status','data','__file','__context','__level'] as $key) $data[$key] = '<' . $key . '>';
             $response = $app->theme->render('scope', $data, 201);
             foreach (array_diff(array_keys($data), ['title']) as $key) if (!str_contains($response->body, '<p>&lt;' . $key . '&gt;</p>')) return false;
             return $response->status === 201 && str_contains($response->body, '<main>') && str_contains($response->body, '<h1>Original</h1>') && str_contains($response->body, '<aside>&lt;content&gt;</aside>');
@@ -23,13 +23,13 @@ PHP);
         Files::write($directory . '/scope.php', <<<'PHP'
 <?php
 $pageOnly = 'must not leak'; $title = 'Changed'; $body = 'Changed';
-$app = null; $site = null; $theme = 'bad'; $directory = '/missing'; $file = '/missing';
+$app = null; $site = null; $theme = 'bad'; $ui = null; $directory = '/missing'; $file = '/missing';
 $template = 'bad'; $status = 500; $content = 'Changed'; $data['title'] = 'Changed';
 echo '<p>Rendered page</p>';
 PHP);
         Files::write($directory . '/layout.php', <<<'PHP'
 <?php
-if (isset($pageOnly) || isset($this) || !$app instanceof \Webspine\App || !$site instanceof \Webspine\Site || $theme !== 'test-theme' || basename($directory) !== 'test-theme' || basename($file) !== 'layout.php' || $template !== 'scope' || $status !== 201 || $data['title'] !== 'Original') throw new RuntimeException('Page variables leaked');
+if (isset($pageOnly) || isset($this) || !$app instanceof \Webspine\App || !$site instanceof \Webspine\Site || !$ui instanceof \Webspine\ThemeContext || $ui->id() !== 'test-theme' || $theme !== 'test-theme' || basename($directory) !== 'test-theme' || basename($file) !== 'layout.php' || $template !== 'scope' || $status !== 201 || $data['title'] !== 'Original') throw new RuntimeException('Page variables leaked');
 ?>
 <title><?= e($title) ?></title><main><?= $content ?></main><aside><?= e($body) ?></aside>
 PHP);
