@@ -62,7 +62,7 @@ examples demonstrate hook-based routes and entity declarations.
 
 Page templates and layouts run in separate local scopes, each receiving the
 original `$data` array and ordinary aliases such as `$title` and `$body`.
-Reserved variables are `$app`, `$site`, `$theme`, `$directory`, `$file` (the
+Reserved variables are `$app`, `$site`, `$theme`, `$ui`, `$directory`, `$file` (the
 current file), `$template`, `$status`, `$data`, `$content`, and names starting
 with `__`. Access colliding fields explicitly, e.g. `e($data['content'])`.
 `$content` is empty in the page and contains rendered page HTML in the layout.
@@ -87,14 +87,71 @@ echo $app->theme->component('wordmark', [
 ]);
 ```
 
-The renderer returns HTML without a page layout. Templates receive an explicit
-`$props` array and escape plain-text values with `e()`; they do not inherit page
-variables. Names use lowercase letters, digits, and hyphens, starting with a
-letter. Missing components fail explicitly. Component CSS/JS remains in the
+The renderer returns HTML without a page layout. Components receive an explicit
+`$props` array and a `Webspine\ThemeContext` helper named `$ui`; they do not inherit
+page variables, `$app`, `$site`, or services. `$ui` is also available in page
+templates and layouts. It exposes only `component()`, `id()` and `assetUrl()`.
+Escape plain-text values and asset URLs with `e()`. Props are not extracted, so
+`$props['ui']` cannot replace the helper. Names use lowercase letters, digits, and
+hyphens, starting with a letter. Missing components fail explicitly. Component CSS/JS remains in the
 theme's assets with scoped classes and unique IDs for repeated interactions.
 Reuse useful patterns without requiring a component for every element. These
 are server-rendered PHP templates, with no frontend runtime or build step.
 Component templates are site-owned and preserved by core updates.
+
+A component can now render its own children, with separate props for each call:
+
+```php
+<!-- components/button.php -->
+<button type="button">
+    <?= $ui->component('icon', ['label' => $props['icon_label']]) ?>
+    <?= e($props['label']) ?>
+</button>
+
+<!-- components/icon.php -->
+<img src="<?= e($ui->assetUrl('images/icon.svg')) ?>" alt="<?= e($props['label']) ?>">
+```
+
+`$ui->id()` returns the active theme identity. The Starter's `action-link` and
+`action-icon` demonstrate nesting without changing their markup or behavior.
+Nesting is limited to 64 components to catch runaway recursion; missing children
+and thrown exceptions fail explicitly and restore renderer-owned output buffers.
+Existing components using only `$props` continue to work, including a manually
+passed renderer prop. PHP themes remain trusted code, not a sandbox.
+
+### Asset URLs
+
+`$ui->assetUrl('style.css')` (or `$app->theme->assetUrl('style.css')`) returns
+`/assets/theme/<active-id>/style.css?v=<12-character-SHA-256-prefix>`.
+Paths are relative to the active theme's `assets/` directory. Invalid, missing,
+unreadable, executable or escaping paths fail explicitly; the helper and asset
+delivery use the same allowlist and realpath containment checks. Existing
+supported formats and filename rules are unchanged. Do not supply a leading
+slash, query string or fragment. Escape the returned URL when placing it in HTML.
+
+Each asset hash/URL is reused within a rendering lifecycle. A fresh lifecycle sees
+file changes and produces a new version. This centralizes URL construction and
+cache-busting; PHP delivery, its one-hour cache policy and the absence of ETag/304
+support are unchanged (tracked separately in #45 and #46).
+
+### Rendering lifecycle
+
+The Theme instance caches active identity and successful manifest validation.
+Nested components therefore do not repeatedly query Settings or parse theme.json.
+`App::handle()` begins a fresh lifecycle for each request; `App::health()` refreshes
+before probing so CLI theme selection and failed-selection restoration inspect
+current settings/files. Each App owns its cache; it is never shared globally.
+
+When manually rendering several pages/components on one App, they share the cache.
+After direct Settings changes, plugin/dependency changes or theme/asset file edits,
+call `$app->theme->refresh()` before the next render. `validate($id)` always performs
+a fresh explicit validation. Long-lived workers must use the normal request entry
+point or refresh before each manually managed request. Theme/content changes
+within an ongoing render need an explicit refresh if they must be visible immediately.
+
+Compatibility: `$ui` is now reserved in page/layout scope; a colliding data value
+remains available in `$data['ui']`. Components never extract props. A component
+that supplied its own local `$ui` may rename that variable to use the helper.
 
 ## Safe framework updates
 

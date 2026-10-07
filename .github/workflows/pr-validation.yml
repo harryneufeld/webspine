@@ -20,3 +20,13 @@ jobs:
           php core/tests/version-bump.php --self-test
           git fetch --no-tags -- origin "$BASE_REF"
           php core/tests/version-bump.php FETCH_HEAD HEAD
+  framework:
+    name: Framework and Starter
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run PHP 8.3 integration checks
+        run: |
+          docker build --build-arg PHP_BASE=php:8.3-cli-bookworm -t webspine-framework-checks -f core/tests/hosting/Dockerfile core/tests/hosting
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/source" -w /source webspine-framework-checks sh -c 'php core/tests/run.php && php site/tests/run.php'

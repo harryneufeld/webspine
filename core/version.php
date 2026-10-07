@@ -1,2 +1,2 @@
 <?php
-return ['version' => '0.1.5', 'api' => 1, 'php' => '8.3.0'];
+return ['version' => '0.1.6', 'api' => 1, 'php' => '8.3.0'];

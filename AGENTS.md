@@ -50,10 +50,18 @@ entity data and do not install or migrate it.
 Reuse an existing component before duplicating markup. Components live only in
 `site/themes/<id>/components/<name>.php`. Keep text/data in the existing site
 content files and pass it with `$app->theme->component('name', $props)`.
-Components receive only
-the explicit `$props` array, return HTML without a page layout, and must escape
-plain-text values with `e()`. The wordmark is the working example, shared by the
-header and footer; its brand values come from `site/meta.php`.
+Components receive the explicit `$props` array and a presentation helper `$ui`.
+Use `$ui->component('name', $props)` for nested components, `$ui->id()` for the
+active theme ID, and `$ui->assetUrl('images/logo.svg')` for content-versioned
+asset URLs. Page variables and services are not inherited by components.
+Components return HTML without a layout and must escape plain-text values and
+URLs with `e()`. The wordmark is shared by the header and footer; `action-link`
+renders its own `action-icon`. Props named `ui` remain in `$props['ui']`.
+
+Theme identity/validation and asset URL hashes are cached within a rendering
+lifecycle. App requests and health probes refresh automatically. After direct
+Settings writes or theme/asset file edits during manual rendering, call
+`$app->theme->refresh()`. See `core/docs/site.md` for the API and lifecycle.
 
 Keep components focused, use scoped theme styles, and give repeated interactive
 instances unique IDs. Extract patterns when reuse is useful; do not turn every

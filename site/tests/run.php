@@ -32,6 +32,11 @@ try {
     siteCheck('Starter stylesheet is available', fn() => ($app->handle('GET','/assets/theme/starter/style.css')->headers['Content-Type'] ?? null) === 'text/css');
     siteCheck('Starter favicon is available', fn() => $app->handle('GET','/assets/theme/starter/favicon.svg')->status === 200);
     siteCheck('Reusable action escapes its text', fn() => str_contains($app->theme->component('action-link',['label'=>'<script>','href'=>'/about']), '&lt;script&gt;'));
+    siteCheck('Action renders its own nested icon without a renderer prop', fn() => str_contains($app->theme->component('action-link',['label'=>'About','href'=>'/about']), '<span aria-hidden="true">↗</span>'));
+    siteCheck('Starter layout uses shared content-versioned asset URLs', function () use ($app): bool {
+        $html = $app->handle('GET','/')->body;
+        return str_contains($html, e($app->theme->assetUrl('style.css'))) && str_contains($html, e($app->theme->assetUrl('favicon.svg')));
+    });
     $app->services->get(Pages::class)->put('example','<script>Title</script>','<img src=x onerror=alert(1)>');
     siteCheck('Database page content stays escaped in the starter', function () use ($app): bool {
         $response = $app->handle('GET','/pages/example');
