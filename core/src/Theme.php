@@ -3,7 +3,13 @@ declare(strict_types=1);
 namespace Webspine;
 use Webspine\Contracts\Settings;
 final class Theme {
-    public function __construct(private App $app) {}
+    private ?string $activeId = null;
+    private array $assetUrls = [];
+    private int $componentDepth = 0;
+    private readonly ThemeContext $ui;
+    public function __construct(private App $app) { $this->ui = new ThemeContext($this); }
+    /** Begin a new rendering lifecycle or refresh after direct settings/file changes. */
+    public function refresh(): void { $this->activeId = null; $this->assetUrls = []; }
     public function validate(string $id): array {
         if (!preg_match('/^[a-z][a-z0-9-]*$/D', $id)) throw new \RuntimeException('Invalid theme identity.');
         $m = json_decode(file_get_contents($this->app->root . '/site/themes/' . $id . '/theme.json'), true, 32, JSON_THROW_ON_ERROR);
@@ -15,21 +21,34 @@ final class Theme {
         return $m;
     }
     public function active(): string {
+        if ($this->activeId !== null) return $this->activeId;
         $id = $this->app->services->get(Settings::class)->get('theme');
         if ($id === null) throw new \RuntimeException('No active theme. Run the site installer.');
         $this->validate($id);
-        return $id;
+        return $this->activeId = $id;
     }
     public function component(string $name, array $props = []): string {
         if (!preg_match('/^[a-z][a-z0-9-]*$/D', $name)) throw new \InvalidArgumentException('Invalid component identity.');
         $file = $this->app->root . '/site/themes/' . $this->active() . '/components/' . $name . '.php';
         if (!is_file($file)) throw new \RuntimeException('Missing theme component: ' . $name);
-        // Explicit props only; components do not inherit page template variables.
-        return (static function (string $file, array $props): string {
-            ob_start();
-            try { require $file; return ob_get_clean(); }
-            catch (\Throwable $e) { ob_end_clean(); throw $e; }
-        })($file, $props);
+        if ($this->componentDepth >= 64) throw new \RuntimeException('Theme component nesting limit exceeded.');
+        $this->componentDepth++;
+        try {
+            // Explicit props plus presentation helpers; no inherited page variables.
+            return (static function (string $__file, array $props, ThemeContext $ui): string {
+                $__level = ob_get_level();
+                $file = $__file;
+                ob_start();
+                try {
+                    require $__file;
+                    while (ob_get_level() > $__level + 1) ob_end_flush();
+                    return ob_get_clean();
+                } catch (\Throwable $e) {
+                    while (ob_get_level() > $__level) ob_end_clean();
+                    throw $e;
+                }
+            })($file, $props, $this->ui);
+        } finally { $this->componentDepth--; }
     }
     public function render(string $template, array $data = [], int $status = 200): Response {
         $theme = $this->active();
@@ -37,7 +56,7 @@ final class Theme {
         $directory = $this->app->root . '/site/themes/' . $theme;
         $file = $directory . '/' . $template . '.php';
         if (!is_file($file)) throw new \RuntimeException('Missing theme template.');
-        $context = ['app'=>$this->app, 'site'=>$this->app->site, 'theme'=>$theme,
+        $context = ['app'=>$this->app, 'site'=>$this->app->site, 'theme'=>$theme, 'ui'=>$this->ui,
             'directory'=>$directory, 'template'=>$template, 'status'=>$status, 'content'=>''];
         $content = $this->renderFile($file, $data, $context);
         $context['content'] = $content;
@@ -62,15 +81,29 @@ final class Theme {
             }
         })($file, $data, $context);
     }
+    private function assetFile(string $id, string $relative): ?string {
+        if (!preg_match('/^[a-zA-Z0-9_\/-]+\.(css|js|svg|woff2|png|jpg|webp)$/D', $relative) || str_starts_with($relative, '/') || str_contains($relative, '..')) return null;
+        $base = realpath($this->app->root . '/site/themes/' . $id . '/assets');
+        $file = realpath(($base ?: '') . '/' . $relative);
+        if (!$base || !$file || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) return null;
+        return $file;
+    }
+    /** Theme-relative path, with a content hash reused for this rendering lifecycle. */
+    public function assetUrl(string $relative): string {
+        $id = $this->active();
+        if (isset($this->assetUrls[$relative])) return $this->assetUrls[$relative];
+        $file = $this->assetFile($id, $relative);
+        if ($file === null) throw new \RuntimeException('Missing or invalid theme asset: ' . $relative);
+        $hash = @hash_file('sha256', $file);
+        if ($hash === false) throw new \RuntimeException('Cannot read theme asset: ' . $relative);
+        return $this->assetUrls[$relative] = '/assets/theme/' . $id . '/' . $relative . '?v=' . substr($hash, 0, 12);
+    }
     public function asset(string $path): Response {
         $id = $this->active();
         $prefix = '/assets/theme/' . $id . '/';
         if (!str_starts_with($path, $prefix)) return new Response('Not found', 404);
-        $relative = substr($path, strlen($prefix));
-        if (!preg_match('/^[a-zA-Z0-9_\/-]+\.(css|js|svg|woff2|png|jpg|webp)$/D', $relative) || str_contains($relative, '..')) return new Response('Not found', 404);
-        $base = realpath($this->app->root . '/site/themes/' . $id . '/assets');
-        $file = realpath(($base ?: '') . '/' . $relative);
-        if (!$base || !$file || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) return new Response('Not found', 404);
+        $file = $this->assetFile($id, substr($path, strlen($prefix)));
+        if ($file === null) return new Response('Not found', 404);
         $types = ['css' => 'text/css', 'js' => 'text/javascript', 'svg' => 'image/svg+xml', 'woff2' => 'font/woff2', 'png' => 'image/png', 'jpg' => 'image/jpeg', 'webp' => 'image/webp'];
         return new Response(file_get_contents($file), 200, ['Content-Type' => $types[pathinfo($file, PATHINFO_EXTENSION)], 'Cache-Control' => 'public, max-age=3600']);
     }

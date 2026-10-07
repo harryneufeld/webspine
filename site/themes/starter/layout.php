@@ -11,8 +11,8 @@ $brandProps = ['href' => '/', 'prefix' => $site->meta['brand_prefix'], 'bold' =>
     <meta name="description" content="<?= e($site->meta['description']) ?>">
     <?php if (!$indexable): ?><meta name="robots" content="noindex"><?php endif; ?>
     <title><?= e($title) ?> · <?= e($site->meta['name']) ?></title>
-    <link rel="icon" href="/assets/theme/<?= e($theme) ?>/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/assets/theme/<?= e($theme) ?>/style.css?v=<?= e(substr(hash_file('sha256', $directory . '/assets/style.css'), 0, 12)) ?>">
+    <link rel="icon" href="<?= e($ui->assetUrl('favicon.svg')) ?>" type="image/svg+xml">
+    <link rel="stylesheet" href="<?= e($ui->assetUrl('style.css')) ?>">
 </head>
 <body class="ws-starter">
 <a class="skip-link" href="#main"><?= e($copy['skip_link']) ?></a>

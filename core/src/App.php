@@ -36,6 +36,7 @@ final class App {
         $this->site->install();
     }
     public function health(): array {
+        $this->theme->refresh();
         try {
             $status = $this->services->get(Storage::class)->health();
             if (!$status['ok']) return $status;
@@ -50,6 +51,7 @@ final class App {
         } catch (\Throwable $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
     }
     public function handle(string|Request $method, ?string $path = null): Response {
+        $this->theme->refresh();
         try {
             $request = $method instanceof Request ? $method : new Request($method, $path ?? '/');
             if (str_starts_with($request->path, '/assets/')) {

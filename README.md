@@ -59,8 +59,11 @@ website explicitly and idempotently. See `AGENTS.md` and `core/docs/site.md`.
 
 Reusable presentation components live in `site/themes/<id>/components/`.
 Pass text/data from existing site content files and render them through
-`$app->theme->component('name', $props)` with explicit inputs. The Starter wordmark
-is shared by the header and footer. See the component guideline in `AGENTS.md`.
+`$app->theme->component('name', $props)` with explicit inputs. Components receive
+`$ui` for nested `component()` calls, active theme `id()`, and content-versioned
+`assetUrl()` paths, without inheriting page variables. The same helper is available
+to pages and layouts. The Starter action link renders its own icon and its layout
+uses shared asset URLs. See [components and rendering lifecycle](core/docs/site.md#reusable-components).
 
 ## Commands
 
