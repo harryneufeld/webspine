@@ -5,7 +5,7 @@ extend, and maintain. The repository ships a minimal starter; webspine.org is a 
 
 ## Find the right place first
 
-- `site/meta.php`: site identity, SEO description, and initial theme selection.
+- `site/meta.php`: site identity, SEO description, indexing, and initial theme selection.
 - `site/pages.php`: page titles, template choices, plain-text pages, and 404 copy.
 - `site/content/`: editable homepage and shared plain-text copy.
 - `site/themes/<id>/components/`: reusable presentation templates for that theme.
@@ -24,6 +24,10 @@ extend, and maintain. The repository ships a minimal starter; webspine.org is a 
 Edit the homepage's `headline`, `intro`, and `items` in `site/content/home.php`.
 Changing a page title belongs in `site/pages.php`; changing its visual layout
 belongs in its selected theme. Keep content keys stable when changing wording.
+
+The Starter theme defaults to `noindex` and shows a launch reminder. Set
+`'indexable' => true` in `site/meta.php` only when the user is ready to publish
+to search engines; custom themes must implement their own indexing policy.
 
 ## Custom entities and persistence
 

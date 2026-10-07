@@ -7,7 +7,7 @@ framework; changing a theme should not silently discard website content.
 
 | Where | What to edit |
 | --- | --- |
-| `site/meta.php` | Site name, brand parts, SEO description, initial theme |
+| `site/meta.php` | Site name, brand parts, SEO description, indexing, initial theme |
 | `site/pages.php` | Page titles, template choices, 404 and plain-text pages |
 | `site/content/home.php` | Homepage copy, headline, subline, labels, links |
 | `site/content/page.php` | Shared page navigation labels |
@@ -30,6 +30,10 @@ Edit `headline`, `intro`, and `items` in `site/content/home.php`. The browser ti
 is in `site/pages.php`; identity is in `site/meta.php`. The Starter theme places
 and escapes these values. The repository's example site is intentionally small;
 webspine.org's marketing content and design are maintained separately.
+
+Before launching a Starter site, set `'indexable' => true` in `site/meta.php`.
+Until then its shared layout emits `noindex` and shows a reminder. Custom themes
+own this behavior; see [search indexing](deployment.md#search-indexing).
 
 Content is deliberately ordinary PHP arrays. No extraction, compilation,
 templating dependency, or administration interface is needed. AI can locate a

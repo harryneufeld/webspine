@@ -41,6 +41,33 @@ Run `php core/bin/console.php install` and `health` with the same PHP version an
 storage group before serving. Check `/health`, pages, and theme assets; public
 health is generic, while detailed CLI output must remain private.
 
+## Search indexing
+
+Starter pages render full HTML with titles, descriptions, and crawlable links,
+but start with `'indexable' => false` in `site/meta.php`. The Starter theme emits
+`<meta name="robots" content="noindex">` and displays a launch reminder on every
+page. Set `'indexable' => true` when ready: both disappear. Missing or non-boolean
+values keep indexing disabled. This is a site-owned theme convention; custom
+themes/plugins must implement their own policy. Core updates preserve existing
+site settings/templates and do not change existing sites' indexing behavior.
+Hosting headers can still block indexing. Search engines decide whether to index
+eligible pages; webspine does not guarantee inclusion.
+
+No `robots.txt`, sitemap, or canonical URLs are generated automatically. These
+are site-owned choices; define `/robots.txt` and `/sitemap.xml` in
+`site/routes.php` with `text/plain` and `application/xml` content types. A missing
+robots file returning 404 does not block Google crawling; sitemaps help discovery.
+See [Google's robots rules](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec)
+and [sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview).
+
+Protect staging/private sites with authentication. For publicly accessible pages
+that should stay out of search, set `X-Robots-Tag: noindex` on their responses
+(or a robots meta tag in the theme), and allow crawling so engines can see it.
+`robots.txt` is not access control or a reliable way to prevent indexing.
+See [noindex guidance](https://developers.google.com/search/docs/crawling-indexing/block-indexing).
+Check deployed hosting headers and crawler access; customization can change
+these defaults.
+
 ## Updates and backups
 
 Test on a local clone first. Before updating, drain/stop PHP workers and other
