@@ -125,6 +125,13 @@ including `ne`. Null in equality or IN is rejected; use null predicates instead.
 An empty IN list matches nothing. SQLite string comparisons use case-sensitive
 binary ordering, without locale folding or substring matching. Defaults are
 stored on creation; queries do not synthesize defaults for raw database edits.
+String predicates verify complete decoded values inside the SQLite query because
+older SQLite JSON functions truncate decoded NUL bytes. Equality/IN additionally
+use indexed JSON candidates, including truncated and complete forms when needed.
+The verification runs on candidates selected by the database, before pagination.
+String ranges and sorting use complete values and can require scanning/sorting;
+JSON expression indexes do not accelerate those string operations. Stored indexes
+use only SQLite built-ins, preserving older-framework write/rollback compatibility.
 
 Search returns the usual record arrays. Limits are 1–100, offsets nonnegative.
 Sorting accepts up to four declared fields with `asc`/`desc`, or metadata keys

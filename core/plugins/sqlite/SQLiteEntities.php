@@ -26,8 +26,17 @@ final class SQLiteEntities implements EntityQueries,EntityIndexes {
     private function db(): \PDO { return ($this->connection)(); }
     private function requireJson(): void {
         if ($this->jsonAvailable) return;
-        try { $this->db()->query("SELECT json_extract('{\"value\":1}', '$.value')"); }
+        $db = $this->db();
+        try { $db->query("SELECT json_extract('{\"value\":1}', '$.value')"); }
         catch (\PDOException $e) { throw new \RuntimeException('Entity queries and indexes require SQLite JSON functions.', 0, $e); }
+        // Older SQLite JSON extraction truncates strings at decoded NUL bytes.
+        // Query-only verification preserves complete strings; persisted indexes
+        // retain built-in expressions so older framework versions can write them.
+        $db->sqliteCreateFunction('webspine_entity_text', static function(string $data,string $field):?string {
+            $values=json_decode($data,true,32,JSON_THROW_ON_ERROR);
+            $value=$values[$field]??null;
+            return is_string($value)?$value:null;
+        }, 2, \PDO::SQLITE_DETERMINISTIC);
         $this->jsonAvailable = true;
     }
     private function transaction(callable $action): mixed {

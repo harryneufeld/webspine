@@ -60,7 +60,8 @@ return static function (string $base): void {
     check('Query size limits bound groups, depth, nodes, IN values and bytes', fn() => expectError(fn()=>new Q(F::all())) && expectError(fn()=>new Q($deep)) && expectError(fn()=>new Q(F::all(...array_fill(0,64,F::eq('qty',1))))) && expectError(fn()=>new Q(F::in('qty',range(1,101)))) && expectError(fn()=>new Q(F::in('qty',['key'=>1]))) && expectError(fn()=>new Q(F::all(F::in('qty',range(1,100)),F::in('qty',range(1,100)),F::in('qty',range(1,57))))) && expectError(fn()=>new Q(F::eq('label',str_repeat('x',65537)))));
     $text="' OR 1=1 --\0é";
     $special=$entities->create('items',['label'=>$text,'qty'=>9007199254740993]);
-    check('Bound values preserve SQL-looking text, NUL, Unicode and 64-bit integers', fn() => $search(F::eq('label',$text))===[$special['id']] && $search(F::eq('qty',9007199254740993))===[$special['id']] && $search(F::eq('qty',9007199254740992))===[]);
+    check('Bound string values preserve SQL-looking text, NUL and Unicode', fn() => $search(F::eq('label',$text))===[$special['id']] && $search(F::eq('label',explode("\0",$text)[0]))===[] && $search(F::in('label',[$text]))===[$special['id']] && !in_array($special['id'],$search(F::ne('label',$text)),true));
+    check('Bound integers retain 64-bit precision', fn() => $search(F::eq('qty',9007199254740993))===[$special['id']] && $search(F::eq('qty',9007199254740992))===[]);
     $entities->update('items',$a['id'],['status'=>'closed']); $entities->delete('items',$c['id']);
     check('Updates and deletes immediately affect indexed searches and counts', fn() => $entities->count('items',F::eq('status','open'))===0 && $search(F::eq('status','closed'))===[$a['id'],$b['id']]);
     $before=$db->query('SELECT * FROM entity_records ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
@@ -73,6 +74,17 @@ return static function (string $base): void {
     check('Index count is bounded and duplicate declarations remain idempotent', fn() => expectError(fn()=>$entities->defineIndex('items',['status','qty'])) && !expectError(fn()=>$entities->defineIndex('items',['status'])));
     $changed=new SQLiteEntities(fn():PDO=>$db);$changed->define('items',['qty'=>['type'=>'string']]);$changed->defineIndex('items',['qty']);
     check('Index installation still rejects populated definition changes transactionally', fn() => expectError(fn()=>$changed->install(),'migration') && $before===$db->query('SELECT * FROM entity_records ORDER BY id')->fetchAll(PDO::FETCH_ASSOC));
+
+    // Reproduce old SQLite's decoded-NUL truncation on every platform.
+    $oldDb=new PDO('sqlite:'.$base.'/old-json.sqlite');
+    $oldDb->sqliteCreateFunction('json_extract',static function(string $json,string $path):mixed {
+        $value=json_decode($json,true,32,JSON_THROW_ON_ERROR)[substr($path,2)]??null;
+        return is_string($value)?explode("\0",$value,2)[0]:(is_bool($value)?(int)$value:$value);
+    },2,PDO::SQLITE_DETERMINISTIC);
+    $old=new SQLiteEntities(fn():PDO=>$oldDb);$old->define('texts',['text'=>['type'=>'string']]);$old->defineIndex('texts',['text']);$old->install();
+    $prefix=$old->create('texts',['text'=>'a']);$nul=$old->create('texts',['text'=>"a\0z"]);$tail=$old->create('texts',['text'=>'b']);
+    check('Old SQLite NUL extraction preserves exact matches, ranges, counts and sorting', fn() => $old->count('texts',F::eq('text','a'))===1 && $old->count('texts',F::eq('text',"a\0z"))===1 && $old->count('texts',F::in('text',['a',"a\0z"]))===2 && $old->count('texts',F::ne('text','a'))===2 && $ids($old->search('texts',new Q(F::gt('text','a'))))===[$nul['id'],$tail['id']] && $ids($old->search('texts',new Q(null,['text'=>'asc'])))===[$prefix['id'],$nul['id'],$tail['id']]);
+    check('Persisted indexes never depend on query-only functions', fn() => !str_contains(implode(' ',$db->query("SELECT sql FROM sqlite_master WHERE type='index'")->fetchAll(PDO::FETCH_COLUMN)),'webspine_entity_text'));
 
     // Measure candidate evaluations, not wall-clock thresholds or SQLite VM steps.
     $perf=new PDO('sqlite:'.$base.'/query-performance.sqlite');$perf->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
@@ -89,7 +101,12 @@ return static function (string $base): void {
     }
     $provider->defineIndex('events',['status']);$provider->install();$indexed=$measure();
     $plan=SQLiteEntityQuery::compile(new Q(F::eq('status','open')),new EntityDefinition('events',['status'=>['type'=>'string']]));
-    $explain=$perf->prepare('EXPLAIN QUERY PLAN SELECT * FROM entity_records WHERE entity=? AND ('.$plan['where'].') ORDER BY '.$plan['order']);$explain->execute(['events','open']);$detail=implode(' ',array_column($explain->fetchAll(PDO::FETCH_ASSOC),'detail'));
+    $explain=$perf->prepare('EXPLAIN QUERY PLAN SELECT * FROM entity_records WHERE entity=? AND ('.$plan['where'].') ORDER BY '.$plan['order']);$explain->execute(['events',...array_column($plan['bindings'],0)]);$detail=implode(' ',array_column($explain->fetchAll(PDO::FETCH_ASSOC),'detail'));
     check('Larger fixtures demonstrate selective index work and compiler index use', fn() => $counts[5000]===5000 && $counts[20000]===20000 && $indexed===20 && str_contains($detail,'entity_query_') && !str_contains($detail,'TEMP B-TREE') && $provider->count('events',F::eq('status','open'))===20 && count($provider->search('events',new Q(F::eq('status','open'))))===20);
+    $verifications=0;$perf->sqliteCreateFunction('webspine_entity_text',static function(string $data,string $field)use(&$verifications):?string {
+        $verifications++;return json_decode($data,true,32,JSON_THROW_ON_ERROR)[$field]??null;
+    },2,PDO::SQLITE_DETERMINISTIC);
+    $provider->search('events',new Q(F::eq('status','open')));
+    check('Indexed provider search verifies only selected string candidates', fn() => $verifications===20);
     echo 'MEASURE entity query candidates: 5,000 rows='.$counts[5000].'; 20,000 rows='.$counts[20000].'; indexed 20,000 rows='.$indexed."\n";
 };
