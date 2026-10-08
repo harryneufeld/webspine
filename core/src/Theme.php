@@ -12,10 +12,24 @@ final class Theme {
     private ?string $activeId = null;
     private array $assetUrls = [];
     private int $componentDepth = 0;
+    private int $renderDepth = 0;
+    private readonly AssetHashCache $hashes;
+    private readonly ThemeLifecycle $lifecycle;
     private readonly ThemeContext $ui;
-    public function __construct(private App $app) { $this->ui = new ThemeContext($this); }
+    public function __construct(private App $app) {
+        $this->ui = new ThemeContext($this);
+        $this->hashes = new AssetHashCache($app->root, $app->version['version'], ($app->config['theme']['asset_hash_cache'] ?? true) === true);
+        $this->lifecycle = new ThemeLifecycle($app, ($app->config['theme']['debug'] ?? false) === true);
+    }
     /** Begin a new rendering lifecycle or refresh after direct settings/file changes. */
-    public function refresh(): void { $this->activeId = null; $this->assetUrls = []; }
+    public function refresh(bool $clearAssetHashes = true): void {
+        $this->activeId = null; $this->assetUrls = []; $this->lifecycle->reset();
+        if ($clearAssetHashes) $this->hashes->clear();
+    }
+    public function assetHashStats(): array { return $this->hashes->stats(); }
+    private function renderBoundary(): void {
+        if ($this->componentDepth === 0 && $this->renderDepth === 0) $this->lifecycle->check();
+    }
     public function validate(string $id): array {
         if (!preg_match('/^[a-z][a-z0-9-]*$/D', $id)) throw new \RuntimeException('Invalid theme identity.');
         $m = json_decode(file_get_contents($this->app->root . '/site/themes/' . $id . '/theme.json'), true, 32, JSON_THROW_ON_ERROR);
@@ -30,13 +44,16 @@ final class Theme {
         if ($this->activeId !== null) return $this->activeId;
         $id = $this->app->services->get(Settings::class)->get('theme');
         if ($id === null) throw new \RuntimeException('No active theme. Run the site installer.');
-        $this->validate($id);
+        $manifest = $this->validate($id);
+        $this->lifecycle->begin($id, $manifest);
         return $this->activeId = $id;
     }
     public function component(string $name, array $props = []): string {
+        $this->renderBoundary();
         if (!preg_match('/^[a-z][a-z0-9-]*$/D', $name)) throw new \InvalidArgumentException('Invalid component identity.');
         $file = $this->app->root . '/site/themes/' . $this->active() . '/components/' . $name . '.php';
         if (!is_file($file)) throw new \RuntimeException('Missing theme component: ' . $name);
+        $this->lifecycle->remember($file);
         if ($this->componentDepth >= 64) throw new \RuntimeException('Theme component nesting limit exceeded.');
         $this->componentDepth++;
         try {
@@ -57,17 +74,22 @@ final class Theme {
         } finally { $this->componentDepth--; }
     }
     public function render(string $template, array $data = [], int $status = 200): Response {
+        $this->renderBoundary();
         $theme = $this->active();
         if (!preg_match('/^[a-z-]+$/D', $template)) throw new \RuntimeException('Invalid template.');
         $directory = $this->app->root . '/site/themes/' . $theme;
         $file = $directory . '/' . $template . '.php';
         if (!is_file($file)) throw new \RuntimeException('Missing theme template.');
+        $this->lifecycle->remember($file);
         $context = ['app'=>$this->app, 'site'=>$this->app->site, 'theme'=>$theme, 'ui'=>$this->ui,
             'directory'=>$directory, 'template'=>$template, 'status'=>$status, 'content'=>''];
-        $content = $this->renderFile($file, $data, $context);
-        $context['content'] = $content;
-        $html = $this->renderFile($directory . '/layout.php', $data, $context);
-        return new Response($html, $status);
+        $this->renderDepth++;
+        try {
+            $content = $this->renderFile($file, $data, $context);
+            $context['content'] = $content;
+            $html = $this->renderFile($directory . '/layout.php', $data, $context);
+            return new Response($html, $status);
+        } finally { $this->renderDepth--; }
     }
     private function renderFile(string $file, array $data, array $context): string {
         // Fresh local scope for each file; preserve original data and renderer context.
@@ -112,14 +134,16 @@ final class Theme {
     }
     /** Theme-relative path, with a content hash reused for this rendering lifecycle. */
     public function assetUrl(string $relative): string {
+        $this->renderBoundary();
         $id = $this->active();
         if (isset($this->assetUrls[$relative])) return $this->assetUrls[$relative];
         $file = $this->assetFile($id, $relative);
-        $hash = @hash_file('sha256', $file);
-        if ($hash === false) throw new \RuntimeException('Cannot read theme asset: ' . $relative);
+        $this->lifecycle->remember($file);
+        try { $hash = $this->hashes->hash($file); }
+        catch (\RuntimeException $e) { throw new \RuntimeException('Cannot read theme asset: ' . $relative, 0, $e); }
         return $this->assetUrls[$relative] = '/assets/theme/' . $id . '/' . $relative . '?v=' . substr($hash, 0, 12);
     }
-    public function asset(string $path): Response {
+    public function asset(string $path, ?Request $request = null): Response {
         $id = $this->active();
         $prefix = '/assets/theme/' . $id . '/';
         if (!str_starts_with($path, $prefix)) return new Response('Not found', 404);
@@ -128,7 +152,20 @@ final class Theme {
             $file = $this->assetFile($id, $relative);
             $body = @file_get_contents($file);
             if ($body === false) return new Response('Not found', 404);
-            return new Response($body, 200, ['Content-Type' => $this->assetType($relative), 'Cache-Control' => 'public, max-age=3600']);
+            // Validators describe these exact bytes, independently of the URL cache.
+            $etag = '"' . hash('sha256', $body) . '"';
+            $headers = ['Content-Type'=>$this->assetType($relative), 'Cache-Control'=>'public, max-age=3600', 'ETag'=>$etag];
+            $condition = $request?->header('If-None-Match');
+            if ($condition !== null && in_array($request->method, ['GET','HEAD'], true) && self::matches($condition, $etag)) return new Response('', 304, $headers);
+            return new Response($request?->method === 'HEAD' ? '' : $body, 200, $headers);
         } catch (\RuntimeException) { return new Response('Not found', 404); }
+    }
+    private static function matches(string $condition, string $etag): bool {
+        if (strlen($condition) > 8192) return false;
+        if (trim($condition) === '*') return true;
+        // Parse complete syntax first; commas inside quoted opaque tags are legal.
+        if (!preg_match('/^\s*(?:W\/)?"[\x21\x23-\x7e\x80-\xff]*"(?:\s*,\s*(?:W\/)?"[\x21\x23-\x7e\x80-\xff]*")*\s*$/D', $condition)) return false;
+        preg_match_all('/(?:W\/)?("[\x21\x23-\x7e\x80-\xff]*")/', $condition, $tags);
+        return in_array($etag, $tags[1], true);
     }
 }

@@ -158,10 +158,16 @@ Public asset failures remain generic 404s without those diagnostics. HTTP paths
 are decoded once by Request; encoded traversal and executable suffixes remain
 invalid. Successful responses keep `nosniff` through the normal response sender.
 
-Each asset hash/URL is reused within a rendering lifecycle. A fresh lifecycle sees
-file changes and produces a new version. This centralizes URL construction and
-cache-busting; PHP delivery, its one-hour cache policy and the absence of ETag/304
-support are unchanged (tracked separately in #45).
+Each asset hash/URL is reused within a rendering lifecycle. Across lifecycles,
+a bounded private metadata cache avoids rehashing unchanged files. See
+[asset caching and conditional delivery](assets.md) for its invalidation rules,
+read-only fallback, measurement and optional disabling.
+
+PHP delivery retains its one-hour cache policy and adds full SHA-256 ETags.
+Matching `If-None-Match` GET/HEAD requests return 304 without a body; tags always
+describe the actual response bytes independently of the URL hash cache. Asset
+delivery still reads and hashes bytes, including for HEAD/304. This reduces
+transfer size; it does not implement streaming, static publishing or offloading.
 
 ### Domain-root robots and sitemap routes
 
@@ -196,10 +202,24 @@ current settings/files. Each App owns its cache; it is never shared globally.
 
 When manually rendering several pages/components on one App, they share the cache.
 After direct Settings changes, plugin/dependency changes or theme/asset file edits,
-call `$app->theme->refresh()` before the next render. `validate($id)` always performs
+call `$app->theme->refresh()` before the next render. This also clears the private
+hash cache, covering replacements that preserve filesystem metadata.
+`validate($id)` always performs
 a fresh explicit validation. Long-lived workers must use the normal request entry
 point or refresh before each manually managed request. Theme/content changes
-within an ongoing render need an explicit refresh if they must be visible immediately.
+within an ongoing render should be applied between pages, followed by refresh.
+
+For manual exports/tests, opt in with `'theme' => ['debug' => true]` in local
+configuration. At outer `render()`, `component()` and standalone `assetUrl()`
+boundaries, debug checks the cached selection, loaded plugin state, manifests and
+observed files. A supported change throws `Stale theme rendering lifecycle` with
+the remedy; it never silently switches identity midway through a page. Call
+`refresh()` before the next page, or create a new App after plugin changes.
+Debug is disabled by default. It checks at most 256 observed files; ordinary
+asset/template checks use timestamps/size/identity and can miss metadata-preserving
+edits. Manifest checks also hash content (up to 1 MiB each). Unobserved files,
+already loaded PHP/opcache and changes during one render need explicit handling.
+See [lifecycle and cache boundaries](assets.md#manual-rendering-diagnostics).
 
 Compatibility: `$ui` is now reserved in page/layout scope; a colliding data value
 remains available in `$data['ui']`. Components never extract props. A component
