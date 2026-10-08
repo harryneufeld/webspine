@@ -68,6 +68,16 @@ and updater staging with disposable local data before publishing. Keep release
 notes aligned with implemented behavior and compatibility/adoption limits.
 See [verification](verification.md) and [deployment](deployment.md).
 
+Framework CI runs the disposable archive tests on Linux. The publisher's HTTP
+and Git boundaries are simulated with the real builder/verifier, testing exact
+asset selection and rejection of bad digests, failed CI and existing tags:
+
+```powershell
+./core/tests/publish-release.ps1 -Php /path/to/php
+```
+
+PR CI runs this offline check too; it never connects to GitHub or publishes.
+
 From a clean Git checkout of the current merged `main` commit, with no untracked
 or ignored files in inventory paths, use PowerShell 7, Git and PHP with ZipArchive:
 
