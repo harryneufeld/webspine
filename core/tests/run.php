@@ -74,6 +74,7 @@ try {
     check('Parameterized queries do not interpolate injected slugs', fn() => $pages->find("' OR 1=1 --") === null);
     check('Page writes validate identity and title', fn() => expectError(fn() => $pages->put('../bad', '', '')));
     (require __DIR__ . '/entities.php')($base, $site);
+    (require __DIR__ . '/entity-queries.php')($base);
     check('Home uses shared layout and correct brand', fn() => str_contains($app->handle('GET','/')->body, 'web<strong>spine</strong>'));
     check('Components escape explicit props and omit the page layout', function () use ($app) {
         $html = $app->theme->component('wordmark', ['href'=>'/','prefix'=>'<script>','bold'=>'spine','label'=>'"unsafe']);
@@ -196,6 +197,7 @@ try {
     $entityConfig = require $site . '/config/example.php'; $entityConfig['plugins'][] = 'catalog';
     Files::write($site . '/config/example.php', '<?php return ' . var_export($entityConfig, true) . ';');
     $app = new App($site); $entityService = $app->services->get(\Webspine\Contracts\Entities::class);
+    $entityService->defineIndex('products', ['price_cents']);
     $entityService->install();
     $retainedProduct = $entityService->create('products', ['name'=>'Preserved product','price_cents'=>2500]);
     $full = Release::package($site,true);
@@ -288,10 +290,16 @@ try {
     check('Update preserves site content, routes, identity, config, themes, plugins, and database', function()use($siteOwned,$site,$dbHash){foreach($siteOwned as $path=>$hash)if(hash_file('sha256',$site.'/'.$path)!==$hash)return false;return hash_file('sha256',$site.'/storage/site.sqlite')===$dbHash;});
     check('Custom site routes and title still work after core activation', fn() => (new App($site))->handle('GET','/about-us')->status === 200 && str_contains((new App($site))->handle('GET','/about-us')->body,'My independent website'));
     check('Core activation preserves declared entity definitions and records', fn() => (new App($site))->services->get(\Webspine\Contracts\Entities::class)->read('products',$retainedProduct['id']) === $retainedProduct);
+    check('Core activation preserves installed indexes and typed query behavior', function()use($site,$retainedProduct):bool {
+        $db=new PDO('sqlite:'.$site.'/storage/site.sqlite');
+        return (bool)$db->query("SELECT name FROM sqlite_master WHERE name LIKE 'entity_query_%'")->fetchColumn()
+            && (new App($site))->services->get(\Webspine\Contracts\Entities::class)->search('products',new \Webspine\EntityQuery(\Webspine\EntityFilter::eq('price_cents',2500)))===[$retainedProduct];
+    });
     check('Core activation preserves pending queue data and worker history without installation or migration', fn() => hash_file('sha256',$site.'/storage/job-queue/jobs.sqlite')===$queueHash && hash_file('sha256',$site.'/storage/job-queue/worker.json')===$heartbeatHash && $persistedQueue->status()['pending']===1);
     check('Core activation preserves analytics data and configured password hash', fn() => hash_file('sha256', $site . '/storage/spine-analytics/counts.sqlite') === $analyticsHash && hash_file('sha256', $site . '/config/local.php') === $siteOwned['config/local.php'] && $analytics->report()['requests'] === 1);
     check('Updates reject the installed version and downgrade', fn()=>expectError(fn()=>$updater->apply($release),'newer'));
     check('Rollback restores deleted framework files and previous version', function()use($updater,$site,$initialVersion){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']===$initialVersion;});
+    check('Rollback preserves installed entity indexes and query results', fn()=>(new App($site))->services->get(\Webspine\Contracts\Entities::class)->search('products',new \Webspine\EntityQuery(\Webspine\EntityFilter::eq('price_cents',2500)))===[$retainedProduct]);
     check('Rollback retains the saved queue job, dedupe and worker history', fn() => $persistedQueue->enqueue('test.preserved',1,['message'=>'Keep this pending submission'],'preserved')===$persistedJob && hash_file('sha256',$site.'/storage/job-queue/worker.json')===$heartbeatHash);
     Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '$laterVersion', 'api' => 1, 'php' => '8.3.0'];\n");
     Files::write($candidate.'/core/src/Site.php',str_replace('foreach (array_keys($this->pages) as $id)', 'if (is_file($this->app->root . "/core/activation-failure")) trigger_error("activation-rendering-warning", E_USER_WARNING); foreach (array_keys($this->pages) as $id)', $candidateSiteFile));
