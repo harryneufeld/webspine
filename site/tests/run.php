@@ -18,7 +18,7 @@ function siteCheck(string $name, callable $assert): void {
     } catch (Throwable $error) { $failed++; echo "FAIL $name: {$error->getMessage()}\n"; }
 }
 try {
-    $app = new App($root, ['providers'=>['storage'=>'sqlite','mail'=>null], 'plugins'=>[], 'sqlite'=>['path'=>$directory . '/site.sqlite']]);
+    $app = new App($root, ['providers'=>['storage'=>'sqlite','mail'=>null], 'plugins'=>[], 'sqlite'=>['path'=>$directory . '/site.sqlite'], 'theme'=>['asset_hash_cache'=>false]]);
     $app->install();
     siteCheck('Fresh starter installs and renders all defined pages', fn() => $app->health()['ok']);
     siteCheck('Starter installation does not seed unwanted database pages', fn() => $app->services->get(Pages::class)->find('hello') === null);

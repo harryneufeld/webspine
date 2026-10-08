@@ -38,6 +38,15 @@ final class Site {
         $register = require $this->app->root . '/site/routes.php';
         if (!is_callable($register)) throw new \RuntimeException('Site routes must return a callable.');
         $register($this->app);
+        foreach ($this->pages as $id => $page) {
+            if (!isset($page['path'])) {
+                if (array_key_exists('slash', $page)) throw new \InvalidArgumentException('Page slash policy requires a path: ' . $id);
+                continue;
+            }
+            if (!is_string($page['path']) || !is_string($page['slash'] ?? 'preserve')) throw new \InvalidArgumentException('Invalid page route declaration: ' . $id);
+            if ($id === 'not-found' || ($page['status'] ?? 200) === 404) throw new \InvalidArgumentException('404 pages cannot declare routes: ' . $id);
+            $this->app->router->page($page['path'], fn() => $this->render($id), $page['slash'] ?? 'preserve');
+        }
     }
 
     public function install(): void {
