@@ -122,6 +122,12 @@ try {
         if(proc_close($p)!==0)throw new RuntimeException($err.$out);
         return str_contains($out,'Mail Reply-To tests passed');
     });
+    check('Plugin console discovery, locking, arguments and maintenance boundaries pass in isolation', static function()use($source):bool{
+        $p=proc_open([PHP_BINARY,'-c',php_ini_loaded_file()?:'', $source.'/core/tests/console-commands.php'],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+        fclose($pipes[0]);$out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+        if(proc_close($p)!==0)throw new RuntimeException($err.$out);
+        return str_contains($out,'Console command tests passed');
+    });
     (require __DIR__ . '/requests.php')($app);
     foreach (['run', 'headers', 'integration', 'access', 'config', 'http'] as $analyticsTest) {
         check('Bundled analytics: ' . $analyticsTest, function () use ($source, $analyticsTest): bool {
