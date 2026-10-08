@@ -10,6 +10,7 @@ final class Site {
 
     public function __construct(private App $app) {
         $this->meta = $this->load('meta');
+        $this->meta['language'] = VisitorErrors::language(array_key_exists('language',$this->meta) ? $this->meta['language'] : 'en');
         $this->pages = $this->load('pages');
     }
 

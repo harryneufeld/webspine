@@ -5,6 +5,11 @@ final class Router {
     private array $routes = [];
     private array $patterns = [];
     private array $pagePaths = [];
+    public function __construct(private ?VisitorErrors $visitorErrors = null) {}
+    private function methodError(array $headers):Response {
+        $response=new Response('Method not allowed',405,$headers);
+        return $this->visitorErrors?->present($response)??$response;
+    }
     public function get(string $path, callable $handler): void {
         $this->add('GET', $path, $handler);
     }
@@ -51,9 +56,9 @@ final class Router {
         if ($allowed) {
             if (in_array('GET', $allowed, true)) $allowed[] = 'HEAD';
             $allowed = array_values(array_intersect(['GET','HEAD','POST'], array_unique($allowed)));
-            return new Response('Method not allowed', 405, ['Allow'=>implode(', ', $allowed)]);
+            return $this->methodError(['Allow'=>implode(', ', $allowed)]);
         }
-        if (!in_array($method, ['GET','HEAD','POST'], true)) return new Response('Method not allowed', 405, ['Allow'=>'GET, HEAD']);
+        if (!in_array($method, ['GET','HEAD','POST'], true)) return $this->methodError(['Allow'=>'GET, HEAD']);
         return null;
     }
     /** Trusted site/plugin regex; handlers may return null to use the site's 404. */

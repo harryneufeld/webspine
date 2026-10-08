@@ -122,7 +122,7 @@ theme removes both the directive and reminder. Search engines decide whether
 to index eligible pages. No `robots.txt` or sitemap is generated automatically.
 See [deployment and indexing](core/docs/deployment.md#search-indexing).
 
-Implemented: [page routing, canonical slashes and validated redirects](core/docs/routing.md), plugin loading, contracts/registry/hooks, SQLite
+Implemented: [site language and customizable visitor errors](core/docs/language.md), [page routing, canonical slashes and validated redirects](core/docs/routing.md), plugin loading, contracts/registry/hooks, SQLite
 settings/pages, recorded installation schema, theme selection/layouts/assets,
 declarative [entities with validated CRUD, typed filters, sorting/counts and explicit indexes](core/docs/entities.md),
 bounded [asset hash caching, conditional delivery and optional stale-theme diagnostics](core/docs/assets.md),

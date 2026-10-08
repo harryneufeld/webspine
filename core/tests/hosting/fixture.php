@@ -58,6 +58,10 @@ if ($mode === 'prepare') {
     file_put_contents('/srv/webspine/config/local.php', $config);
     rename('/srv/webspine/site/routes.php', '/srv/webspine/site/base-routes.php');
     copy(__DIR__ . '/routes.php', '/srv/webspine/site/routes.php');
+    Files::json('/srv/webspine/site/errors.json', ['language'=>'de-DE','http'=>[
+        '400'=>['title'=>'Ungültige Anfrage','message'=>'Bitte prüfen: <script> & Text.'],
+        '405'=>['title'=>'Methode nicht erlaubt','message'=>'Bitte die Seite öffnen.'],
+    ],'unavailable'=>['title'=>'Vorübergehend nicht erreichbar','message'=>'Bitte versuchen Sie es später erneut.','operator'=>'']]);
     mkdir('/srv/webspine/site/plugins/contact-form');
     foreach (['plugin.php','plugin.json','FormText.php','ContactForm.php','MailDelivery.php'] as $file) copy('/source/core/docs/examples/contact-form/'.$file,'/srv/webspine/site/plugins/contact-form/'.$file);
     copy('/source/core/docs/examples/contact-form/template.php','/srv/webspine/site/themes/test-theme/contact-form.php');
