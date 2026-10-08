@@ -18,7 +18,7 @@ return static function(string $root,string $path='/contact-example'): void {
     contactCopy(__DIR__.'/fixtures/website/site',$root.'/site');
     mkdir($root.'/storage');mkdir($root.'/config');
     $example=$source.'/core/docs/examples/contact-form';
-    foreach(['plugin.php','plugin.json','ContactForm.php','MailDelivery.php'] as $file){
+    foreach(['plugin.php','plugin.json','FormText.php','ContactForm.php','MailDelivery.php'] as $file){
         \Webspine\Files::write($root.'/site/plugins/contact-form/'.$file,file_get_contents($example.'/'.$file));
     }
     foreach(['template.php'=>'site/themes/test-theme/contact-form.php','content.php'=>'site/content/contact-form.php','contact-form.css'=>'site/themes/test-theme/assets/contact-form.css'] as $file=>$target){
@@ -39,6 +39,15 @@ return static function(string $root,string $path='/contact-example'): void {
     $app->services->get(\Webspine\Jobs\Queue::class)->install();
     $badJob=new \Webspine\Jobs\Job('test','contact.deliver',99,[],1,5,'unused');
     try{(new \Webspine\Examples\MailDelivery($app))->handle($badJob);throw new LogicException('Invalid payload version accepted.');}catch(\Webspine\Jobs\PermanentFailure){}
+    $payload=['form_id'=>'contact','recipient'=>'owner@example.test','subject'=>'Legacy job','fields'=>['message'=>'Legacy queued message.'],'labels'=>['message'=>'Message']];
+    (new \Webspine\Examples\MailDelivery($app))->handle(new \Webspine\Jobs\Job('legacy','contact.deliver',1,$payload,1,5,'unused'));
+    $captured=json_decode(trim(file_get_contents($root.'/storage/captured-mail.jsonl')),true,flags:JSON_THROW_ON_ERROR);
+    if(!str_contains($captured['body'],$payload['fields']['message']))throw new RuntimeException('Legacy queued payload was not delivered.');
+    unlink($root.'/storage/captured-mail.jsonl');
+    foreach([1,2] as $version){
+        $payload['fields']['message']=str_repeat('ä',5001);
+        try{(new \Webspine\Examples\MailDelivery($app))->handle(new \Webspine\Jobs\Job('oversized','contact.deliver',$version,$payload,1,5,'unused'));throw new LogicException('Oversized delivery payload accepted.');}catch(\Webspine\Jobs\PermanentFailure){}
+    }
     $config['contact_form']['path']=$path;
     $config['contact_form']['fields']=[
         'name'=>['label'=>'Your name','type'=>'text','required'=>true,'max'=>120],

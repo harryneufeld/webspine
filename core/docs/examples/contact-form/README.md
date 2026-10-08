@@ -4,7 +4,7 @@ The current copyable example always saves valid submissions to the durable
 `job-queue` before email delivery. There is one delivery workflow; synchronous
 sending is not a configuration mode. The starter still has no enabled form.
 
-Copy `plugin.php`, `plugin.json`, `ContactForm.php`, and `MailDelivery.php` into
+Copy `plugin.php`, `plugin.json`, `FormText.php`, `ContactForm.php`, and `MailDelivery.php` into
 `site/plugins/contact-form/`. Copy `template.php` to `contact-form.php` in your
 selected theme, its CSS to that theme's `assets/`, and `content.php` to
 `site/content/contact-form.php`. Keep presentation and translated copy site-owned.
@@ -56,17 +56,37 @@ and atomic transactions with a separate domain database are not provided.
 
 Defaults are name, email and message. An optional `fields` array defines 1–20
 fields keyed by a safe identifier, with plain `label`, `type` (`text`, `email`,
-`textarea`), boolean `required`, and integer byte limits `min`/`max` (up to 5,000).
-This changes the versioned job payload, not the database schema. Keep user-facing
+`textarea`), boolean `required`, and integer UTF-16 code-unit limits `min`/`max`
+(up to 5,000), matching native HTML `maxlength`. Umlauts count as one; astral
+emoji count as two; combining marks count separately. No `mbstring` or `intl`
+extension is required. Each redisplayed value has a separate 20,000-byte cap;
+the request and queue payload limits still apply. Existing custom byte-based
+limits should be reviewed when adopting this version.
+New jobs use payload version 2; delivery continues to accept version 1 jobs with
+their original byte limits. No database migration is needed. Keep user-facing
 labels/copy consistent with your site. Custom trusted renderers receive
 `($app, $data, $status)` and must return a Response; the controller preserves the
 intended HTTP status and no-store. Normal rendering uses the selected theme's
 shared layout and escapes plain values with `e()`.
 
-Invalid, missing, expired and replayed CSRF tokens return a rendered HTTP 403
-with a fresh usable token and no-store. The failed submission is never queued,
-and its values are discarded. Ordinary validation errors return 422 and retain
-only bounded, valid UTF-8 values, escaped by the template. A honeypot, unknown
+Missing or foreign CSRF tokens return a rendered HTTP 403 with a fresh usable
+token and no-store; their input is discarded. A matching expired session token
+also returns 403 and queues nothing, but preserves safe field values and asks
+the visitor to review and submit with the fresh token. Ordinary validation errors
+return 422 and retain safe UTF-8 text even above the field's min/max limit, up to
+the hard byte cap. Malformed, control-character or hard-byte-limit values are
+discarded. All redisplayed values are escaped by the template.
+
+After a successful save, the session keeps up to three submission receipts for
+ten minutes. An exact replay of the same validated fields and token in that
+session returns the success redirect without adding another job, including
+concurrent double submissions. This receipt check does not consume another rate
+attempt. Changed fields, unknown/expired receipts and another session do not
+qualify. The success notice is shown again after a recognized replay. Receipts
+hold only hashes, expiry and job IDs, not submitted text. This handles HTTP
+resubmission; it does not guarantee exactly-once SMTP delivery.
+
+A honeypot, unknown
 field rejection, fixed recipient and rate limiting remain in place. Queue
 failures return a recoverable 503 without reporting a successful save.
 
@@ -92,7 +112,8 @@ Core releases preserve customized `site/plugins/contact-form`, content and
 templates. They do not silently replace an installed synchronous example, enable
 a form, install queue tables, or migrate pending messages from another queue.
 Adopting this example is a deliberate local site change: review/copy the new
-plugin files, template and new copy keys, retain compatible private settings,
+plugin files (including `FormText.php`), template and new copy keys (including
+`expired`), retain compatible private settings,
 install queue storage and schedule the worker. Existing content keys including
 `sent` remain, with wording changed to saved-for-delivery. Drain/migrate any old
 queue and resolve route overlap before switching. No alternative synchronous

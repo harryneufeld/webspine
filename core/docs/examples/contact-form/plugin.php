@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/FormText.php';
 require_once __DIR__ . '/ContactForm.php';
 require_once __DIR__ . '/MailDelivery.php';
 return new class implements \Webspine\Contracts\Plugin {
