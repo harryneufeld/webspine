@@ -8,11 +8,17 @@ final class ContactForm {
     private array $copy;
     private string $id = 'contact';
     private array $config;
+    private int $maxAttempts;
     public function __construct(private App $app) {
         $id = $this->id;
         $config = $app->config['contact_form'] ?? [];
         if (!is_array($config)) throw new \InvalidArgumentException('Invalid contact form configuration.');
         $this->config = $config = array_replace(['path'=>'/contact-example', 'subject'=>'Website contact'], $config);
+        $retry=$config['retry']??[];
+        if(!is_array($retry) || array_diff(array_keys($retry),['max_attempts'])) throw new \InvalidArgumentException('Configure contact retry max_attempts as an integer 1–100.');
+        $retry=array_replace(['max_attempts'=>30],$retry);
+        if(!is_int($retry['max_attempts']) || $retry['max_attempts']<1 || $retry['max_attempts']>100) throw new \InvalidArgumentException('Configure contact retry max_attempts as an integer 1–100.');
+        $this->maxAttempts=$retry['max_attempts'];
         if (!preg_match('/^[a-z][a-z0-9-]{0,39}$/D',$id)) throw new \InvalidArgumentException('Invalid form identity.');
         $path=$config['path']??null;
         if (!is_string($path) || !preg_match('~^/[a-z0-9/-]+$~D',$path) || str_contains($path,'//') || in_array($path,['/health','/_insights'],true) || str_starts_with($path,'/assets/')) throw new \InvalidArgumentException('Invalid form route.');
@@ -72,7 +78,7 @@ final class ContactForm {
                 $job=$this->app->services->get(Queue::class)->enqueue('contact.deliver',2,[
                     'form_id'=>$this->id,'recipient'=>$this->config['recipient'],'subject'=>$this->config['subject']??'Contact enquiry',
                     'fields'=>$fields,'labels'=>$labels,
-                ],hash('sha256',$this->id.':'.$token));
+                ],hash('sha256',$this->id.':'.$token),maxAttempts:$this->maxAttempts);
             } catch (\Throwable $e) { error_log('Contact submission could not be queued: ' . $e::class . ' at ' . $e->getFile() . ':' . $e->getLine());return $this->render($fields,[],'unavailable',503); }
             $receipts[hash('sha256',$token)]=['expires'=>time()+600,'fingerprint'=>$fingerprint,'job'=>$job];
             $_SESSION['contact_forms'][$this->id]=['saved'=>true,'receipts'=>array_slice($receipts,-3,null,true)];

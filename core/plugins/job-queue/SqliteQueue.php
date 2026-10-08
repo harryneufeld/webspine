@@ -57,7 +57,7 @@ final class SqliteQueue implements Queue, QueueMonitor {
         return $value;
     }
     public function enqueue(string $type, int $version, array $payload, ?string $dedupe = null, int $delay = 0, int $maxAttempts = 5): string {
-        if (!preg_match('/^[a-z][a-z0-9.-]{0,79}$/D', $type) || $version < 1 || $version > 1000000 || $delay < 0 || $delay > 31536000 || $maxAttempts < 1 || $maxAttempts > 20) throw new \InvalidArgumentException('Invalid job envelope.');
+        if (!preg_match('/^[a-z][a-z0-9.-]{0,79}$/D', $type) || $version < 1 || $version > 1000000 || $delay < 0 || $delay > 31536000 || $maxAttempts < 1 || $maxAttempts > 100) throw new \InvalidArgumentException('Invalid job envelope.');
         foreach (array_keys($payload) as $key) if (!is_string($key)) throw new \InvalidArgumentException('Payload root must be an object.');
         if ($dedupe !== null && ($dedupe === '' || strlen($dedupe) > 200 || !preg_match('//u', $dedupe))) throw new \InvalidArgumentException('Invalid deduplication key.');
         self::jsonValue($payload);

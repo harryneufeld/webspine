@@ -113,7 +113,13 @@ is rejected. Dedupe keys remain reserved while their jobs exist.
 Claims use a five-minute lease and unique claim tokens. Expired claims can be
 reclaimed; stale workers cannot complete/fail/renew replacement claims. Long
 handlers must renew their lease through Queue and keep transport timeouts within
-it. Retries back off from 60 seconds to one hour, defaulting to five attempts.
+it. Retries back off from 60 seconds to one hour, defaulting to five total
+attempts for generic jobs. `enqueue(..., maxAttempts: $count)` accepts 1–100;
+the limit is saved with each job and is not rewritten by later configuration or
+dedupe calls. One attempt disables automatic retry. The contact example selects
+30 attempts by default, covering 24 hours 3 minutes of scheduled waits. Existing
+five-attempt jobs retain their policy; explicit retry resets the consumed count,
+not the saved limit. No queue schema change is required for the expanded bound.
 Expired final attempts become failed when that ready job type is next claimed.
 Permanent failures and exhausted attempts remain available for explicit review
 and retry. Handlers must validate payload versions independently of producers.
