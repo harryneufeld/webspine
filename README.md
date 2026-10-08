@@ -38,6 +38,9 @@ error log. Configuration load failures include file/line context in private CLI
 diagnostics and logs; public errors remain generic. See [diagnostics](core/docs/deployment.md#diagnosing-an-unavailable-site).
 No feature plugins are enabled by default. Optional examples in `site/plugins/`
 show a hook-based route (`field-notes`) and entity declarations (`catalog`).
+The optional bundled [spineanalytics plugin](core/plugins/spine-analytics/README.md)
+provides aggregate request counts and a private dashboard. Enable it explicitly
+in `config/local.php`; dashboard authentication uses a configured password hash.
 
 ## Boundaries
 
@@ -45,7 +48,7 @@ show a hook-based route (`field-notes`) and entity declarations (`catalog`).
 `site/themes/` is presentation; `site/plugins/` is capability.
 `config/` is private, `storage/` is persistent, and **only `public/` is web-facing**.
 `core/bin/`, `core/tests/`, and `core/docs/` contain system tools, checks, and guides.
-`core/plugins/` contains bundled system providers. Custom extensions belong in
+`core/plugins/` contains bundled system providers and optional features. Custom extensions belong in
 `site/plugins/`. Generated release ZIPs live in `.dist/`, which is ignored by Git
 and excluded from release inventories; packaging creates it when needed.
 

@@ -87,6 +87,14 @@ try {
     (require __DIR__ . '/health.php')($app, $site);
     (require __DIR__ . '/configuration.php')($app, $site);
     (require __DIR__ . '/requests.php')($app);
+    foreach (['run', 'headers', 'integration', 'access', 'config', 'http'] as $analyticsTest) {
+        check('Bundled analytics: ' . $analyticsTest, function () use ($source, $analyticsTest): bool {
+            $process = proc_open([PHP_BINARY, '-c', php_ini_loaded_file() ?: '', $source . '/core/plugins/spine-analytics/tests/' . $analyticsTest . '.php'], [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']], $pipes);
+            fclose($pipes[0]); $out = stream_get_contents($pipes[1]); $err = stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]);
+            if (proc_close($process) !== 0) throw new RuntimeException($out . $err);
+            return true;
+        });
+    }
     check('Site-defined route renders through its theme', fn() => str_contains($app->handle('GET','/docs')->body, 'Fixture documentation'));
     check('Feature route registers through action hook', fn() => str_contains($app->handle('GET','/field-notes')->body, 'app.ready'));
     check('Unknown paths return 404', fn() => $app->handle('GET','/not-a-route')->status === 404);
@@ -155,7 +163,7 @@ try {
     $release = Release::package($candidate);
     check('Core release includes bundled providers, tools, tests, and guides', function () use ($release) {
         $z = new ZipArchive(); $z->open($release); $ok = true;
-        foreach (['core/plugins/sqlite/plugin.php','core/plugins/smtp/plugin.php','core/bin/console.php','core/tests/run.php','core/docs/site.md'] as $file) if ($z->locateName($file) === false) $ok = false;
+        foreach (['core/plugins/sqlite/plugin.php','core/plugins/smtp/plugin.php','core/plugins/spine-analytics/plugin.php','core/plugins/spine-analytics/ReportAccess.php','core/plugins/spine-analytics/assets/report.css','core/bin/console.php','core/tests/run.php','core/docs/site.md'] as $file) if ($z->locateName($file) === false) $ok = false;
         $z->close(); return $ok;
     });
     $providerFile = file_get_contents($candidate . '/core/plugins/sqlite/plugin.php');
@@ -195,7 +203,15 @@ try {
     $dbHash = hash_file('sha256',$site . '/storage/site.sqlite');
     $siteOwned = [];
     foreach (['AGENTS.md','site/themes/test-theme/home.php','site/plugins/field-notes/plugin.php','config/example.php','site/meta.php','site/pages.php','site/routes.php','site/install.php','site/content/home.php','site/content/docs.php','site/content/layout.php'] as $p) $siteOwned[$p]=hash_file('sha256',$site.'/'.$p);
-    Files::write($site . '/config/local.php', file_get_contents($site . '/config/example.php')); $siteOwned['config/local.php']=hash_file('sha256',$site.'/config/local.php');
+    require_once $source . '/core/plugins/spine-analytics/TrafficInsights.php';
+    require_once $source . '/core/plugins/spine-analytics/ReportAccess.php';
+    $analytics = new \Webspine\Providers\SpineAnalytics\TrafficInsights($site);
+    $analytics->install(); $analytics->record('/', 'GPTBot', 'GET', 200);
+    $privateConfig = require $site . '/config/example.php';
+    $privateConfig['plugins'][] = 'spine-analytics';
+    $privateConfig['spine_analytics'] = ['enabled'=>false, 'report_enabled'=>true, 'password_hash'=>\Webspine\Providers\SpineAnalytics\ReportAccess::hashPassword(bin2hex(random_bytes(16)))];
+    Files::write($site . '/config/local.php', '<?php return ' . var_export($privateConfig, true) . ';'); $siteOwned['config/local.php']=hash_file('sha256',$site.'/config/local.php');
+    $analyticsHash = hash_file('sha256', $site . '/storage/spine-analytics/counts.sqlite');
     $updater = new Updater($site);
     check('Bootstrap ZIPs are rejected as core updates', fn() => expectError(fn() => $updater->apply($full)));
     $bad = mutateZip($release,$base.'/corrupt.zip',fn(ZipArchive $z)=>$z->addFromString('core/bootstrap.php','tampered'));
@@ -218,6 +234,7 @@ try {
     check('Update preserves site content, routes, identity, config, themes, plugins, and database', function()use($siteOwned,$site,$dbHash){foreach($siteOwned as $path=>$hash)if(hash_file('sha256',$site.'/'.$path)!==$hash)return false;return hash_file('sha256',$site.'/storage/site.sqlite')===$dbHash;});
     check('Custom site routes and title still work after core activation', fn() => (new App($site))->handle('GET','/about-us')->status === 200 && str_contains((new App($site))->handle('GET','/about-us')->body,'My independent website'));
     check('Core activation preserves declared entity definitions and records', fn() => (new App($site))->services->get(\Webspine\Contracts\Entities::class)->read('products',$retainedProduct['id']) === $retainedProduct);
+    check('Core activation preserves analytics data and configured password hash', fn() => hash_file('sha256', $site . '/storage/spine-analytics/counts.sqlite') === $analyticsHash && hash_file('sha256', $site . '/config/local.php') === $siteOwned['config/local.php'] && $analytics->report()['requests'] === 1);
     check('Updates reject the installed version and downgrade', fn()=>expectError(fn()=>$updater->apply($release),'newer'));
     check('Rollback restores deleted framework files and previous version', function()use($updater,$site,$initialVersion){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']===$initialVersion;});
     Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '$laterVersion', 'api' => 1, 'php' => '8.3.0'];\n");
