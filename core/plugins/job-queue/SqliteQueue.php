@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace Webspine\Jobs;
 
-final class SqliteQueue implements Queue, QueueMonitor {
+final class SqliteQueue implements Queue, QueueMonitor, CompletedJobRetention {
     public function __construct(private string $root) {}
     private function path(): string { return \Webspine\Files::target($this->root, 'storage/job-queue/jobs.sqlite'); }
     private function db(): \PDO {
@@ -182,8 +182,15 @@ final class SqliteQueue implements Queue, QueueMonitor {
         } finally {flock($file,LOCK_UN);fclose($file);}
     }
     public function prune(int $days = 30): int {
+        return $this->pruneTerminal($days,true);
+    }
+    public function pruneCompleted(int $days = 30): int {
+        return $this->pruneTerminal($days,false);
+    }
+    private function pruneTerminal(int $days, bool $includeFailed): int {
         if ($days < 1 || $days > 3650) throw new \InvalidArgumentException('Retention must be 1–3650 days.');
-        $stmt = $this->db()->prepare("DELETE FROM jobs WHERE id IN (SELECT id FROM jobs WHERE status IN ('completed','failed') AND completed_at<=? ORDER BY completed_at,id LIMIT 1000)");
+        $status=$includeFailed?"status IN ('completed','failed')":"status='completed'";
+        $stmt = $this->db()->prepare("DELETE FROM jobs WHERE id IN (SELECT id FROM jobs WHERE $status AND completed_at<=? ORDER BY completed_at,id LIMIT 1000)");
         $stmt->execute([time() - $days * 86400]);
         return $stmt->rowCount();
     }

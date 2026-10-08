@@ -156,4 +156,10 @@ formCheck('Overdue queue CLI warns nonzero without changing public application h
     return $r['code']===1 && !$data['ok'] && $data['warnings']===['overdue_jobs'] && $data['queue']['pending']===5
         && $public['status']===200 && !str_contains($public['body'],'oldest_due') && !str_contains($public['body'],'worker');
 });
+formCheck('CLI work prunes only expired completed payloads with shared runtime permissions',function()use($fixtureRoot){
+    fixturePhp('$db=new PDO("sqlite:".'.var_export($fixtureRoot.'/storage/job-queue/jobs.sqlite',true).');$now=time();$s=$db->prepare("INSERT INTO jobs(id,type,payload_version,payload,status,max_attempts,available_at,created_at,completed_at) VALUES(?,\'test.retention\',1,\'{}\',?,5,?,?,?)");foreach(["completed","failed"] as $status)$s->execute([bin2hex(random_bytes(16)),$status,$now-40*86400,$now-40*86400,$now-40*86400]);echo "{}";');
+    $r=queueCli('work');$result=json_decode($r['out'],true,flags:JSON_THROW_ON_ERROR);$status=queueAction();
+    return $r['code']===0 && $result['completed']===5 && $result['retention']===['days'=>30,'supported'=>true,'enabled'=>true,'pruned_completed'=>1]
+        && $status['completed']===6 && $status['failed']===1 && $status['pending']===0 && mailCount()===6;
+});
 echo "$passed passed, $failed failed ($base).\n"; exit($failed ? 1 : 0);

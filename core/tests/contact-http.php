@@ -30,13 +30,28 @@ try{
         \Webspine\Files::write($configPath,'<?php return '.var_export($config,true).';');
         $r=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','health'],$root);
         $data=json_decode($r['out'],true,flags:JSON_THROW_ON_ERROR);
-        if($r['code']!==0 || !$data['ok'] || $data['stale_after_seconds']!==3600)throw new RuntimeException('Configured health threshold ignored.');
+        if($r['code']!==1 || $data['warnings']!==['failed_jobs'] || $data['stale_after_seconds']!==3600)throw new RuntimeException('Configured health threshold ignored.');
         foreach([59,604801,'900'] as $invalid){
             $config['job_queue']['stale_after_seconds']=$invalid;\Webspine\Files::write($configPath,'<?php return '.var_export($config,true).';');
             $r=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','health'],$root);
             if($r['code']!==1 || !str_contains($r['err'],'InvalidArgumentException'))throw new RuntimeException('Invalid health threshold accepted.');
         }
         echo "PASS Private queue health honors validated configuration\n";
+        $db=new PDO('sqlite:'.$root.'/storage/job-queue/jobs.sqlite');$id=bin2hex(random_bytes(16));$old=time()-2*86400;
+        $db->prepare("INSERT INTO jobs(id,type,payload_version,payload,status,max_attempts,available_at,created_at,completed_at) VALUES(?,'test.config',1,'{}','completed',5,?,?,?)")->execute([$id,$old,$old,$old]);
+        $config['job_queue']=['retention_days'=>null];\Webspine\Files::write($configPath,'<?php return '.var_export($config,true).';');
+        $r=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','work'],$root);$data=json_decode($r['out'],true,flags:JSON_THROW_ON_ERROR);
+        if($r['code']!==0 || $data['retention']['enabled'] || $db->query('SELECT COUNT(*) FROM jobs WHERE id='.$db->quote($id))->fetchColumn()!=1)throw new RuntimeException('Disabled CLI retention deleted a job.');
+        $config['job_queue']['retention_days']=1;\Webspine\Files::write($configPath,'<?php return '.var_export($config,true).';');
+        $r=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','work'],$root);$data=json_decode($r['out'],true,flags:JSON_THROW_ON_ERROR);
+        if($r['code']!==0 || $data['retention']['pruned_completed']!==1 || $db->query('SELECT COUNT(*) FROM jobs WHERE id='.$db->quote($id))->fetchColumn()!=0)throw new RuntimeException('Configured CLI retention ignored.');
+        $heartbeatHash=hash_file('sha256',$root.'/storage/job-queue/worker.json');
+        foreach([0,3651,'30',false] as $invalid){
+            $config['job_queue']['retention_days']=$invalid;\Webspine\Files::write($configPath,'<?php return '.var_export($config,true).';');
+            $r=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','work'],$root);
+            if($r['code']!==1 || !str_contains($r['err'],'InvalidArgumentException') || hash_file('sha256',$root.'/storage/job-queue/worker.json')!==$heartbeatHash)throw new RuntimeException('Invalid CLI retention allowed worker activity.');
+        }
+        $db=null;echo "PASS CLI retention honors configured/disabled policy and rejects invalid values before work\n";
     }finally{\Webspine\Files::write($configPath,$original);}
     // The worker must obey update recovery boundaries without altering jobs.
     \Webspine\Files::write($root.'/storage/update-pending.json','{}');
@@ -50,5 +65,5 @@ try{
     if($result['code']!==0)throw new RuntimeException($result['err'].$result['out']);echo $result['out'];
     echo "Contact HTTP tests passed; captured mail only.\n";
 }catch(Throwable $e){fwrite(STDERR,$e->getMessage()."\n");$code=1;}
-finally{if(is_resource($server)){proc_terminate($server);proc_close($server);}if(is_dir($root))contactRemove($root,$source.'/storage');}
+finally{$db=null;if(is_resource($server)){proc_terminate($server);proc_close($server);}if(is_dir($root))contactRemove($root,$source.'/storage');}
 exit($code??0);

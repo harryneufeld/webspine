@@ -20,7 +20,11 @@ try {
             if(!is_int($seconds))throw new InvalidArgumentException('Configure an integer queue health threshold.');
             return \Webspine\Jobs\QueueHealth::check($queue,$seconds);
         })(),
-        'work'=>(new \Webspine\Jobs\Worker($queue,$app->services->get(\Webspine\Jobs\Handlers::class)))->run(),
+        'work'=>(static function()use($queue,$app){
+            $config=$app->config['job_queue']??[];
+            if(!is_array($config))throw new InvalidArgumentException('Configure a queue options array.');
+            return \Webspine\Jobs\QueueWork::run($queue,$app->services->get(\Webspine\Jobs\Handlers::class),$config);
+        })(),
         'retry'=>['requeued'=>$queue->retry($argv[2]??throw new InvalidArgumentException('Usage: retry <job-id>'))],
         'prune'=>['pruned'=>$queue->prune(isset($argv[2]) ? (filter_var($argv[2], FILTER_VALIDATE_INT) !== false ? (int)$argv[2] : throw new InvalidArgumentException('Usage: prune [days]')) : 30)],
         default=>throw new InvalidArgumentException('Commands: install, status, health, work, retry <job-id>, prune [days]'),
