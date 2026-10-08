@@ -9,7 +9,7 @@ final class MailDelivery implements Handler {
             && $this->app->services->has(\Webspine\Contracts\Mail::class);
     }
     public function handle(Job $job): void {
-        if ($job->version !== 1) throw new PermanentFailure('unsupported_version');
+        if (!in_array($job->version,[1,2],true)) throw new PermanentFailure('unsupported_version');
         $p=$job->payload;
         if (!is_string($p['recipient']??null) || !filter_var($p['recipient'],FILTER_VALIDATE_EMAIL)
             || !is_string($p['subject']??null) || strlen($p['subject'])>200 || preg_match('/[\r\n\x00]/',$p['subject'])
@@ -17,7 +17,8 @@ final class MailDelivery implements Handler {
             || !is_string($p['form_id']??null) || !preg_match('/^[a-z][a-z0-9-]{0,39}$/D',$p['form_id'])) throw new PermanentFailure();
         $body="Submission ID: {$job->id}\nForm: {$p['form_id']}\n\n";
         foreach ($p['fields'] as $key=>$value) {
-            if (!is_string($key) || !preg_match('/^[a-z][a-z0-9_]{0,39}$/D',$key) || !is_string($value) || strlen($value)>5000 || !preg_match('//u',$value)
+            if (!is_string($key) || !preg_match('/^[a-z][a-z0-9_]{0,39}$/D',$key) || !is_string($value)
+                || ($job->version===1 ? strlen($value)>5000 || !preg_match('//u',$value) : !FormText::safe($value,true) || FormText::units($value)>5000)
                 || !is_string($p['labels'][$key]??null) || strlen($p['labels'][$key])>120 || preg_match('/[\r\n\x00]/',$p['labels'][$key])) throw new PermanentFailure();
             $body.=$p['labels'][$key].":\n".$value."\n\n";
         }

@@ -43,38 +43,55 @@ final class ContactForm {
         } finally { session_write_close(); }
     }
     public function submit(Request $request): Response {
-        if (!$this->attempt($request->remoteAddress)) return new Response($this->copy['rate_error'],429,['Retry-After'=>'600','Cache-Control'=>'no-store']);
         $form=$request->form();$this->session();
         try {
             $state=$_SESSION['contact_forms'][$this->id]??[];$token=$form['csrf']??null;
+            [$fields,$errors]=$this->validate($form);
+            $unknown=(bool)array_diff(array_keys($form),['csrf','website',...array_keys($this->fields)]);
+            $clean=!$errors && !$unknown && is_string($form['website']??'') && ($form['website']??'')==='';
+            $fingerprint=hash('sha256',json_encode($fields,JSON_THROW_ON_ERROR));
+            $receipts=$state['receipts']??[];
+            foreach ($receipts as $key=>$receipt) if ($receipt['expires']<=time()) unset($receipts[$key]);
+            $_SESSION['contact_forms'][$this->id]['receipts']=$receipts;
+            $receipt=is_string($token)?($receipts[hash('sha256',$token)]??null):null;
+            if ($receipt && $clean && hash_equals($receipt['fingerprint'],$fingerprint)) {
+                // A receipt proves this exact submission was saved in this session.
+                $_SESSION['contact_forms'][$this->id]['saved']=true;
+                return $this->success();
+            }
+            if (!$this->attempt($request->remoteAddress)) return new Response($this->copy['rate_error'],429,['Retry-After'=>'600','Cache-Control'=>'no-store']);
             if (!is_string($token) || !is_string($state['token']??null) || ($state['expires']??0)<=time() || !hash_equals($state['token'],$token)) {
-                // Reject the submission, retire the old token and offer a fresh usable form.
+                $expired=is_string($token) && is_string($state['token']??null) && hash_equals($state['token'],$token) && ($state['expires']??0)<=time();
                 unset($_SESSION['contact_forms'][$this->id]['token'], $_SESSION['contact_forms'][$this->id]['expires']);
-                return $this->render([],[],'token_error',403);
+                return $this->render($expired?$fields:[],$expired?$errors:[],$expired?'expired':'token_error',403);
             }
             if (!is_string($form['website']??'') || ($form['website']??'')!=='') throw new HttpError(422,$this->copy['rejected']);
-            $fields=[];$errors=[];
-            foreach ($this->fields as $key=>$field) {
-                $raw=$form[$key]??'';$value=is_string($raw)?trim($raw):'';$fields[$key]=$value;
-                $min=$field['min']??0;$max=$field['max']??5000;$required=$field['required']??false;
-                $bad=!is_string($raw) || !preg_match('//u',$value) || preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/',$value) || strlen($value)>$max
-                    || ($required && $value==='') || ($value!=='' && strlen($value)<$min)
-                    || ($value!=='' && ($field['type']??'text')==='email' && !filter_var($value,FILTER_VALIDATE_EMAIL));
-                if (($field['type']??'text')!=='textarea' && preg_match('/[\r\n]/',$value)) $bad=true;
-                if ($bad && (!is_string($raw) || !preg_match('//u',$value) || strlen($value)>$max || preg_match('/[\x00-\x1f\x7f]/',$value))) $fields[$key]='';
-                if ($bad) $errors[$key]=$this->copy['field_error'];
-            }
-            if ($errors || array_diff(array_keys($form),['csrf','website',...array_keys($this->fields)])) return $this->render($fields,$errors,'invalid',422);
+            if ($errors || $unknown) return $this->render($fields,$errors,'invalid',422);
             $labels=array_map(static fn(array $field): string => $field['label'],$this->fields);
             try {
-                $this->app->services->get(Queue::class)->enqueue('contact.deliver',1,[
+                $job=$this->app->services->get(Queue::class)->enqueue('contact.deliver',2,[
                     'form_id'=>$this->id,'recipient'=>$this->config['recipient'],'subject'=>$this->config['subject']??'Contact enquiry',
                     'fields'=>$fields,'labels'=>$labels,
                 ],hash('sha256',$this->id.':'.$token));
             } catch (\Throwable $e) { error_log('Contact submission could not be queued: ' . $e::class . ' at ' . $e->getFile() . ':' . $e->getLine());return $this->render($fields,[],'unavailable',503); }
-            $_SESSION['contact_forms'][$this->id]=['saved'=>true];
-            return new Response('',303,['Location'=>$this->path(),'Cache-Control'=>'no-store']);
+            $receipts[hash('sha256',$token)]=['expires'=>time()+600,'fingerprint'=>$fingerprint,'job'=>$job];
+            $_SESSION['contact_forms'][$this->id]=['saved'=>true,'receipts'=>array_slice($receipts,-3,null,true)];
+            return $this->success();
         } finally { session_write_close(); }
+    }
+    private function success(): Response { return new Response('',303,['Location'=>$this->path(),'Cache-Control'=>'no-store']); }
+    private function validate(array $form): array {
+        $fields=[];$errors=[];
+        foreach ($this->fields as $key=>$field) {
+            $raw=$form[$key]??'';$value=is_string($raw)?trim($raw):'';
+            $safe=is_string($raw) && FormText::safe($raw,($field['type']??'text')==='textarea');
+            $fields[$key]=$safe?$value:'';
+            $length=$safe?FormText::units($value):0;
+            if (!$safe || $length>($field['max']??5000) || (($field['required']??false) && $value==='')
+                || ($value!=='' && $length<($field['min']??0))
+                || ($value!=='' && ($field['type']??'text')==='email' && !filter_var($value,FILTER_VALIDATE_EMAIL))) $errors[$key]=$this->copy['field_error'];
+        }
+        return [$fields,$errors];
     }
     private function session(): void {
         if (session_status()!==PHP_SESSION_NONE) throw new \RuntimeException('Contact form requires a separate session; integrate explicitly with an existing session.');
@@ -85,7 +102,7 @@ final class ContactForm {
         if (!session_start(['save_path'=>$directory,'use_strict_mode'=>1,'use_only_cookies'=>1,'cookie_httponly'=>1,'cookie_samesite'=>'Lax','cookie_secure'=>$this->config['secure_cookie']??true,'cookie_path'=>'/','gc_maxlifetime'=>1800,'gc_probability'=>1,'gc_divisor'=>100])) throw new \RuntimeException('Cannot start form session.');
     }
     private function render(array $values,array $errors,string $notice,int $status=200): Response {
-        if (!isset($_SESSION['contact_forms'][$this->id]['token']) || ($_SESSION['contact_forms'][$this->id]['expires']??0)<time()) {
+        if (!isset($_SESSION['contact_forms'][$this->id]['token']) || ($_SESSION['contact_forms'][$this->id]['expires']??0)<=time()) {
             $_SESSION['contact_forms'][$this->id]['token']=bin2hex(random_bytes(32));$_SESSION['contact_forms'][$this->id]['expires']=time()+600;
         }
         $data=['title'=>$this->copy['title'],'formPath'=>$this->path(),'definitions'=>$this->fields,'fields'=>$values,'errors'=>$errors,'copy'=>$this->copy,
