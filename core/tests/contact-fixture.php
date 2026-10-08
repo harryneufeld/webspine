@@ -34,6 +34,10 @@ return static function(string $root,string $path='/contact-example'): void {
         $bad=$config;$bad['contact_form']['path']=$badPath;
         try{new \Webspine\App($root,$bad);throw new LogicException('Invalid form path accepted.');}catch(InvalidArgumentException){}
     }
+    foreach([['max_attempts'=>0],['max_attempts'=>101],['max_attempts'=>'30'],['max_attempts'=>null],['max_attempts'=>true],['max_attempt'=>30],'invalid'] as $retry){
+        $bad=$config;$bad['contact_form']['retry']=$retry;
+        try{new \Webspine\App($root,$bad);throw new LogicException('Invalid retry policy accepted.');}catch(InvalidArgumentException){}
+    }
     if($app->router->dispatch('PUT','/contact-example')->status!==405)throw new RuntimeException('Default route changed.');
     if(is_file($root.'/storage/job-queue/jobs.sqlite'))throw new RuntimeException('Registration must not install queue storage.');
     $app->services->get(\Webspine\Jobs\Queue::class)->install();

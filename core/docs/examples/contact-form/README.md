@@ -19,6 +19,7 @@ set a fixed recipient:
 'contact_form' => [
     'recipient' => 'you@example.com',
     'path' => '/contact-example', // Optional: this remains the default.
+    'retry' => ['max_attempts' => 30], // Optional: this is the default.
 ],
 ```
 
@@ -57,6 +58,29 @@ transport runs outside the request and outside the queue's claim transaction.
 Retries are at least once: a crash after SMTP acceptance may produce duplicates.
 The submission ID is included in mail to identify repeats. Exactly-once SMTP
 and atomic transactions with a separate domain database are not provided.
+
+## Retry window
+
+New contact jobs default to 30 total delivery attempts. Configure
+`contact_form.retry.max_attempts` as an integer 1–100; unknown retry keys and
+invalid values fail at registration before any submission is saved. The bundled
+queue waits 1, 2, 4, 8, 16 and 32 minutes between initial failures, then caps
+each further wait at one hour. With 30 attempts, the final attempt is scheduled
+24 hours 3 minutes after the first attempt, excluding delivery time and cron
+delays. Five attempts span only 15 minutes. One attempt means no automatic retry.
+Paused or unavailable handlers consume no attempts.
+
+The selected limit is stored in each job's existing envelope. Configuration
+changes and core updates do not rewrite old jobs; an existing five-attempt job
+retains five attempts, including after an explicit retry. Dedupe returns the
+original job and its original limit. No schema or payload-version change is
+needed. The updated example requires bundled `job-queue` 0.3.0 or newer; apply a
+compatible core release before adopting the example files.
+
+Retries remain finite and do not guarantee delivery. Permanent payload failures
+stop immediately. Continue monitoring the queue and review/retry terminal
+failures with the private CLI; a longer retry window does not provide
+exactly-once SMTP delivery.
 
 ## Fields, errors and sessions
 

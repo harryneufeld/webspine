@@ -101,6 +101,9 @@ formCheck('Queue failure preserves input and leaves the token eligible for a lat
 });
 $valid['message']=str_repeat('ä',5000);
 formCheck('Valid submission is durable before delivery and uses the configured 303 path',function()use($headers,$valid){ $r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers); return $r['status']===303 && $r['headers']['location']===CONTACT_PATH && mailCount()===0 && queueAction()['pending']===1; });
+formCheck('HTTP contact submission saves the default 30-attempt retry envelope',function()use($fixtureRoot){
+    return fixturePhp('$db=new PDO("sqlite:".'.var_export($fixtureRoot.'/storage/job-queue/jobs.sqlite',true).');echo json_encode([(int)$db->query("SELECT max_attempts FROM jobs WHERE status=\'pending\'")->fetchColumn()]);')===[30];
+});
 formCheck('Paused worker consumes no delivery attempts',function(){return queueAction(true,true)['completed']===0 && queueAction()['pending']===1 && mailCount()===0;});
 formCheck('Captured background delivery accepts 5000 umlauts and preserves recipient and subject',function()use($valid){ $result=queueAction(true);$messages=json_decode(contactRequest('/hosting-mail')['body'],true)['messages']; return $result['completed']===1 && count($messages)===1 && $messages[0]['to']==='owner@example.test' && $messages[0]['subject']==='Website contact' && str_contains($messages[0]['body'],'Submission ID:') && str_contains($messages[0]['body'],$valid['message']); });
 formCheck('Repeated worker invocation does not resend completed mail',fn()=>queueAction(true)['completed']===0 && mailCount()===1);
