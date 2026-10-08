@@ -40,7 +40,11 @@ php core/plugins/job-queue/cli.php work
 ```
 
 Configure cron to invoke `work`, for example every minute using the full project
-path and your PHP executable. Each invocation processes at most ten jobs. There
+path and your PHP executable. You can also use the unified command
+`php core/bin/console.php job-queue:work`; its `job-queue:install`,
+`job-queue:status` and `job-queue:health` counterparts use the same queue handlers.
+See [plugin command discovery and cron](../../console.md).
+Each invocation processes at most ten jobs. There
 is no web worker endpoint and no automatic worker on form submission. See
 [queue operation and guarantees](../../queue.md). `delivery_enabled => false`
 pauses mail jobs without consuming attempts; delivery is otherwise ready when a

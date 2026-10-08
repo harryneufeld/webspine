@@ -127,7 +127,7 @@ settings/pages, recorded installation schema, theme selection/layouts/assets,
 declarative entities with validated SQLite CRUD and explicit installation,
 optional [SMTP with validated Reply-To](core/docs/mail.md), bounded request context and opt-in POST routes, a copyable
 [protected contact form](core/docs/examples/contact-form/README.md), example feature plugin,
-CLI tools, reversible local core updates,
+[CLI tools with plugin commands](core/docs/console.md), reversible local core updates,
 and dependency-free integration checks including storage substitution.
 
 Rendering health probes fail on reported PHP warnings/notices as well as thrown

@@ -5,6 +5,7 @@ $root = getenv('WEBSPINE_SITE_ROOT') ?: dirname(__DIR__, 2);
 $core = getenv('WEBSPINE_CORE_ROOT') ?: $root . '/core';
 $command = $argv[1] ?? 'help';
 $lock = null;
+$exitCode = 0;
 try {
     if (!in_array($command, ['update', 'rollback', 'recover'], true) && getenv('WEBSPINE_UPDATE_PROBE') !== '1') {
         $lock = fopen($root . '/storage/update.lock', 'c+');
@@ -39,11 +40,21 @@ try {
             echo "Active theme: $id\n";
         } else {
             $health = $app->health(); echo json_encode($health, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
-            if (!$health['ok']) exit(1);
+            if (!$health['ok']) $exitCode = 1;
         }
     } else {
-        if ($command !== 'help') throw new InvalidArgumentException('Unknown command: ' . $command);
-        echo "webspine CLI\n\ninstall                 Explicit, idempotent installation\ntheme <id>              Switch active theme\nentities:install        Explicitly install declared entity storage\nhealth                  Check services and rendering\npackage [--full]        Create core release or bootstrap ZIP\nupdate <archive>        Apply a trusted local core release\nrollback                Restore the previous core\nrecover                 Restore after interrupted activation\n";
+        $commands = new \Webspine\ConsoleCommands();
+        $args = array_slice($argv, 2);
+        if ($command === 'help' && (count($args) > 1)) throw new InvalidArgumentException('Usage: help [command|--core]');
+        if ($command === 'help' && ($args[0] ?? null) === '--core') {
+            echo $commands->help();
+        } else {
+            $app = new \Webspine\App($root);
+            // Discovery never runs for web requests or the core maintenance branches above.
+            $app->hooks->fire('cli.register', $commands);
+            if ($command === 'help') echo $commands->help($args[0] ?? null);
+            else $exitCode = $commands->run($command, $args);
+        }
     }
 } catch (Throwable $e) {
     // Native Throwable diagnostics also work when configuration/bootstrap fails.
@@ -52,6 +63,7 @@ try {
     $prefix = rtrim(str_replace('\\', '/', $root), '/') . '/';
     if (str_starts_with($file, $prefix)) $file = substr($file, strlen($prefix));
     fwrite(STDERR, 'webspine: ' . $e->getMessage() . ' [' . $file . ', line ' . $cause->getLine() . "]\n");
-    exit(1);
+    $exitCode = 1;
 }
 finally { if (is_resource($lock)) { flock($lock, LOCK_UN); fclose($lock); } }
+exit($exitCode);
