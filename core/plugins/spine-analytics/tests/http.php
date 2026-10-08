@@ -42,7 +42,9 @@ try {
     $bootstrap=var_export(dirname(__DIR__,4).'/core/bootstrap.php',true);
     file_put_contents($root.'/public/router.php','<?php require '.$bootstrap.'; $request=\\Webspine\\Request::fromGlobals(); $app=new \\Webspine\\App(dirname(__DIR__)); $app->handle($request)->send($request->method==="HEAD");');
     $socket=stream_socket_server('tcp://127.0.0.1:0',$errno,$error);if(!$socket)throw new RuntimeException($error);$address=stream_socket_get_name($socket,false);fclose($socket);
-    $server=proc_open([PHP_BINARY,'-c',php_ini_loaded_file()?:'','-S',$address,'-t',$root.'/public',$root.'/public/router.php'],[0=>['pipe','r'],1=>['file',$root.'/server.log','a'],2=>['file',$root.'/server.log','a']],$pipes,$root);fclose($pipes[0]);
+    // This fixture edits configuration between requests. Do not inherit a
+    // production OPcache policy that deliberately caches PHP until worker reload.
+    $server=proc_open([PHP_BINARY,'-c',php_ini_loaded_file()?:'','-d','opcache.enable=0','-S',$address,'-t',$root.'/public',$root.'/public/router.php'],[0=>['pipe','r'],1=>['file',$root.'/server.log','a'],2=>['file',$root.'/server.log','a']],$pipes,$root);fclose($pipes[0]);
     for($i=0;$i<100;$i++){$probe=@stream_socket_client('tcp://'.$address,$errno,$error,.05);if($probe){fclose($probe);break;}usleep(50000);}
     $fetch=static function(string $path,array $headers=[])use($address):array {
         $context=stream_context_create(['http'=>['ignore_errors'=>true,'timeout'=>5,'header'=>implode("\r\n",$headers)]]);

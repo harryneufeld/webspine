@@ -209,6 +209,9 @@ The placeholder does not authorize access. Never commit the private config or
 pass a password in command arguments. To rotate, generate a new hash and replace
 the configured value; subsequent requests require the new password. The existing
 core updater preserves `config/local.php` and all aggregate storage.
+If OPcache timestamp validation is disabled, reload PHP workers after changing
+private configuration, including password conversion or rotation, so requests
+use the new configuration.
 
 Browsers may remember Basic credentials for their session; there is no in-page
 logout or multi-user account system. CLI report commands remain available to
