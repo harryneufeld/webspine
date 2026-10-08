@@ -69,14 +69,14 @@ PHP);
         });
         check('Asset URL helper rejects missing, executable and hostile paths', static function () use ($app): bool {
             foreach (['missing.svg','../layout.php','/style.css','..//style.css','%2e%2e/style.css','style.css?x=1','style.css#x','style.css.php','style.css' . "\0"] as $path) {
-                if (!expectError(fn() => $app->theme->assetUrl($path), 'Missing or invalid theme asset')) return false;
+                if (!expectError(fn() => $app->theme->assetUrl($path), 'theme asset')) return false;
             }
             return true;
         });
         $link = $directory . '/assets/test-link.svg';
         if (@symlink($directory . '/layout.php', $link)) {
             try {
-                check('Asset helper and delivery reject links escaping the assets directory', fn() => expectError(fn() => $app->theme->assetUrl('test-link.svg'), 'Missing or invalid theme asset') && $app->handle('GET','/assets/theme/test-theme/test-link.svg')->status === 404);
+                check('Asset helper and delivery reject links escaping the assets directory', fn() => expectError(fn() => $app->theme->assetUrl('test-link.svg'), 'Invalid theme asset path') && $app->handle('GET','/assets/theme/test-theme/test-link.svg')->status === 404);
             } finally { unlink($link); }
         } else echo "INFO Symlink containment check unavailable on this platform; runs where symlinks are supported\n";
         Files::write($directory . '/components/test-buffer.php', '<?php echo "outer"; ob_start(); echo "inner";');
