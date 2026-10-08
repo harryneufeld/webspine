@@ -5,6 +5,8 @@ final class Worker {
     public function __construct(private Queue $queue, private Handlers $handlers) {}
     public function run(int $limit = 10, int $leaseSeconds = 300): array {
         if ($limit < 1 || $limit > 1000) throw new \InvalidArgumentException('Invalid worker batch size.');
+        if ($leaseSeconds < 1 || $leaseSeconds > 86400) throw new \InvalidArgumentException('Invalid lease duration.');
+        $run=$this->queue instanceof QueueMonitor?$this->queue->workerStarted():null;
         $result = ['completed'=>0,'retried'=>0,'failed'=>0,'lost_claims'=>0];
         for ($i=0;$i<$limit;$i++) {
             $job = $this->queue->claim($this->handlers->available(),$leaseSeconds);
@@ -21,6 +23,7 @@ final class Worker {
                 if ($this->queue->fail($job,'handler_failed')) $result[$job->attempt >= $job->maxAttempts?'failed':'retried']++; else $result['lost_claims']++;
             }
         }
+        if ($run!==null) $this->queue->workerFinished($run);
         return $result;
     }
 }
