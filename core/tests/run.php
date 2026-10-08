@@ -83,6 +83,7 @@ try {
     check('Missing components fail explicitly', fn() => expectError(fn() => $app->theme->component('missing'), 'Missing theme component'));
     (require __DIR__ . '/templates.php')($app, $site);
     (require __DIR__ . '/components.php')($app, $site);
+    (require __DIR__ . '/health.php')($app, $site);
     (require __DIR__ . '/requests.php')($app);
     check('Site-defined route renders through its theme', fn() => str_contains($app->handle('GET','/docs')->body, 'Fixture documentation'));
     check('Feature route registers through action hook', fn() => str_contains($app->handle('GET','/field-notes')->body, 'app.ready'));
@@ -160,6 +161,11 @@ try {
     $badProviderRelease = Release::package($candidate);
     check('Candidate health probes execute staged system providers', fn() => expectError(fn() => (new Updater($site))->apply($badProviderRelease), 'Candidate provider rejected') && (require $site . '/core/version.php')['version'] === $initialVersion);
     Files::write($candidate . '/core/plugins/sqlite/plugin.php', $providerFile);
+    $candidateSiteFile = file_get_contents($candidate . '/core/src/Site.php');
+    Files::write($candidate . '/core/src/Site.php', str_replace('foreach (array_keys($this->pages) as $id)', 'trigger_error("candidate-rendering-warning", E_USER_WARNING); foreach (array_keys($this->pages) as $id)', $candidateSiteFile));
+    $warningRelease = Release::package($candidate);
+    check('Candidate rendering warnings reject an update before activation', fn() => expectError(fn() => (new Updater($site))->apply($warningRelease), 'Candidate health check failed') && (require $site . '/core/version.php')['version'] === $initialVersion && !is_file($site . '/storage/update-pending.json'));
+    Files::write($candidate . '/core/src/Site.php', $candidateSiteFile);
     $release = Release::package($candidate);
     check('Core release excludes every site-owned directory', function () use ($release) {
         $zip = new ZipArchive(); $zip->open($release); $ok = true;
@@ -213,12 +219,11 @@ try {
     check('Updates reject the installed version and downgrade', fn()=>expectError(fn()=>$updater->apply($release),'newer'));
     check('Rollback restores deleted framework files and previous version', function()use($updater,$site,$initialVersion){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']===$initialVersion;});
     Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '$laterVersion', 'api' => 1, 'php' => '8.3.0'];\n");
-    $appFile=file_get_contents($candidate.'/core/src/App.php');
-    Files::write($candidate.'/core/src/App.php',str_replace('$status = $this->services->get(Storage::class)->health();',"if (is_file(\$this->root . '/core/activation-failure')) throw new \\RuntimeException('Injected activation failure');\n            ".'$status = $this->services->get(Storage::class)->health();',$appFile));
+    Files::write($candidate.'/core/src/Site.php',str_replace('foreach (array_keys($this->pages) as $id)', 'if (is_file($this->app->root . "/core/activation-failure")) trigger_error("activation-rendering-warning", E_USER_WARNING); foreach (array_keys($this->pages) as $id)', $candidateSiteFile));
     Files::write($candidate.'/core/activation-failure','Only visible after activation');
     $failureRelease=Release::package($candidate);
-    check('Post-activation health failure automatically restores the old core', fn()=>expectError(fn()=>$updater->apply($failureRelease),'previous core restored') && (require $site.'/core/version.php')['version']===$initialVersion && !is_file($site.'/core/activation-failure') && !is_file($site.'/storage/update-pending.json'));
-    Files::write($candidate.'/core/src/App.php',$appFile); unlink($candidate.'/core/activation-failure');
+    check('Post-activation rendering warnings automatically restore the old core', fn()=>expectError(fn()=>$updater->apply($failureRelease),'previous core restored') && (require $site.'/core/version.php')['version']===$initialVersion && !is_file($site.'/core/activation-failure') && !is_file($site.'/storage/update-pending.json'));
+    Files::write($candidate.'/core/src/Site.php',$candidateSiteFile); unlink($candidate.'/core/activation-failure');
     $good=Release::package($candidate);$updater->apply($good);
     $journal=json_decode(file_get_contents($site.'/storage/update-last.json'),true);
     Files::json($site.'/storage/update-pending.json',$journal);

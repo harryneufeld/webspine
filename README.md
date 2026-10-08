@@ -116,6 +116,11 @@ optional SMTP, bounded request context and opt-in POST routes, a copyable
 CLI tools, reversible local core updates,
 and dependency-free integration checks including storage substitution.
 
+Rendering health probes fail on reported PHP warnings/notices as well as thrown
+exceptions. Public health exposes generic status only; local CLI diagnostics
+include the source location. Suppressed diagnostics and unvisited asset URLs
+remain outside the probe. See [rendering health probes](core/docs/site.md#rendering-health-probes).
+
 Planned: MariaDB/PostgreSQL adapters and data transfer; separate extension
 updates; signed online updates, potentially operated by AI; content/admin editing,
 authentication, a general form builder, and uploads.

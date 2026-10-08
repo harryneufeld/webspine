@@ -155,6 +155,31 @@ that supplied its own local `$ui` may rename that variable to use the helper.
 
 ## Safe framework updates
 
+### Rendering health probes
+
+CLI health, public `/health`, theme selection and updater health probes render the
+pages configured in `site/pages.php`. During that probe, reported PHP warnings
+and notices (`E_WARNING`, `E_NOTICE`, `E_USER_WARNING`, `E_USER_NOTICE`) become
+exceptions and fail health. For example, a raw template `file_get_contents()` or
+`hash_file()` of a missing asset can no longer leave a successful rendering probe.
+Local health includes the diagnostic and source location; public health returns
+only `{"status":"unavailable"}` with HTTP 503. CLI health exits unsuccessfully.
+
+The temporary handler is restored on success or failure, and renderer-owned output
+buffers are cleaned up. `@` suppression and `error_reporting()` exclusions remain
+effective; unrelated severities such as deprecations retain the caller's handler
+behavior. Ordinary page requests do not install this probe handler. Treat that
+boundary deliberately: suppressing a warning in a template also hides it from
+the rendering probe.
+
+Health does not crawl browser asset URLs or automatically test every plugin route,
+mail service or business workflow. Use explicit `assetUrl()` calls for validated
+asset references and site tests for other routes/behaviors. A failed candidate
+probe blocks updates; a failed post-activation probe restores the previous core;
+a failed theme-selection probe restores the previous selection.
+
+### Applying updates
+
 1. Start a new website from a full bootstrap ZIP.
 2. Customize and version your own site/ and instructions.
 3. Apply trusted newer core-release ZIPs through `php core/bin/console.php update`.

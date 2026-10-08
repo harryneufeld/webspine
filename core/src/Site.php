@@ -47,6 +47,19 @@ final class Site {
     }
 
     public function checkRendering(): void {
-        foreach (array_keys($this->pages) as $id) $this->render($id);
+        // Only rendering probes turn reported warnings/notices into health failures.
+        // Respect @/error_reporting(), and preserve unrelated handler behavior.
+        $diagnostics = E_WARNING | E_NOTICE | E_USER_WARNING | E_USER_NOTICE;
+        $previous = null;
+        $previous = set_error_handler(static function (int $severity, string $message, string $file, int $line) use (&$previous, $diagnostics) {
+            if ($severity & $diagnostics) {
+                if (!(error_reporting() & $severity)) return false;
+                throw new \ErrorException('Rendering diagnostic: ' . $message . ' in ' . $file . ':' . $line, 0, $severity, $file, $line);
+            }
+            return $previous !== null ? $previous($severity, $message, $file, $line) : false;
+        });
+        try {
+            foreach (array_keys($this->pages) as $id) $this->render($id);
+        } finally { restore_error_handler(); }
     }
 }
