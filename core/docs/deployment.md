@@ -91,6 +91,12 @@ these defaults.
 
 ## Updates and backups
 
+If using the [queued contact example](examples/contact-form/README.md), configure
+its explicit queue installation and cron worker. PHP and cron must share the
+private storage group/ACL; queue writers also need draining or consistent SQLite
+backup before a full-site archive. Review [queue retention and guarantees](queue.md)
+and test captured delivery before connecting a real mail provider.
+
 Test on a local clone first. Before updating, drain/stop PHP workers and other
 SQLite writers; create and verify a private full-site backup including code,
 `public/`, `site/`, config, data, and root files. Exclude the archive destination.
