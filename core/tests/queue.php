@@ -102,6 +102,6 @@ try {
     echo "Queue tests passed; no network or SMTP used.\n";
 } finally {
     $queue=null;$worker=null;
-    foreach (['jobs.sqlite','jobs.sqlite-wal','jobs.sqlite-shm','jobs.sqlite-journal'] as $name) { $p=$root.'/storage/job-queue/'.$name;if(is_file($p))unlink($p); }
+    foreach (['jobs.sqlite','jobs.sqlite-wal','jobs.sqlite-shm','jobs.sqlite-journal','worker.json'] as $name) { $p=$root.'/storage/job-queue/'.$name;if(is_file($p))unlink($p); }
     rmdir($root.'/storage/job-queue');rmdir($root.'/storage');rmdir($root);
 }

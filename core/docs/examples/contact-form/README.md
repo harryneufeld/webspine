@@ -44,6 +44,12 @@ is no web worker endpoint and no automatic worker on form submission. See
 [queue operation and guarantees](../../queue.md). `delivery_enabled => false`
 pauses mail jobs without consuming attempts; delivery is otherwise ready when a
 Mail provider is configured. A missing provider also leaves jobs untouched.
+Schedule private queue monitoring as well: `php core/plugins/job-queue/cli.php
+health` reports overdue/failed jobs and worker activity, with a nonzero exit
+status when attention is needed. It defaults to a 15-minute overdue threshold;
+see the queue guide for configuration and warning categories. Saved inquiries
+still require an operational worker and mail provider; a running cron alone
+does not prove delivery. Keep diagnostics private and use external monitoring.
 
 A successful POST queues a message and redirects with 303. Confirmation says
 **saved for delivery**, rather than claiming that an email was delivered. Mail

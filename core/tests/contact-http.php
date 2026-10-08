@@ -24,6 +24,20 @@ try{
     if(!$ready)throw new RuntimeException('Contact fixture server did not start.');
     $result=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',__DIR__.'/hosting/form-check.php','http://'.$address,'/inquiry',$root],$root);
     echo $result['out'];if($result['code']!==0)throw new RuntimeException($result['err']);
+    $configPath=$root.'/config/local.php';$original=file_get_contents($configPath);
+    try{
+        $config=require $configPath;$config['job_queue']=['stale_after_seconds'=>3600];
+        \Webspine\Files::write($configPath,'<?php return '.var_export($config,true).';');
+        $r=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','health'],$root);
+        $data=json_decode($r['out'],true,flags:JSON_THROW_ON_ERROR);
+        if($r['code']!==0 || !$data['ok'] || $data['stale_after_seconds']!==3600)throw new RuntimeException('Configured health threshold ignored.');
+        foreach([59,604801,'900'] as $invalid){
+            $config['job_queue']['stale_after_seconds']=$invalid;\Webspine\Files::write($configPath,'<?php return '.var_export($config,true).';');
+            $r=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','health'],$root);
+            if($r['code']!==1 || !str_contains($r['err'],'InvalidArgumentException'))throw new RuntimeException('Invalid health threshold accepted.');
+        }
+        echo "PASS Private queue health honors validated configuration\n";
+    }finally{\Webspine\Files::write($configPath,$original);}
     // The worker must obey update recovery boundaries without altering jobs.
     \Webspine\Files::write($root.'/storage/update-pending.json','{}');
     $result=contactProcess([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$root.'/core/plugins/job-queue/cli.php','work'],$root);

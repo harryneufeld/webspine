@@ -98,6 +98,12 @@ try {
         if(proc_close($p)!==0)throw new RuntimeException($err.$out);
         return str_contains($out,'Contact HTTP tests passed');
     });
+    check('Private queue monitoring and concurrent worker heartbeats pass in an isolated process', static function()use($source):bool{
+        $p=proc_open([PHP_BINARY,'-c',php_ini_loaded_file()?:'', $source.'/core/tests/queue-monitoring.php'],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+        fclose($pipes[0]);$out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+        if(proc_close($p)!==0)throw new RuntimeException($err.$out);
+        return str_contains($out,'Queue monitoring tests passed');
+    });
     (require __DIR__ . '/requests.php')($app);
     foreach (['run', 'headers', 'integration', 'access', 'config', 'http'] as $analyticsTest) {
         check('Bundled analytics: ' . $analyticsTest, function () use ($source, $analyticsTest): bool {
@@ -216,6 +222,8 @@ try {
     require_once $site.'/core/plugins/job-queue/bootstrap.php';
     $persistedQueue=new \Webspine\Jobs\SqliteQueue($site);$persistedQueue->install();
     $persistedJob=$persistedQueue->enqueue('test.preserved',1,['message'=>'Keep this pending submission'],'preserved');
+    $persistedRun=$persistedQueue->workerStarted();$persistedQueue->workerFinished($persistedRun);
+    $heartbeatHash=hash_file('sha256',$site.'/storage/job-queue/worker.json');
     $queueHash=hash_file('sha256',$site.'/storage/job-queue/jobs.sqlite');
     $siteOwned = [];
     foreach (['AGENTS.md','site/themes/test-theme/home.php','site/plugins/field-notes/plugin.php','config/example.php','site/meta.php','site/pages.php','site/routes.php','site/install.php','site/content/home.php','site/content/docs.php','site/content/layout.php'] as $p) $siteOwned[$p]=hash_file('sha256',$site.'/'.$p);
@@ -250,11 +258,11 @@ try {
     check('Update preserves site content, routes, identity, config, themes, plugins, and database', function()use($siteOwned,$site,$dbHash){foreach($siteOwned as $path=>$hash)if(hash_file('sha256',$site.'/'.$path)!==$hash)return false;return hash_file('sha256',$site.'/storage/site.sqlite')===$dbHash;});
     check('Custom site routes and title still work after core activation', fn() => (new App($site))->handle('GET','/about-us')->status === 200 && str_contains((new App($site))->handle('GET','/about-us')->body,'My independent website'));
     check('Core activation preserves declared entity definitions and records', fn() => (new App($site))->services->get(\Webspine\Contracts\Entities::class)->read('products',$retainedProduct['id']) === $retainedProduct);
-    check('Core activation preserves pending queue data without installing or migrating it', fn() => hash_file('sha256',$site.'/storage/job-queue/jobs.sqlite')===$queueHash && $persistedQueue->status()['pending']===1);
+    check('Core activation preserves pending queue data and worker history without installation or migration', fn() => hash_file('sha256',$site.'/storage/job-queue/jobs.sqlite')===$queueHash && hash_file('sha256',$site.'/storage/job-queue/worker.json')===$heartbeatHash && $persistedQueue->status()['pending']===1);
     check('Core activation preserves analytics data and configured password hash', fn() => hash_file('sha256', $site . '/storage/spine-analytics/counts.sqlite') === $analyticsHash && hash_file('sha256', $site . '/config/local.php') === $siteOwned['config/local.php'] && $analytics->report()['requests'] === 1);
     check('Updates reject the installed version and downgrade', fn()=>expectError(fn()=>$updater->apply($release),'newer'));
     check('Rollback restores deleted framework files and previous version', function()use($updater,$site,$initialVersion){$updater->rollback();return is_file($site.'/core/stale.php')&&(require $site.'/core/version.php')['version']===$initialVersion;});
-    check('Rollback retains the saved queue job and dedupe history', fn() => $persistedQueue->enqueue('test.preserved',1,['message'=>'Keep this pending submission'],'preserved')===$persistedJob);
+    check('Rollback retains the saved queue job, dedupe and worker history', fn() => $persistedQueue->enqueue('test.preserved',1,['message'=>'Keep this pending submission'],'preserved')===$persistedJob && hash_file('sha256',$site.'/storage/job-queue/worker.json')===$heartbeatHash);
     Files::write($candidate.'/core/version.php',"<?php\nreturn ['version' => '$laterVersion', 'api' => 1, 'php' => '8.3.0'];\n");
     Files::write($candidate.'/core/src/Site.php',str_replace('foreach (array_keys($this->pages) as $id)', 'if (is_file($this->app->root . "/core/activation-failure")) trigger_error("activation-rendering-warning", E_USER_WARNING); foreach (array_keys($this->pages) as $id)', $candidateSiteFile));
     Files::write($candidate.'/core/activation-failure','Only visible after activation');

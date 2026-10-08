@@ -36,6 +36,12 @@ function queueAction(bool $work=false, bool $paused=false): array {
         .($paused?'$config["contact_form"]["delivery_enabled"]=false;':'').'$app=new \\Webspine\\App('.$root.',$config);'
         .'echo json_encode('.($work?'(new \\Webspine\\Jobs\\Worker($app->services->get(\\Webspine\\Jobs\\Queue::class),$app->services->get(\\Webspine\\Jobs\\Handlers::class)))->run()':'$app->services->get(\\Webspine\\Jobs\\Queue::class)->status()').');');
 }
+function queueCli(string $command): array {
+    global $fixtureRoot;
+    $p=proc_open([PHP_BINARY,'-c',php_ini_loaded_file()?:'',$fixtureRoot.'/core/plugins/job-queue/cli.php',$command],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+    fclose($pipes[0]);$out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+    return ['code'=>proc_close($p),'out'=>$out,'err'=>$err];
+}
 function refreshFormToken(array $headers): string {
     $r=contactRequest(CONTACT_PATH,'GET','',['Cookie'=>$headers['Cookie']]);
     preg_match('/name="csrf" value="([a-f0-9]{64})"/',$r['body'],$m);
@@ -135,5 +141,16 @@ formCheck('Receipt history retains only the last three successful tokens',functi
     $old=contactRequest(CONTACT_PATH,'POST',http_build_query($first),$headers);
     $recent=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);
     return $old['status']===403 && $recent['status']===303 && queueAction()['pending']===5 && mailCount()===1;
+});
+formCheck('Private queue CLI reports worker activity and fresh pending jobs are healthy',function(){
+    $status=queueCli('status');$health=queueCli('health');$data=json_decode($status['out'],true,flags:JSON_THROW_ON_ERROR);$result=json_decode($health['out'],true,flags:JSON_THROW_ON_ERROR);
+    return $status['code']===0 && $health['code']===0 && $result['ok'] && $data['pending']===5 && $data['latest_worker_run_finished']===true
+        && is_int($data['last_worker_started_at']) && !str_contains($status['out'],'visitor@example.test') && !str_contains($status['out'],'Receipt history message');
+});
+formCheck('Overdue queue CLI warns nonzero without changing public application health',function()use($fixtureRoot){
+    fixturePhp('$db=new PDO("sqlite:".'.var_export($fixtureRoot.'/storage/job-queue/jobs.sqlite',true).');$db->exec("UPDATE jobs SET available_at=".(time()-1000)." WHERE status=\'pending\'");echo "{}";');
+    $r=queueCli('health');$data=json_decode($r['out'],true,flags:JSON_THROW_ON_ERROR);$public=contactRequest('/health');
+    return $r['code']===1 && !$data['ok'] && $data['warnings']===['overdue_jobs'] && $data['queue']['pending']===5
+        && $public['status']===200 && !str_contains($public['body'],'oldest_due') && !str_contains($public['body'],'worker');
 });
 echo "$passed passed, $failed failed ($base).\n"; exit($failed ? 1 : 0);

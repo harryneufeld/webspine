@@ -9,6 +9,7 @@ Registration defines services without creating storage or installing a schema.
 ```sh
 php core/plugins/job-queue/cli.php install
 php core/plugins/job-queue/cli.php status
+php core/plugins/job-queue/cli.php health
 php core/plugins/job-queue/cli.php work
 php core/plugins/job-queue/cli.php retry <job-id>
 php core/plugins/job-queue/cli.php prune 30
@@ -22,6 +23,71 @@ restart policy belong to the operator. Missing/paused handlers consume no jobs
 or attempts. Unexpected handler failures record a safe category and log job ID,
 exception class and source location, without exception text or payload data.
 CLI failures exit nonzero with private class/file/line context.
+
+## Private monitoring
+
+`status` retains the four top-level job counts and adds these SQLite diagnostics:
+
+| Field | Meaning |
+| --- | --- |
+| `oldest_pending_age_seconds` | Age since creation of the oldest pending job, including scheduled work. |
+| `oldest_due_age_seconds` | Time since the oldest pending job became due; future schedules/retries are excluded. |
+| `expired_leases` | Processing jobs whose lease has expired; monitoring does not reclaim them. |
+| `last_worker_started_at` | Most recent Worker invocation start, as a Unix timestamp. |
+| `last_worker_finished_at` | Most recent normally returned Worker invocation finish, as a Unix timestamp. |
+| `last_worker_age_seconds` | Time since the most recent invocation started. |
+| `latest_worker_run_finished` | Whether that most recently started invocation returned normally. |
+
+Ages are nonnegative. Missing jobs or worker history use `null`, not an invented
+zero timestamp. Counts cover every type, including paused or unregistered types.
+Snapshots are observational: job counts and heartbeat data are read separately
+and can change while workers run. No submitted text, recipients, job IDs, dedupe
+keys or exception messages are included.
+
+`health` returns JSON with `ok`, `warnings`, `stale_after_seconds` and `queue`.
+It exits 0 when healthy, 1 when attention is needed. Configuration, storage or
+runtime failures also exit nonzero, with private diagnostics on stderr; callers
+must check the exit status rather than assuming every invocation produces JSON.
+The default overdue threshold is 900 seconds. Configure an integer 60–604800:
+
+```php
+'job_queue' => ['stale_after_seconds' => 900],
+```
+
+Stable warning categories are `failed_jobs`, `expired_leases`, `overdue_jobs`,
+`worker_missing`, `worker_stale`, `worker_run_incomplete` and
+`monitor_unavailable`. Missing/stale worker warnings require overdue pending
+work; an idle empty queue does not require a recently run cron. An unfinished
+latest invocation warns after the threshold even if the queue is empty. A
+finished cron with overdue jobs still warns: inspect paused/missing handlers,
+provider configuration, batch capacity and private worker logs. Deliberate pauses
+may warrant temporarily adjusting monitoring policy, not deleting queued jobs.
+
+Schedule both `work` and a private monitoring invocation using absolute paths
+and the configured PHP executable. Have your external monitor capture `health`
+JSON/exit status and alert an operator; avoid relying on the failing mail provider
+to send its own failure notice. Retry reviewed failed jobs explicitly. Public
+`/health` and normal application health do not expose queue data or become
+unavailable solely because delivery is delayed.
+
+Workers write a locked, bounded `storage/job-queue/worker.json` sidecar using the
+queue's shared group and a private 0660 creation mode on POSIX. Empty and paused
+runs also record activity. Overlapping runs use distinct IDs: an older finish
+cannot mark the newest start finished. Only the latest start and finish are
+retained, not a complete process inventory. Older crashed overlapping workers
+are detected through expired leases when they hold jobs. Clock changes can
+affect ages; keep the host clock correct. Heartbeats are operational metadata,
+not proof of email delivery or durable job receipts.
+
+No database migration or additional installation is required for existing queue
+databases. Status/health never create heartbeat files; the first Worker run does.
+If the sidecar is corrupt/unreadable, inspect permissions and stop workers before
+repairing or moving it aside; its removal resets monitoring history, not jobs.
+Include it in private backups. Queue-only third-party providers remain supported:
+Worker records history only for the optional `QueueMonitor` interface, status
+falls back to counts and health reports `monitor_unavailable` until the provider
+implements that capability. Direct `claim()` callers must explicitly record a
+run if they want worker history; use Worker for the normal lifecycle.
 
 ## Services and handlers
 
@@ -79,8 +145,9 @@ copies of database pages. Protect backups and manage their retention separately.
 Core updates preserve queue data and do not install or migrate this schema.
 Stop/drain PHP and queue writers for full-site archives, or use SQLite backup
 facilities for a consistent snapshot. An active WAL database must not be backed
-up by copying only its main file. Queue status and CLI summaries expose counts,
-not submissions; there is no public administration endpoint or dashboard.
+up by copying only its main file. Queue status and CLI summaries expose counts
+and operational timestamps, not submissions; there is no public administration
+endpoint or dashboard.
 
 The implementation was adapted from the MIT-licensed source contribution
 `webspine-queue-contact-0.1.0-source.zip`; provenance is recorded in the plugin's

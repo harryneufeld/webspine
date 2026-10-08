@@ -16,6 +16,13 @@ interface Queue {
     public function prune(int $days = 30): int;
 }
 
+/** Optional private operational data; existing Queue providers need not implement it. */
+interface QueueMonitor {
+    public function diagnostics(?int $now = null): array;
+    public function workerStarted(?int $now = null): string;
+    public function workerFinished(string $run, ?int $now = null): void;
+}
+
 final readonly class Job {
     public function __construct(
         public string $id, public string $type, public int $version, public array $payload,

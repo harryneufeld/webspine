@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace Webspine\Jobs;
 
-final class SqliteQueue implements Queue {
+final class SqliteQueue implements Queue, QueueMonitor {
     public function __construct(private string $root) {}
     private function path(): string { return \Webspine\Files::target($this->root, 'storage/job-queue/jobs.sqlite'); }
     private function db(): \PDO {
@@ -113,6 +113,73 @@ final class SqliteQueue implements Queue {
         $counts=array_fill_keys(['pending','processing','completed','failed'],0);
         foreach ($this->db()->query('SELECT status,COUNT(*) AS n FROM jobs GROUP BY status') as $row) $counts[$row['status']] = (int)$row['n'];
         return $counts;
+    }
+    public function diagnostics(?int $now = null): array {
+        $now ??= time();$db=$this->db();
+        $stmt=$db->prepare("SELECT
+            SUM(status='pending') AS pending, SUM(status='processing') AS processing,
+            SUM(status='completed') AS completed, SUM(status='failed') AS failed,
+            MIN(CASE WHEN status='pending' THEN created_at END) AS oldest_pending,
+            MIN(CASE WHEN status='pending' AND available_at<=? THEN available_at END) AS oldest_due,
+            SUM(status='processing' AND lease_until<=?) AS expired_leases FROM jobs");
+        $stmt->execute([$now,$now]);$row=$stmt->fetch(\PDO::FETCH_ASSOC);
+        $result=[];
+        foreach (['pending','processing','completed','failed','expired_leases'] as $key) $result[$key]=(int)$row[$key];
+        $result['oldest_pending_age_seconds']=$row['oldest_pending']===null?null:max(0,$now-(int)$row['oldest_pending']);
+        $result['oldest_due_age_seconds']=$row['oldest_due']===null?null:max(0,$now-(int)$row['oldest_due']);
+        $heartbeat=$this->heartbeat();
+        $result['last_worker_started_at']=$heartbeat['last_started_at'];
+        $result['last_worker_finished_at']=$heartbeat['last_finished_at'];
+        $result['last_worker_age_seconds']=$heartbeat['last_started_at']===null?null:max(0,$now-$heartbeat['last_started_at']);
+        $result['latest_worker_run_finished']=$heartbeat['last_started_at']===null?null:$heartbeat['latest_finished'];
+        return $result;
+    }
+    public function workerStarted(?int $now = null): string {
+        $now ??= time();if($now<0)throw new \InvalidArgumentException('Invalid worker timestamp.');
+        $this->db();$run=bin2hex(random_bytes(16));
+        $this->heartbeat(static function(array $state) use($run,$now): array {
+            if ($state['last_started_at']===null || $now >= $state['last_started_at']) {
+                $state['last_started_at']=$now;$state['latest_run']=$run;$state['latest_finished']=false;
+            }
+            return $state;
+        });
+        return $run;
+    }
+    public function workerFinished(string $run, ?int $now = null): void {
+        if (!preg_match('/^[a-f0-9]{32}$/D',$run)) throw new \InvalidArgumentException('Invalid worker run identity.');
+        $now ??= time();
+        if($now<0)throw new \InvalidArgumentException('Invalid worker timestamp.');
+        $this->heartbeat(static function(array $state) use($run,$now): array {
+            $state['last_finished_at']=max($state['last_finished_at']??0,$now);
+            if ($state['latest_run']===$run) $state['latest_finished']=true;
+            return $state;
+        });
+    }
+    private function heartbeat(?callable $update = null): array {
+        $path=\Webspine\Files::target($this->root,'storage/job-queue/worker.json');
+        $empty=['last_started_at'=>null,'last_finished_at'=>null,'latest_run'=>null,'latest_finished'=>false];
+        if ($update===null && !is_file($path)) return $empty;
+        $mask=umask(0007);
+        try {$file=fopen($path,$update===null?'rb':'c+');} finally {umask($mask);}
+        if (!$file) throw new \RuntimeException('Cannot open private queue heartbeat.');
+        try {
+            if (!flock($file,$update===null?LOCK_SH:LOCK_EX)) throw new \RuntimeException('Cannot lock queue heartbeat.');
+            $raw=stream_get_contents($file,1025);
+            if ($raw===false || strlen($raw)>1024) throw new \RuntimeException('Invalid queue heartbeat.');
+            $state=$raw===''?$empty:json_decode($raw,true,4,JSON_THROW_ON_ERROR);
+            if (!is_array($state) || array_keys($state)!==array_keys($empty)
+                || !(is_null($state['last_started_at']) || is_int($state['last_started_at']) && $state['last_started_at']>=0)
+                || !(is_null($state['last_finished_at']) || is_int($state['last_finished_at']) && $state['last_finished_at']>=0)
+                || !(is_null($state['latest_run']) || is_string($state['latest_run']) && preg_match('/^[a-f0-9]{32}$/D',$state['latest_run']))
+                || !is_bool($state['latest_finished'])
+                || (($state['last_started_at']===null)!==($state['latest_run']===null))
+                || ($state['latest_finished'] && $state['latest_run']===null)) throw new \RuntimeException('Invalid queue heartbeat.');
+            if ($update!==null) {
+                $state=$update($state);$json=json_encode($state,JSON_THROW_ON_ERROR);rewind($file);
+                if (!ftruncate($file,0) || fwrite($file,$json)!==strlen($json) || !fflush($file)) throw new \RuntimeException('Cannot save queue heartbeat.');
+            }
+            return $state;
+        } finally {flock($file,LOCK_UN);fclose($file);}
     }
     public function prune(int $days = 30): int {
         if ($days < 1 || $days > 3650) throw new \InvalidArgumentException('Retention must be 1–3650 days.');
