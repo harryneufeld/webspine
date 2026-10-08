@@ -3,6 +3,12 @@ declare(strict_types=1);
 namespace Webspine;
 use Webspine\Contracts\Settings;
 final class Theme {
+    private const ASSET_TYPES = [
+        'css'=>'text/css', 'js'=>'text/javascript', 'svg'=>'image/svg+xml', 'woff2'=>'font/woff2',
+        'png'=>'image/png', 'jpg'=>'image/jpeg', 'jpeg'=>'image/jpeg', 'webp'=>'image/webp',
+        'ico'=>'image/vnd.microsoft.icon', 'avif'=>'image/avif', 'gif'=>'image/gif',
+        'pdf'=>'application/pdf', 'txt'=>'text/plain; charset=utf-8', 'webmanifest'=>'application/manifest+json',
+    ];
     private ?string $activeId = null;
     private array $assetUrls = [];
     private int $componentDepth = 0;
@@ -81,11 +87,27 @@ final class Theme {
             }
         })($file, $data, $context);
     }
-    private function assetFile(string $id, string $relative): ?string {
-        if (!preg_match('/^[a-zA-Z0-9_\/-]+\.(css|js|svg|woff2|png|jpg|webp)$/D', $relative) || str_starts_with($relative, '/') || str_contains($relative, '..')) return null;
+    private function assetType(string $relative): string {
+        // Nonempty dotted segments; no hidden files, traversal, URL syntax or executable suffix chains.
+        if (!preg_match('~^(?:[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*/)*[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+$~D', $relative)
+            || preg_match('~\.(?:php[0-9]*|phtml|pht|phar|cgi|pl|py|rb|sh|bat|cmd|ps1|exe|com|dll|asp|aspx|jsp)(?:\.|/|$)~i', $relative)) {
+            throw new \RuntimeException('Invalid theme asset path: ' . $relative);
+        }
+        $type = self::ASSET_TYPES[pathinfo($relative, PATHINFO_EXTENSION)] ?? null;
+        if ($type === null) throw new \RuntimeException('Unsupported theme asset extension: ' . $relative);
+        return $type;
+    }
+    private function assetFile(string $id, string $relative): string {
+        $this->assetType($relative);
         $base = realpath($this->app->root . '/site/themes/' . $id . '/assets');
-        $file = realpath(($base ?: '') . '/' . $relative);
-        if (!$base || !$file || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) return null;
+        if (!$base) throw new \RuntimeException('Missing theme asset: ' . $relative);
+        $file = realpath($base . '/' . $relative);
+        if (!$file) throw new \RuntimeException('Missing theme asset: ' . $relative);
+        if (!str_starts_with($file, $base . DIRECTORY_SEPARATOR)) throw new \RuntimeException('Invalid theme asset path: ' . $relative);
+        // Contained links must not disguise an executable or unsupported target.
+        $this->assetType(str_replace(DIRECTORY_SEPARATOR, '/', substr($file, strlen($base) + 1)));
+        if (!is_file($file)) throw new \RuntimeException('Missing theme asset: ' . $relative);
+        if (!is_readable($file)) throw new \RuntimeException('Cannot read theme asset: ' . $relative);
         return $file;
     }
     /** Theme-relative path, with a content hash reused for this rendering lifecycle. */
@@ -93,7 +115,6 @@ final class Theme {
         $id = $this->active();
         if (isset($this->assetUrls[$relative])) return $this->assetUrls[$relative];
         $file = $this->assetFile($id, $relative);
-        if ($file === null) throw new \RuntimeException('Missing or invalid theme asset: ' . $relative);
         $hash = @hash_file('sha256', $file);
         if ($hash === false) throw new \RuntimeException('Cannot read theme asset: ' . $relative);
         return $this->assetUrls[$relative] = '/assets/theme/' . $id . '/' . $relative . '?v=' . substr($hash, 0, 12);
@@ -102,9 +123,12 @@ final class Theme {
         $id = $this->active();
         $prefix = '/assets/theme/' . $id . '/';
         if (!str_starts_with($path, $prefix)) return new Response('Not found', 404);
-        $file = $this->assetFile($id, substr($path, strlen($prefix)));
-        if ($file === null) return new Response('Not found', 404);
-        $types = ['css' => 'text/css', 'js' => 'text/javascript', 'svg' => 'image/svg+xml', 'woff2' => 'font/woff2', 'png' => 'image/png', 'jpg' => 'image/jpeg', 'webp' => 'image/webp'];
-        return new Response(file_get_contents($file), 200, ['Content-Type' => $types[pathinfo($file, PATHINFO_EXTENSION)], 'Cache-Control' => 'public, max-age=3600']);
+        $relative = substr($path, strlen($prefix));
+        try {
+            $file = $this->assetFile($id, $relative);
+            $body = @file_get_contents($file);
+            if ($body === false) return new Response('Not found', 404);
+            return new Response($body, 200, ['Content-Type' => $this->assetType($relative), 'Cache-Control' => 'public, max-age=3600']);
+        } catch (\RuntimeException) { return new Response('Not found', 404); }
     }
 }
