@@ -68,6 +68,7 @@ try{
         public function prune(int $days=30):int{throw new LogicException('Unexpected prune');}
     };
     verify((new Worker($legacy,new HandlerRegistry()))->run()['completed']===0 && QueueHealth::check($legacy)['warnings']===['monitor_unavailable'],'Existing Queue-only provider remains usable with an explicit unsupported-monitor warning');
+    verify(\Webspine\Jobs\QueueWork::run($legacy,new HandlerRegistry())['retention']===['days'=>30,'supported'=>false,'enabled'=>false,'pruned_completed'=>0],'Queue-only providers continue working without invoking their broader manual prune');
     file_put_contents($root.'/storage/job-queue/worker.json','{"secret":"DO_NOT_PRINT"}');
     try{$queue->diagnostics();throw new LogicException('Malformed heartbeat accepted.');}catch(RuntimeException $e){if($e instanceof LogicException)throw $e;verify(!str_contains($e->getMessage(),'DO_NOT_PRINT'),'Malformed metadata fails without exposing its contents');}
     echo "Queue monitoring tests passed; no network or mail used.\n";
