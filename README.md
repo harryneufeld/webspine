@@ -36,7 +36,11 @@ Install is explicit and idempotent. Normal requests never install or migrate.
 repair them or install data. For an unavailable site, run it and inspect the PHP
 error log. Configuration load failures include file/line context in private CLI
 diagnostics and logs; public errors remain generic. See [diagnostics](core/docs/deployment.md#diagnosing-an-unavailable-site).
-No feature plugins are enabled by default. Optional examples in `site/plugins/`
+No feature plugins are enabled by default. The optional [contact example](core/docs/examples/contact-form/README.md)
+uses the bundled durable queue for all submissions; delivery runs through a CLI
+worker and confirmation means saved for delivery. Queue installation and worker
+scheduling are explicit. Existing site-owned examples remain unchanged by updates.
+Optional examples in `site/plugins/`
 show a hook-based route (`field-notes`) and entity declarations (`catalog`).
 The optional bundled [spineanalytics plugin](core/plugins/spine-analytics/README.md)
 provides aggregate request counts and a private dashboard. Enable it explicitly

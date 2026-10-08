@@ -59,7 +59,7 @@ if ($mode === 'prepare') {
     rename('/srv/webspine/site/routes.php', '/srv/webspine/site/base-routes.php');
     copy(__DIR__ . '/routes.php', '/srv/webspine/site/routes.php');
     mkdir('/srv/webspine/site/plugins/contact-form');
-    foreach (['plugin.php','plugin.json','ContactForm.php'] as $file) copy('/source/core/docs/examples/contact-form/'.$file,'/srv/webspine/site/plugins/contact-form/'.$file);
+    foreach (['plugin.php','plugin.json','ContactForm.php','MailDelivery.php'] as $file) copy('/source/core/docs/examples/contact-form/'.$file,'/srv/webspine/site/plugins/contact-form/'.$file);
     copy('/source/core/docs/examples/contact-form/template.php','/srv/webspine/site/themes/test-theme/contact-form.php');
     copy('/source/core/docs/examples/contact-form/content.php','/srv/webspine/site/content/contact-form.php');
     copy('/source/core/docs/examples/contact-form/contact-form.css','/srv/webspine/site/themes/test-theme/assets/contact-form.css');
@@ -79,6 +79,8 @@ if ($mode === 'prepare') {
     symlink('/srv/webspine/config/local.php', '/srv/webspine/site/themes/test-theme/assets/escape.css');
     symlink('/srv/webspine/site/themes/test-theme/assets/private.php', '/srv/webspine/site/themes/test-theme/assets/disguised.css');
     (new App('/srv/webspine'))->install();
+    (new App('/srv/webspine'))->services->get(\Webspine\Jobs\Queue::class)->install();
+    Files::write('/srv/webspine/storage/hosting-test-fixture','Disposable contact/queue fixture');
     // Runtime group can read code, but only storage is writable.
     command(['chown','-R','root:33','/srv/webspine']);
     command(['chmod','-R','u=rwX,g=rX,o=rX','/srv/webspine']);
@@ -108,7 +110,9 @@ if ($mode === 'prepare') {
     file_put_contents('/work/cloudpanel-broken.conf', nginxConfig("server { listen 80; root /srv/webspine/public;\n" . $broken . "\n}"));
     echo "Prepared isolated fixtures and configs from versioned examples.\n";
 } elseif ($mode === 'reset-contact') {
-    foreach (['storage/contact-form/rate.json','storage/captured-mail.jsonl'] as $file) if (is_file('/srv/webspine/'.$file)) unlink('/srv/webspine/'.$file);
+    foreach (['storage/contact-forms/rate.json','storage/captured-mail.jsonl','storage/job-queue/jobs.sqlite','storage/job-queue/jobs.sqlite-wal','storage/job-queue/jobs.sqlite-shm'] as $file) if (is_file('/srv/webspine/'.$file)) unlink('/srv/webspine/'.$file);
+    (new App('/srv/webspine'))->services->get(\Webspine\Jobs\Queue::class)->install();
+    storageMode(true);
 } elseif ($mode === 'deny-storage' || $mode === 'allow-storage') {
     storageMode($mode === 'allow-storage');
 } elseif ($mode === 'update' || $mode === 'rollback') {
