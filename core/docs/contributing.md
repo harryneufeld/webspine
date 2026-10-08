@@ -39,3 +39,7 @@ Framework tests use `core/tests/fixtures/website/`, never the live/customizable
 site. Website checks belong in `site/tests/` and should use disposable data and
 explicit local configuration. Run both suites when changing the starter. The
 repository ships only the minimal Starter theme; webspine.org is independent.
+
+For canonical source, archive verification and exact release-asset publication,
+follow [the framework release workflow](releases.md). Never upload an output
+directory with a wildcard; packaging/verification failures stop publication.

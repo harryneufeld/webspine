@@ -20,7 +20,7 @@ function consoleProcess(string $root,array $args,bool $legacy=false):array {
 }
 function badCommand(callable $call):bool {try{$call();}catch(InvalidArgumentException){return true;}return false;}
 try {
-    copyConsoleFixture($source.'/core',$root.'/core');copyConsoleFixture(__DIR__.'/fixtures/website/site',$root.'/site');
+    copyConsoleFixture($source.'/core',$root.'/core');copyConsoleFixture($source.'/public',$root.'/public');copyConsoleFixture(__DIR__.'/fixtures/website/site',$root.'/site');
     copyConsoleFixture(__DIR__.'/fixtures/console-plugin',$root.'/site/plugins/console-demo');mkdir($root.'/storage');mkdir($root.'/config');mkdir($root.'/.dist');
     $config=['providers'=>['storage'=>'sqlite','mail'=>null],'plugins'=>['console-demo','job-queue'],'sqlite'=>['path'=>'storage/site.sqlite']];
     $write=static fn(array $value)=>Files::write($root.'/config/local.php','<?php return '.var_export($value,true).';');$write($config);

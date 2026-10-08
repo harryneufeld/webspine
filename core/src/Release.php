@@ -6,18 +6,23 @@ final class Release {
         if (!class_exists(\ZipArchive::class)) throw new \RuntimeException('The PHP zip extension is required.');
         $version = require $root . '/core/version.php';
         $inventory = Files::inventory($root, $full);
+        // Reject noncanonical source; archived bytes and inventory hashes stay identical.
+        foreach ($inventory as $path => $hash) ReleaseVerification::text($path, file_get_contents($root . '/' . $path));
         $manifest = $version + ['format' => 1, 'type' => $full ? 'bootstrap' : 'core', 'files' => $inventory];
         $output ??= $root . '/.dist/webspine-' . ($full ? '' : 'core-') . $version['version'] . '.zip';
         if (!is_dir(dirname($output))) mkdir(dirname($output), 0700, true);
         $temp = $output . '.tmp';
         $zip = new \ZipArchive();
         if ($zip->open($temp, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) throw new \RuntimeException('Cannot create archive.');
-        $zip->addFromString('release.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+        $zip->addFromString('release.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
         foreach ($inventory as $path => $hash) {
             $body = file_get_contents($root . '/' . $path);
             if (hash('sha256', $body) !== $hash || !$zip->addFromString($path, $body)) throw new \RuntimeException('File changed while packaging.');
         }
-        if (!$zip->close() || !rename($temp, $output)) throw new \RuntimeException('Cannot finalize release.');
+        if (!$zip->close()) throw new \RuntimeException('Cannot finalize release.');
+        try { ReleaseVerification::archive($temp); }
+        catch (\Throwable $e) { unlink($temp); throw $e; }
+        if (!rename($temp, $output)) throw new \RuntimeException('Cannot finalize release.');
         Files::json($output . '.sha256.json', ['file' => basename($output), 'sha256' => hash_file('sha256', $output)]);
         return $output;
     }

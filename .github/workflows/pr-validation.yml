@@ -30,3 +30,12 @@ jobs:
         run: |
           docker build --build-arg PHP_BASE=php:8.3-cli-bookworm -t webspine-framework-checks -f core/tests/hosting/Dockerfile core/tests/hosting
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/source" -w /source webspine-framework-checks sh -c 'php core/tests/run.php && php site/tests/run.php'
+      - name: Check release publisher without network
+        run: |
+          mkdir -p .dist
+          cat > .dist/ci-release-php.sh <<'SH'
+          #!/bin/sh
+          exec docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" webspine-framework-checks php "$@"
+          SH
+          chmod +x .dist/ci-release-php.sh
+          pwsh -NoProfile -File core/tests/publish-release.ps1 -Php "$PWD/.dist/ci-release-php.sh"
