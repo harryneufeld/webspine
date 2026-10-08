@@ -125,6 +125,7 @@ See [deployment and indexing](core/docs/deployment.md#search-indexing).
 Implemented: routing/responses, plugin loading, contracts/registry/hooks, SQLite
 settings/pages, recorded installation schema, theme selection/layouts/assets,
 declarative [entities with validated CRUD, typed filters, sorting/counts and explicit indexes](core/docs/entities.md),
+bounded [asset hash caching, conditional delivery and optional stale-theme diagnostics](core/docs/assets.md),
 optional [SMTP with validated Reply-To](core/docs/mail.md), bounded request context and opt-in POST routes, a copyable
 [protected contact form](core/docs/examples/contact-form/README.md), example feature plugin,
 [CLI tools with plugin commands](core/docs/console.md), reversible local core updates,
