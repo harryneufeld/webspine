@@ -57,27 +57,83 @@ formCheck('Mismatched token is retired without retaining submitted values',funct
     $r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);$valid['csrf']=refreshFormToken($headers);
     return $r['status']===403 && !str_contains($r['body'],'PRIVATE_CSRF_VALUE') && $valid['csrf']!==$old && queueAction()['pending']===0;
 });
-formCheck('Expired token gets a fresh token without queueing',function()use($headers,&$valid,$fixtureRoot){
+formCheck('Expired matching token preserves escaped input with a fresh token without queueing',function()use($headers,&$valid,$fixtureRoot){
     $sid=explode('=',$headers['Cookie'],2)[1];if(!preg_match('/^[a-zA-Z0-9,-]+$/D',$sid))return false;
     fixturePhp('session_id('.var_export($sid,true).');session_start(["save_path"=>'.var_export($fixtureRoot.'/storage/contact-forms/sessions',true).',"use_cookies"=>0,"cache_limiter"=>""]);$_SESSION["contact_forms"]["contact"]["expires"]=0;session_write_close();echo "{}";');
-    $old=$valid['csrf'];$r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);$valid['csrf']=refreshFormToken($headers);
-    return $r['status']===403 && str_contains($r['body'],'<form') && $valid['csrf']!==$old && queueAction()['pending']===0;
+    $old=$valid['csrf'];$bad=$valid;$bad['name']='<b>Änne</b>';$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);$valid['csrf']=refreshFormToken($headers);
+    return $r['status']===403 && str_contains($r['body'],'Your input has been kept') && str_contains($r['body'],'&lt;b&gt;Änne&lt;/b&gt;')
+        && str_contains($r['body'],$valid['email']) && str_contains($r['body'],$valid['message']) && $valid['csrf']!==$old && queueAction()['pending']===0;
 });
 formCheck('Array-shaped fields are rejected',function()use($headers,$valid){ $bad=$valid; $bad['name']=['bad']; $r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers); return $r['status']===422 && mailCount()===0; });
 formCheck('Validation retains escaped values and accessible field errors',function()use($headers,$valid){ $bad=$valid; $bad['name']='<script>alert(1)</script>'; $bad['email']='invalid'; $r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers); return $r['status']===422 && str_contains($r['body'],'&lt;script&gt;') && !str_contains($r['body'],'<script>') && str_contains($r['body'],'aria-invalid="true"') && mailCount()===0; });
 formCheck('Honeypot and unknown fields cannot dispatch mail',function()use($headers,$valid){ $bad=$valid; $bad['website']='filled'; $r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers); $bad=$valid; $bad['to']='attacker@example.test'; $extra=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers); return $r['status']===422 && $extra['status']===422 && mailCount()===0; });
 formCheck('Unsupported form media and oversized bodies return 415/413',function()use($headers){ $plain=$headers; $plain['Content-Type']='text/plain'; $unsupported=contactRequest(CONTACT_PATH,'POST','body',$plain); $large=contactRequest(CONTACT_PATH,'POST',str_repeat('x',65537),$headers); return $unsupported['status']===415 && $large['status']===413 && mailCount()===0; });
-formCheck('Oversized invalid values are discarded from redisplayed fields',function()use($headers,$valid){$bad=$valid;$bad['name']=str_repeat('x',121);$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);return $r['status']===422 && !str_contains($r['body'],str_repeat('x',121)) && queueAction()['pending']===0;});
+formCheck('Values above the field limit remain editable without queueing',function()use($headers,$valid){$bad=$valid;$bad['name']=str_repeat('x',121);$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);return $r['status']===422 && str_contains($r['body'],str_repeat('x',121)) && queueAction()['pending']===0;});
+formCheck('Unicode over-limit text remains editable; malformed and hard-byte-limit values are discarded',function()use($headers,$valid){
+    foreach ([str_repeat('ä',5001)=>true,str_repeat('x',20001)=>false,"bad\xfftext"=>false,"\x00bad text"=>false] as $value=>$keep) {
+        $bad=$valid;$bad['message']=$value;$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);
+        preg_match('~<textarea[^>]*>(.*?)</textarea>~s',$r['body'],$textarea);
+        if($r['status']!==422 || ($keep && !str_contains($r['body'],$value)) || (!$keep && ($textarea[1]??null)!==''))throw new RuntimeException('Unicode case failed: bytes='.strlen($value).', status='.$r['status']);
+    }
+    return queueAction()['pending']===0;
+});
+// Native maxlength counts astral emoji twice and combining marks separately.
+formCheck('Unicode length follows browser UTF-16 limits without optional extensions',function()use($fixtureRoot){
+    return fixturePhp('require '.var_export($fixtureRoot.'/site/plugins/contact-form/FormText.php',true).';echo json_encode([\\Webspine\\Examples\\FormText::units("ä"),\\Webspine\\Examples\\FormText::units("😀"),\\Webspine\\Examples\\FormText::units("e\\u{0301}")]);')===[1,2,2];
+});
+formCheck('Astral emoji and combining marks enforce browser limits through HTTP',function()use($headers,$valid){
+    foreach([str_repeat('😀',61),str_repeat("e\u{0301}",61)] as $name){$bad=$valid;$bad['name']=$name;$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);if($r['status']!==422 || !str_contains($r['body'],$name))return false;}
+    return queueAction()['pending']===0;
+});
+formCheck('Queue failure preserves input and leaves the token eligible for a later save',function()use($headers,$valid,$fixtureRoot){
+    $path=$fixtureRoot.'/storage/job-queue/jobs.sqlite';
+    fixturePhp('rename('.var_export($path,true).','.var_export($path.'.test-disabled',true).');echo "{}";');
+    try{$r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);}
+    finally{fixturePhp('rename('.var_export($path.'.test-disabled',true).','.var_export($path,true).');echo "{}";');}
+    return $r['status']===503 && str_contains($r['body'],$valid['message']) && str_contains($r['body'],'could not be saved')
+        && refreshFormToken($headers)===$valid['csrf'] && queueAction()['pending']===0;
+});
+$valid['message']=str_repeat('ä',5000);
 formCheck('Valid submission is durable before delivery and uses the configured 303 path',function()use($headers,$valid){ $r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers); return $r['status']===303 && $r['headers']['location']===CONTACT_PATH && mailCount()===0 && queueAction()['pending']===1; });
 formCheck('Paused worker consumes no delivery attempts',function(){return queueAction(true,true)['completed']===0 && queueAction()['pending']===1 && mailCount()===0;});
-formCheck('Captured background delivery preserves fixed recipient and subject',function(){ $result=queueAction(true);$messages=json_decode(contactRequest('/hosting-mail')['body'],true)['messages']; return $result['completed']===1 && count($messages)===1 && $messages[0]['to']==='owner@example.test' && $messages[0]['subject']==='Website contact' && str_contains($messages[0]['body'],'Submission ID:'); });
+formCheck('Captured background delivery accepts 5000 umlauts and preserves recipient and subject',function()use($valid){ $result=queueAction(true);$messages=json_decode(contactRequest('/hosting-mail')['body'],true)['messages']; return $result['completed']===1 && count($messages)===1 && $messages[0]['to']==='owner@example.test' && $messages[0]['subject']==='Website contact' && str_contains($messages[0]['body'],'Submission ID:') && str_contains($messages[0]['body'],$valid['message']); });
 formCheck('Repeated worker invocation does not resend completed mail',fn()=>queueAction(true)['completed']===0 && mailCount()===1);
-formCheck('Successful token cannot be replayed',function()use($headers,$valid){ $r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers); return $r['status']===403 && mailCount()===1; });
+formCheck('Successful exact replay returns success without creating or delivering another job',function()use($headers,$valid){ $r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers); return $r['status']===303 && $r['headers']['location']===CONTACT_PATH && $r['headers']['cache-control']==='no-store' && mailCount()===1 && queueAction()['completed']===1 && queueAction()['pending']===0; });
+formCheck('Successful token cannot authorize altered input',function()use($headers,$valid){$bad=$valid;$bad['name']='Changed visitor';$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);return $r['status']===403 && mailCount()===1 && queueAction()['pending']===0;});
 formCheck('Redirected form shows confirmation and a fresh token',function()use($headers,$token){ $r=contactRequest(CONTACT_PATH,'GET','',['Cookie'=>$headers['Cookie']]); preg_match('/name="csrf" value="([a-f0-9]{64})"/',$r['body'],$m); return $r['status']===200 && str_contains($r['body'],'Your message has been saved for delivery.') && isset($m[1]) && $m[1]!==$token; });
 formCheck('Token from another session is rejected',function()use($valid){ $r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),['Content-Type'=>'application/x-www-form-urlencoded']); return $r['status']===403 && mailCount()===1; });
 formCheck('Wrong methods and HEAD retain method contracts',function(){ $wrong=contactRequest(CONTACT_PATH,'PUT'); $head=contactRequest(CONTACT_PATH,'HEAD'); return $wrong['status']===405 && $wrong['headers']['allow']==='GET, HEAD, POST' && $head['status']===200 && $head['body']===''; });
 formCheck('Request context carries JSON, form values, query, and headers',function(){ $json=contactRequest('/hosting-body?q=value','POST','{"value":42}',['Content-Type'=>'application/json','X-Example'=>'sent']); $data=json_decode($json['body'],true); $form=contactRequest('/hosting-body','POST','a=one&a=two&list[]=1&list[]=2',['Content-Type'=>'application/x-www-form-urlencoded']); $values=json_decode($form['body'],true)['values']; return $json['status']===200 && $data===['values'=>['value'=>42],'header'=>'sent','query'=>['q'=>'value']] && $form['status']===200 && $values===['a'=>'two','list'=>['1','2']]; });
 formCheck('Malformed JSON and unregistered methods never reach a write handler',function(){ $bad=contactRequest('/hosting-body','POST','{bad',['Content-Type'=>'application/json']); $get=contactRequest('/hosting-body'); $missing=contactRequest('/not-registered','POST',''); return $bad['status']===400 && $get['status']===405 && $get['headers']['allow']==='POST' && $missing['status']===404; });
 formCheck('Legacy redirect ignores untrusted destinations',function(){ $r=contactRequest('/hosting-legacy?page_id=41&next=https%3A%2F%2Fevil.test'); $bad=contactRequest('/hosting-legacy?page_id[]=41'); return $r['status']===302 && $r['headers']['location']==='/docs' && $bad['status']===404; });
+formCheck('Expired successful receipt cannot authorize a replay',function()use($headers,$valid,$fixtureRoot){
+    $sid=explode('=',$headers['Cookie'],2)[1];
+    fixturePhp('session_id('.var_export($sid,true).');session_start(["save_path"=>'.var_export($fixtureRoot.'/storage/contact-forms/sessions',true).',"use_cookies"=>0,"cache_limiter"=>""]);foreach($_SESSION["contact_forms"]["contact"]["receipts"] as &$receipt)$receipt["expires"]=0;unset($receipt);session_write_close();echo "{}";');
+    $r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);
+    return $r['status']===403 && queueAction()['pending']===0 && mailCount()===1;
+});
+formCheck('Concurrent identical POSTs both redirect and queue exactly one job',function()use($headers,&$valid,$base,$fixtureRoot){
+    // Reset only this disposable fixture limiter so this independently tested scenario has a budget.
+    fixturePhp('unlink('.var_export($fixtureRoot.'/storage/contact-forms/rate.json',true).');echo "{}";');
+    $valid['csrf']=refreshFormToken($headers);$valid['message']='Concurrent test message.';
+    $script='$ctx=stream_context_create(["http"=>["method"=>"POST","content"=>'.var_export(http_build_query($valid),true).',"header"=>'.var_export('Content-Type: application/x-www-form-urlencoded'."\r\n".'Cookie: '.$headers['Cookie'],true).',"ignore_errors"=>true,"follow_location"=>0,"timeout"=>10]]);file_get_contents('.var_export($base.CONTACT_PATH,true).',false,$ctx);echo $http_response_header[0];';
+    $children=[];
+    for($i=0;$i<2;$i++){$p=proc_open([PHP_BINARY,'-c',php_ini_loaded_file()?:'','-r',$script],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);fclose($pipes[0]);$children[]=[$p,$pipes];}
+    $ok=true;foreach($children as [$p,$pipes]){$out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);if(proc_close($p)!==0 || !str_contains($out,'303'))$ok=false;}
+    $saved=contactRequest(CONTACT_PATH,'GET','',['Cookie'=>$headers['Cookie']]);
+    $again=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);
+    $savedAgain=contactRequest(CONTACT_PATH,'GET','',['Cookie'=>$headers['Cookie']]);
+    return $ok && queueAction()['pending']===1 && mailCount()===1 && $again['status']===303
+        && str_contains($saved['body'],'saved for delivery') && str_contains($savedAgain['body'],'saved for delivery');
+});
 formCheck('Cookie rotation and forged forwarded addresses cannot bypass rate limiting',function(){ $limited=false; for($i=0;$i<21;$i++){ $r=contactRequest(CONTACT_PATH,'POST','csrf=wrong',['Content-Type'=>'application/x-www-form-urlencoded','X-Forwarded-For'=>'203.0.113.'.($i+1)]); if($r['status']===429){ $limited=$r['headers']['retry-after']==='600'; break; } if($r['status']!==403)return false; } return $limited && mailCount()===1; });
+formCheck('A successful receipt still works after the ordinary attempt budget is exhausted',function()use($headers,$valid){$r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);return $r['status']===303 && queueAction()['pending']===1 && mailCount()===1;});
+formCheck('Receipt history retains only the last three successful tokens',function()use($headers,$valid,$fixtureRoot){
+    fixturePhp('unlink('.var_export($fixtureRoot.'/storage/contact-forms/rate.json',true).');echo "{}";');
+    $first=null;
+    for($i=0;$i<4;$i++){$valid['csrf']=refreshFormToken($headers);$valid['message']='Receipt history message '.$i;if($i===0)$first=$valid;$r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);if($r['status']!==303)return false;}
+    $old=contactRequest(CONTACT_PATH,'POST',http_build_query($first),$headers);
+    $recent=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);
+    return $old['status']===403 && $recent['status']===303 && queueAction()['pending']===5 && mailCount()===1;
+});
 echo "$passed passed, $failed failed ($base).\n"; exit($failed ? 1 : 0);

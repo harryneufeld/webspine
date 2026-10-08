@@ -59,7 +59,7 @@ if ($mode === 'prepare') {
     rename('/srv/webspine/site/routes.php', '/srv/webspine/site/base-routes.php');
     copy(__DIR__ . '/routes.php', '/srv/webspine/site/routes.php');
     mkdir('/srv/webspine/site/plugins/contact-form');
-    foreach (['plugin.php','plugin.json','ContactForm.php','MailDelivery.php'] as $file) copy('/source/core/docs/examples/contact-form/'.$file,'/srv/webspine/site/plugins/contact-form/'.$file);
+    foreach (['plugin.php','plugin.json','FormText.php','ContactForm.php','MailDelivery.php'] as $file) copy('/source/core/docs/examples/contact-form/'.$file,'/srv/webspine/site/plugins/contact-form/'.$file);
     copy('/source/core/docs/examples/contact-form/template.php','/srv/webspine/site/themes/test-theme/contact-form.php');
     copy('/source/core/docs/examples/contact-form/content.php','/srv/webspine/site/content/contact-form.php');
     copy('/source/core/docs/examples/contact-form/contact-form.css','/srv/webspine/site/themes/test-theme/assets/contact-form.css');
