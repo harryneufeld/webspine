@@ -110,7 +110,7 @@ if ($mode === 'prepare') {
     file_put_contents('/work/cloudpanel-broken.conf', nginxConfig("server { listen 80; root /srv/webspine/public;\n" . $broken . "\n}"));
     echo "Prepared isolated fixtures and configs from versioned examples.\n";
 } elseif ($mode === 'reset-contact') {
-    foreach (['storage/contact-forms/rate.json','storage/captured-mail.jsonl','storage/job-queue/jobs.sqlite','storage/job-queue/jobs.sqlite-wal','storage/job-queue/jobs.sqlite-shm'] as $file) if (is_file('/srv/webspine/'.$file)) unlink('/srv/webspine/'.$file);
+    foreach (['storage/contact-forms/rate.json','storage/captured-mail.jsonl','storage/job-queue/jobs.sqlite','storage/job-queue/jobs.sqlite-wal','storage/job-queue/jobs.sqlite-shm','storage/job-queue/worker.json'] as $file) if (is_file('/srv/webspine/'.$file)) unlink('/srv/webspine/'.$file);
     (new App('/srv/webspine'))->services->get(\Webspine\Jobs\Queue::class)->install();
     storageMode(true);
 } elseif ($mode === 'deny-storage' || $mode === 'allow-storage') {
