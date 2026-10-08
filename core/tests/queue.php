@@ -42,6 +42,8 @@ try {
     check($queue->complete($replacement,$now+27),'Current claim can complete');
     check($queue->claim(['test.one'],10,$now+28)===null,'Completed jobs do not resend');
     $retryId=$queue->enqueue('test.retry',1,['new'=>'field'],null,0,2);
+    // Enqueue uses wall time; start each independent virtual-clock case afterward.
+    $now=time();
     $first=$queue->claim(['test.retry'],30,$now);
     check($queue->fail($first,'handler_failed',false,$now),'Transient failure returns to pending');
     check($queue->claim(['test.retry'],30,$now+59)===null,'Retry respects exponential delay');
@@ -49,7 +51,7 @@ try {
     check($queue->status()['failed']===1,'Attempt bound retains a terminal failed job');
     check($queue->retry($retryId,$now+61),'Explicit retry requeues failed job');
     $retried=$queue->claim(['test.retry'],30,$now+61);check($retried->attempt===1,'Explicit retry resets attempts');$queue->complete($retried,$now+62);
-    $exhaustId=$queue->enqueue('test.exhaust',1,[],null,0,1);$queue->claim(['test.exhaust'],1,$now);
+    $exhaustId=$queue->enqueue('test.exhaust',1,[],null,0,1);$now=time();$queue->claim(['test.exhaust'],1,$now);
     check($queue->claim(['test.exhaust'],1,$now+2)===null && $queue->status()['failed']===1,'Crash on last attempt is retained as failed');
     $delayed=$queue->enqueue('test.delayed',1,['delay'=>true],null,120);
     check($queue->claim(['test.delayed'],30,$now)===null,'Scheduled jobs wait until due');
