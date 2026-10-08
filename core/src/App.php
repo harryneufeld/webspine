@@ -15,7 +15,7 @@ final class App {
     public function __construct(public string $root, ?array $config = null) {
         $this->coreRoot = dirname(__DIR__);
         $this->version = require dirname(__DIR__) . '/version.php';
-        $this->config = $config ?? require $root . '/config/' . (is_file($root . '/config/local.php') ? 'local.php' : 'example.php');
+        $this->config = $config ?? $this->loadConfiguration();
         $this->services = new Registry(); $this->router = new Router(); $this->hooks = new Hooks();
         $this->plugins = new Plugins($this); $this->theme = new Theme($this);
         $this->site = new Site($this);
@@ -30,6 +30,16 @@ final class App {
         $this->router->get('/health', function () { $ok = $this->health()['ok']; return Response::json(['status' => $ok ? 'ok' : 'unavailable'], $ok ? 200 : 503); });
         $this->site->register();
         $this->hooks->fire('app.ready', $this);
+    }
+    private function loadConfiguration(): array {
+        $file = 'config/' . (is_file($this->root . '/config/local.php') ? 'local.php' : 'example.php');
+        try {
+            $config = require $this->root . '/' . $file;
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Cannot load ' . $file . ': ' . $e->getMessage(), 0, $e);
+        }
+        if (!is_array($config)) throw new \RuntimeException($file . ' must return an array; returned ' . get_debug_type($config) . '.');
+        return $config;
     }
     public function install(): void {
         $this->services->get(Storage::class)->install();

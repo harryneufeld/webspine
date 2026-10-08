@@ -45,5 +45,13 @@ try {
         if ($command !== 'help') throw new InvalidArgumentException('Unknown command: ' . $command);
         echo "webspine CLI\n\ninstall                 Explicit, idempotent installation\ntheme <id>              Switch active theme\nentities:install        Explicitly install declared entity storage\nhealth                  Check services and rendering\npackage [--full]        Create core release or bootstrap ZIP\nupdate <archive>        Apply a trusted local core release\nrollback                Restore the previous core\nrecover                 Restore after interrupted activation\n";
     }
-} catch (Throwable $e) { fwrite(STDERR, 'webspine: ' . $e->getMessage() . "\n"); exit(1); }
+} catch (Throwable $e) {
+    // Native Throwable diagnostics also work when configuration/bootstrap fails.
+    $cause = $e->getPrevious() ?? $e;
+    $file = str_replace('\\', '/', $cause->getFile());
+    $prefix = rtrim(str_replace('\\', '/', $root), '/') . '/';
+    if (str_starts_with($file, $prefix)) $file = substr($file, strlen($prefix));
+    fwrite(STDERR, 'webspine: ' . $e->getMessage() . ' [' . $file . ', line ' . $cause->getLine() . "]\n");
+    exit(1);
+}
 finally { if (is_resource($lock)) { flock($lock, LOCK_UN); fclose($lock); } }

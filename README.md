@@ -32,6 +32,10 @@ The marketing website at webspine.org is maintained separately and is not shippe
 Copy `config/example.php` to `config/local.php` to customize providers. Do not
 commit credentials. The example configuration works with local SQLite and no mail.
 Install is explicit and idempotent. Normal requests never install or migrate.
+`health` diagnoses configuration, storage, and rendering problems; it does not
+repair them or install data. For an unavailable site, run it and inspect the PHP
+error log. Configuration load failures include file/line context in private CLI
+diagnostics and logs; public errors remain generic. See [diagnostics](core/docs/deployment.md#diagnosing-an-unavailable-site).
 No feature plugins are enabled by default. Optional examples in `site/plugins/`
 show a hook-based route (`field-notes`) and entity declarations (`catalog`).
 
