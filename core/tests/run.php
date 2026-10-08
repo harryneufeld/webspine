@@ -84,6 +84,7 @@ try {
     (require __DIR__ . '/templates.php')($app, $site);
     (require __DIR__ . '/components.php')($app, $site);
     (require __DIR__ . '/health.php')($app, $site);
+    (require __DIR__ . '/configuration.php')($app, $site);
     (require __DIR__ . '/requests.php')($app);
     check('Site-defined route renders through its theme', fn() => str_contains($app->handle('GET','/docs')->body, 'Fixture documentation'));
     check('Feature route registers through action hook', fn() => str_contains($app->handle('GET','/field-notes')->body, 'app.ready'));

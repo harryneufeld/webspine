@@ -41,6 +41,27 @@ Run `php core/bin/console.php install` and `health` with the same PHP version an
 storage group before serving. Check `/health`, pages, and theme assets; public
 health is generic, while detailed CLI output must remain private.
 
+## Diagnosing an unavailable site
+
+Run `php core/bin/console.php health` from the project directory and inspect the
+PHP error log. Health is a diagnostic command: it does not repair configuration,
+install schema, or migrate data. Only initial setup needs `install`, after valid
+configuration is in place. Do not run it as a general outage remedy.
+
+Configuration is loaded from `config/local.php`, or `config/example.php` when the
+local file is absent. Each must return an array. Explicit configuration supplied
+to `App` bypasses these files. Load failures retain their original exception;
+CLI errors exit nonzero and CLI/log diagnostics include the cause's file and
+line, with paths inside the project shown relative to its root. Invalid return
+types identify the configuration file and type without printing its value.
+
+The emergency response is generic HTTP 503 with `Cache-Control: no-store` and
+operator guidance. It does not expose exception messages, paths, configuration
+values, or source excerpts, and needs no database or theme to render. Keep logs
+and CLI output private. Ensure production PHP has `display_errors=Off` and
+`log_errors=On`; PHP's own displayed diagnostics can otherwise disclose details
+before the framework can handle a failure.
+
 ## Search indexing
 
 Starter pages render full HTML with titles, descriptions, and crawlable links,
