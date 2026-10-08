@@ -65,6 +65,32 @@ Retries are at least once: a crash after SMTP acceptance may produce duplicates.
 The submission ID is included in mail to identify repeats. Exactly-once SMTP
 and atomic transactions with a separate domain database are not provided.
 
+## Reply-To
+
+New submissions snapshot the validated `email` field as Reply-To when that key
+has type `email`. Delivery through the bundled SMTP provider keeps the fixed
+recipient and configured From identity; the mail client's Reply targets the
+visitor. No visitor input selects a delivery recipient or From address.
+
+For a custom email field, set `contact_form.reply_to_field => 'sender_email'`.
+The key must exist and have type `email`; invalid configuration fails at
+registration. Set it to `null` to disable Reply-To on new jobs. Custom forms
+without an `email` key of type `email` keep ordinary mail by default, and an
+empty optional email field omits the header. The example does not use visitor
+names as display names. Email stays in the body for all providers.
+
+The optional `reply_to` address travels with payload version 2. Delivery
+revalidates it before sending; malformed or injected queued addresses fail
+permanently. Previously saved version 1/2 jobs without it remain deliverable,
+and configuration changes never rewrite queued headers. Mail providers with
+only the original three-argument contract remain compatible: delivery falls
+back to ordinary mail without Reply-To. See [mail capabilities](../../mail.md).
+
+Adopt all updated example PHP files together after installing core 0.1.16 or
+newer; core updates preserve existing copies under `site/plugins/`. No database
+migration is required. Reply-To does not verify ownership of the supplied
+address, authenticate visitors, or guarantee delivery.
+
 ## Retry window
 
 New contact jobs default to 30 total delivery attempts. Configure

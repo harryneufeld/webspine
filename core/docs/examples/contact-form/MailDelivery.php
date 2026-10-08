@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace Webspine\Examples;
 use Webspine\Jobs\{Handler,Job,PermanentFailure};
+use Webspine\Contracts\{Mail,MailWithReplyTo,ReplyTo};
 final class MailDelivery implements Handler {
     public function __construct(private \Webspine\App $app) {}
     public function ready(): bool {
@@ -22,6 +23,14 @@ final class MailDelivery implements Handler {
                 || !is_string($p['labels'][$key]??null) || strlen($p['labels'][$key])>120 || preg_match('/[\r\n\x00]/',$p['labels'][$key])) throw new PermanentFailure();
             $body.=$p['labels'][$key].":\n".$value."\n\n";
         }
-        $this->app->services->get(\Webspine\Contracts\Mail::class)->send($p['recipient'],$p['subject'],$body);
+        $replyTo = null;
+        if (array_key_exists('reply_to', $p)) {
+            if (!is_string($p['reply_to'])) throw new PermanentFailure();
+            try { $replyTo = new ReplyTo($p['reply_to']); }
+            catch (\InvalidArgumentException) { throw new PermanentFailure(); }
+        }
+        $mail = $this->app->services->get(Mail::class);
+        if ($replyTo !== null && $mail instanceof MailWithReplyTo) $mail->sendWithReplyTo($p['recipient'],$p['subject'],$body,$replyTo);
+        else $mail->send($p['recipient'],$p['subject'],$body);
     }
 }

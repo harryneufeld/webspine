@@ -9,6 +9,7 @@ final class ContactForm {
     private string $id = 'contact';
     private array $config;
     private int $maxAttempts;
+    private ?string $replyToField;
     public function __construct(private App $app) {
         $id = $this->id;
         $config = $app->config['contact_form'] ?? [];
@@ -39,6 +40,11 @@ final class ContactForm {
                 || !in_array($field['type']??'text',['text','email','textarea'],true) || !is_bool($field['required']??false)
                 || !is_int($field['min']??0) || !is_int($field['max']??5000) || ($field['min']??0)<0 || ($field['max']??5000)<1 || ($field['max']??5000)>5000 || ($field['min']??0)>($field['max']??5000)) throw new \InvalidArgumentException('Invalid field definition.');
         }
+        $replyToField = array_key_exists('reply_to_field', $config) ? $config['reply_to_field']
+            : ((($this->fields['email']['type'] ?? null) === 'email') ? 'email' : null);
+        if ($replyToField !== null && (!is_string($replyToField) || !isset($this->fields[$replyToField])
+            || ($this->fields[$replyToField]['type'] ?? null) !== 'email')) throw new \InvalidArgumentException('Reply-To field must name an email field, or be null.');
+        $this->replyToField = $replyToField;
     }
     public function path(): string { return $this->config['path']; }
     public function show(Request $request): Response {
@@ -74,11 +80,12 @@ final class ContactForm {
             if (!is_string($form['website']??'') || ($form['website']??'')!=='') throw new HttpError(422,$this->copy['rejected']);
             if ($errors || $unknown) return $this->render($fields,$errors,'invalid',422);
             $labels=array_map(static fn(array $field): string => $field['label'],$this->fields);
+            $replyTo = $this->replyToField === null ? '' : $fields[$this->replyToField];
+            $payload = ['form_id'=>$this->id,'recipient'=>$this->config['recipient'],'subject'=>$this->config['subject']??'Contact enquiry',
+                'fields'=>$fields,'labels'=>$labels];
+            if ($replyTo !== '') $payload['reply_to'] = $replyTo;
             try {
-                $job=$this->app->services->get(Queue::class)->enqueue('contact.deliver',2,[
-                    'form_id'=>$this->id,'recipient'=>$this->config['recipient'],'subject'=>$this->config['subject']??'Contact enquiry',
-                    'fields'=>$fields,'labels'=>$labels,
-                ],hash('sha256',$this->id.':'.$token),maxAttempts:$this->maxAttempts);
+                $job=$this->app->services->get(Queue::class)->enqueue('contact.deliver',2,$payload,hash('sha256',$this->id.':'.$token),maxAttempts:$this->maxAttempts);
             } catch (\Throwable $e) { error_log('Contact submission could not be queued: ' . $e::class . ' at ' . $e->getFile() . ':' . $e->getLine());return $this->render($fields,[],'unavailable',503); }
             $receipts[hash('sha256',$token)]=['expires'=>time()+600,'fingerprint'=>$fingerprint,'job'=>$job];
             $_SESSION['contact_forms'][$this->id]=['saved'=>true,'receipts'=>array_slice($receipts,-3,null,true)];
