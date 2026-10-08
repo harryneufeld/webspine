@@ -125,7 +125,7 @@ See [deployment and indexing](core/docs/deployment.md#search-indexing).
 Implemented: routing/responses, plugin loading, contracts/registry/hooks, SQLite
 settings/pages, recorded installation schema, theme selection/layouts/assets,
 declarative entities with validated SQLite CRUD and explicit installation,
-optional SMTP, bounded request context and opt-in POST routes, a copyable
+optional [SMTP with validated Reply-To](core/docs/mail.md), bounded request context and opt-in POST routes, a copyable
 [protected contact form](core/docs/examples/contact-form/README.md), example feature plugin,
 CLI tools, reversible local core updates,
 and dependency-free integration checks including storage substitution.
