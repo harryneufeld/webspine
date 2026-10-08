@@ -5,3 +5,4 @@ require_once __DIR__.'/SqliteQueue.php';
 require_once __DIR__.'/QueueHealth.php';
 require_once __DIR__.'/Worker.php';
 require_once __DIR__.'/QueueWork.php';
+require_once __DIR__.'/QueueCommands.php';

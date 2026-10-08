@@ -6,6 +6,13 @@ in the starter. Consumers declare a manifest dependency; the queued contact
 example is one consumer. Enable it alone with `plugins => ['job-queue']`.
 Registration defines services without creating storage or installing a schema.
 
+These commands are also available through the unified CLI as
+`php core/bin/console.php job-queue:work`, `job-queue:status`, `job-queue:health`,
+`job-queue:install`, `job-queue:retry <job-id>` and `job-queue:prune [days]`.
+Use `php core/bin/console.php help` for enabled command discovery. The legacy
+script below remains supported; both entry points use the same handlers and
+reject surplus arguments. See [plugin console commands](console.md).
+
 ```sh
 php core/plugins/job-queue/cli.php install
 php core/plugins/job-queue/cli.php status
