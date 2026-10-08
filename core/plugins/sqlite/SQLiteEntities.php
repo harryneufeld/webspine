@@ -1,23 +1,51 @@
 <?php
 declare(strict_types=1);
 namespace Webspine\Providers;
-use Webspine\Contracts\Entities;
-use Webspine\EntityDefinition;
+use Webspine\Contracts\{EntityQueries,EntityIndexes};
+use Webspine\{EntityDefinition,EntityQuery,EntityFilter};
+require_once __DIR__.'/SQLiteEntityQuery.php';
 
-final class SQLiteEntities implements Entities {
+final class SQLiteEntities implements EntityQueries,EntityIndexes {
     private array $definitions = [];
+    private array $indexes = [];
+    private bool $jsonAvailable = false;
     public function __construct(private \Closure $connection) {}
     public function define(string $name, array $fields): void {
         if (isset($this->definitions[$name])) throw new \LogicException('Entity already defined: ' . $name);
         $this->definitions[$name] = new EntityDefinition($name, $fields);
     }
+    public function defineIndex(string $name,array $fields):void {
+        $definition=$this->definitions[$name]??throw new \InvalidArgumentException('Declare the entity before its indexes.');
+        if(!array_is_list($fields) || !$fields || count($fields)>4) throw new \InvalidArgumentException('Index requires 1–4 distinct declared fields.');
+        foreach($fields as $field)if(!is_string($field)||!isset($definition->fields[$field]))throw new \InvalidArgumentException('Unknown indexed entity field.');
+        if(count(array_unique($fields))!==count($fields))throw new \InvalidArgumentException('Index requires distinct fields.');
+        $key=hash('sha256',json_encode($fields,JSON_THROW_ON_ERROR));
+        if(!isset($this->indexes[$name][$key]) && count($this->indexes[$name]??[])>=8)throw new \InvalidArgumentException('At most eight query indexes per entity.');
+        $this->indexes[$name][$key]=$fields;
+    }
     private function db(): \PDO { return ($this->connection)(); }
+    private function requireJson(): void {
+        if ($this->jsonAvailable) return;
+        $db = $this->db();
+        try { $db->query("SELECT json_extract('{\"value\":1}', '$.value')"); }
+        catch (\PDOException $e) { throw new \RuntimeException('Entity queries and indexes require SQLite JSON functions.', 0, $e); }
+        // Older SQLite JSON extraction truncates strings at decoded NUL bytes.
+        // Query-only verification preserves complete strings; persisted indexes
+        // retain built-in expressions so older framework versions can write them.
+        $db->sqliteCreateFunction('webspine_entity_text', static function(string $data,string $field):?string {
+            $values=json_decode($data,true,32,JSON_THROW_ON_ERROR);
+            $value=$values[$field]??null;
+            return is_string($value)?$value:null;
+        }, 2, \PDO::SQLITE_DETERMINISTIC);
+        $this->jsonAvailable = true;
+    }
     private function transaction(callable $action): mixed {
         $db = $this->db(); $db->exec('BEGIN IMMEDIATE');
         try { $result = $action($db); $db->exec('COMMIT'); return $result; }
         catch (\Throwable $e) { $db->exec('ROLLBACK'); throw $e; }
     }
     public function install(): void {
+        if ($this->indexes) $this->requireJson();
         $this->transaction(function (\PDO $db): void {
             $db->exec('CREATE TABLE IF NOT EXISTS entity_schema_versions (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)');
             $versions = $db->query('SELECT version FROM entity_schema_versions ORDER BY version')->fetchAll(\PDO::FETCH_COLUMN);
@@ -37,6 +65,10 @@ final class SQLiteEntities implements Entities {
                     $db->prepare('UPDATE entity_definitions SET definition = ? WHERE name = ?')->execute([$definition->json(), $name]);
                 }
                 if ($existing === false) $db->prepare('INSERT INTO entity_definitions VALUES (?, ?)')->execute([$name, $definition->json()]);
+            }
+            foreach($this->indexes as $indexes)foreach($indexes as $key=>$fields) {
+                $expressions=array_map(static fn(string $field):string=>SQLiteEntityQuery::field($field),$fields);
+                $db->exec('CREATE INDEX IF NOT EXISTS entity_query_'.$key.' ON entity_records(entity, '.implode(', ',$expressions).', id)');
             }
         });
     }
@@ -82,6 +114,25 @@ final class SQLiteEntities implements Entities {
         $q = $this->db()->prepare('SELECT * FROM entity_records WHERE entity = ? ORDER BY id ASC LIMIT ? OFFSET ?');
         $q->bindValue(1, $name); $q->bindValue(2, $limit, \PDO::PARAM_INT); $q->bindValue(3, $offset, \PDO::PARAM_INT); $q->execute();
         return array_map(fn(array $row) => $this->record($row, $definition), $q->fetchAll(\PDO::FETCH_ASSOC));
+    }
+    private function queryStatement(string $sql,string $name,array $bindings):\PDOStatement {
+        $q=$this->db()->prepare($sql);$q->bindValue(1,$name,\PDO::PARAM_STR);
+        foreach($bindings as $i=>[$value,$type])$q->bindValue($i+2,$value,$type);
+        return $q;
+    }
+    public function search(string $name,?EntityQuery $query=null,int $limit=50,int $offset=0):array {
+        if($limit<1 || $limit>100 || $offset<0)throw new \InvalidArgumentException('Invalid entity pagination.');
+        $definition=$this->definition($name);$plan=SQLiteEntityQuery::compile($query??new EntityQuery(),$definition);
+        $this->requireJson();
+        $bindings=[...$plan['bindings'],[$limit,\PDO::PARAM_INT],[$offset,\PDO::PARAM_INT]];
+        $q=$this->queryStatement('SELECT * FROM entity_records WHERE entity = ? AND ('.$plan['where'].') ORDER BY '.$plan['order'].' LIMIT ? OFFSET ?',$name,$bindings);
+        $q->execute();return array_map(fn(array $row):array=>$this->record($row,$definition),$q->fetchAll(\PDO::FETCH_ASSOC));
+    }
+    public function count(string $name,?EntityFilter $filter=null):int {
+        $definition=$this->definition($name);$plan=SQLiteEntityQuery::compile(new EntityQuery($filter),$definition);
+        $this->requireJson();
+        $q=$this->queryStatement('SELECT COUNT(*) FROM entity_records WHERE entity = ? AND ('.$plan['where'].')',$name,$plan['bindings']);
+        $q->execute();return (int)$q->fetchColumn();
     }
     private function revision(array $record, ?int $expected): void {
         if ($expected !== null && $record['revision'] !== $expected) throw new \RuntimeException('Entity revision conflict.');
