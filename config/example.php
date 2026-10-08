@@ -16,6 +16,10 @@ return [
         'pages' => ['/'], // Fixed public paths only; other paths become [other].
     ],
     'sqlite' => ['path' => 'storage/site.sqlite'],
+    'theme' => [
+        'asset_hash_cache' => true, // Private disposable cache; refresh() clears it.
+        'debug' => false, // Diagnose stale manual rendering lifecycles locally.
+    ],
     'smtp' => [
         'host' => 'localhost', 'port' => 587, 'encryption' => 'tls',
         'username' => '', 'password' => '', 'from' => 'hello@example.com',

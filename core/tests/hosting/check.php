@@ -9,8 +9,8 @@ function hostingCheck(string $name, callable $test): void {
         echo 'PASS ' . $name . "\n"; $passed++;
     } catch (Throwable $e) { echo 'FAIL ' . $name . ': ' . $e->getMessage() . "\n"; $failed++; }
 }
-function request(string $host, string $path, string $method = 'GET'): array {
-    $context = stream_context_create(['http'=>['method'=>$method,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>3]]);
+function request(string $host, string $path, string $method = 'GET', array $requestHeaders = []): array {
+    $context = stream_context_create(['http'=>['method'=>$method,'header'=>implode("\r\n",$requestHeaders),'ignore_errors'=>true,'follow_location'=>0,'timeout'=>3]]);
     $body = @file_get_contents('http://' . $host . $path, false, $context);
     $raw = $http_response_header ?? [];
     preg_match('/^HTTP\/\S+ (\d+)/', $raw[0] ?? '', $match);
@@ -84,6 +84,15 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
     hostingCheck($host . ' HEAD assets return headers without body', static function () use ($host): bool {
         $r = request($host, '/assets/theme/test-theme/probe.css', 'HEAD');
         return $r['status'] === 200 && $r['body'] === '' && str_starts_with($r['headers']['content-type'], 'text/css');
+    });
+    hostingCheck($host . ' asset validators work through real servers for GET and HEAD', static function()use($host):bool {
+        $path='/assets/theme/test-theme/probe.css';$first=request($host,$path);$tag=$first['headers']['etag']??'';
+        $get=request($host,$path,'GET',['If-None-Match: W/'.$tag]);$head=request($host,$path,'HEAD',['If-None-Match: '.$tag]);
+        $miss=request($host,$path,'GET',['If-None-Match: "different"']);
+        return $tag==='"'.hash('sha256',$first['body']).'"'&&$get['status']===304&&$head['status']===304
+            &&$get['body']===''&&$head['body']===''&&($get['headers']['etag']??'')===$tag
+            &&($get['headers']['cache-control']??'')==='public, max-age=3600'&&($get['headers']['x-content-type-options']??'')==='nosniff'
+            &&$miss['status']===200&&$miss['body']===$first['body'];
     });
     foreach (['/missing','/assets/theme/test-theme/missing.css','/assets/theme/test-theme/blocked.php','/assets/theme/test-theme/escape.css','/assets/theme/wrong/probe.css',
         '/assets/theme/test-theme/danger.php.css','/assets/theme/test-theme/danger.PHP8.txt','/assets/theme/test-theme/danger.phar.gif',
