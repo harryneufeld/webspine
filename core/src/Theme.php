@@ -76,7 +76,7 @@ final class Theme {
     public function render(string $template, array $data = [], int $status = 200): Response {
         $this->renderBoundary();
         $theme = $this->active();
-        if (!preg_match('/^[a-z-]+$/D', $template)) throw new \RuntimeException('Invalid template.');
+        if (!preg_match('/^(?:[a-z][a-z0-9-]*|-[a-z-]*)$/D', $template)) throw new \RuntimeException('Invalid template.');
         $directory = $this->app->root . '/site/themes/' . $theme;
         $file = $directory . '/' . $template . '.php';
         if (!is_file($file)) throw new \RuntimeException('Missing theme template.');

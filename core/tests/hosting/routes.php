@@ -4,6 +4,8 @@ use Webspine\{App, Request, Response};
 use Webspine\Contracts\Settings;
 return static function (App $app): void {
     (require __DIR__ . '/base-routes.php')($app);
+    $app->router->page('/hosting-canonical', static fn()=>new Response('Canonical page'), 'strip');
+    $app->router->page('/hosting-appended/', static fn()=>new Response('Appended page'), 'append');
     // Synthetic routes are copied only into disposable containers, never the starter.
     $app->router->get('/hosting-probe', static fn(Request $request) => Response::json([
         'version' => $app->version['version'],
@@ -22,9 +24,7 @@ return static function (App $app): void {
         $app->services->get(Settings::class)->set('hosting-check', 'preserved');
         return Response::json(['written' => true]);
     });
-    $app->router->get('/hosting-redirect', static fn(Request $request) => new Response('', 302, [
-        'Location' => '/docs?' . http_build_query($request->query(), '', '&', PHP_QUERY_RFC3986),
-    ]));
+    $app->router->get('/hosting-redirect', static fn(Request $request) => Response::redirect('/docs?' . http_build_query($request->query(), '', '&', PHP_QUERY_RFC3986)));
     $app->router->post('/hosting-body', static fn(Request $request) => Response::json([
         'values'=>str_starts_with($request->header('Content-Type',''),'application/json') ? $request->json() : $request->form(),
         'header'=>$request->header('X-Example'), 'query'=>$request->query(),

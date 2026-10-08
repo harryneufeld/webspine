@@ -86,6 +86,7 @@ try {
     (require __DIR__ . '/components.php')($app, $site);
     (require __DIR__ . '/assets.php')($app, $site);
     (require __DIR__ . '/asset-cache.php')($base, $site);
+    (require __DIR__ . '/page-routing.php')($base, $site);
     (require __DIR__ . '/health.php')($app, $site);
     (require __DIR__ . '/configuration.php')($app, $site);
     check('Generic queue concurrency, leases, retries and retention pass in an isolated process', static function () use ($source): bool {

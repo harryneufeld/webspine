@@ -42,6 +42,14 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
     hostingCheck($host . ' pages and preserved query string', static function () use ($host): bool {
         return request($host, '/')['status'] === 200 && request($host, '/docs?source=hosting')['status'] === 200;
     });
+    hostingCheck($host . ' canonical page redirects preserve queries, methods and security headers', static function()use($host):bool {
+        $get=request($host,'/hosting-canonical/?x=a%20b&x=c+d');$head=request($host,'/hosting-appended?x=1','HEAD');
+        $post=request($host,'/hosting-canonical/','POST');
+        return $get['status']===308&&($get['headers']['location']??'')==='/hosting-canonical?x=a%20b&x=c+d'
+            &&($get['headers']['x-content-type-options']??'')==='nosniff'&&$get['body']===''
+            &&$head['status']===308&&($head['headers']['location']??'')==='/hosting-appended/?x=1'&&$head['body']===''
+            &&$post['status']===405&&request($host,'/hosting-canonical')['body']==='Canonical page';
+    });
     hostingCheck($host . ' decoded query values and original request URI', static function () use ($host): bool {
         $r = request($host, '/hosting-probe?page_id=41&term=a%20b&value=x%26y');
         $data = json_decode($r['body'], true);

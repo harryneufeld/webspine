@@ -52,6 +52,13 @@ protected POST examples](requests.md). Handlers return Response, or
 null for the site-defined not-found page. The core /health route is reserved for
 generic status. Site.pages uses a conventional `not-found` entry for 404 output.
 
+Pages may declare an optional `path` and `slash` policy for automatic GET/HEAD
+registration. The starter declares its three page paths in `site/pages.php`;
+database/custom routes remain in `site/routes.php`. Existing sites without page
+paths keep their manual routes. Duplicate paths, slash aliases and matching GET
+patterns fail clearly rather than silently replacing a handler. See
+[routing and redirects](routing.md) for adoption and migration examples.
+
 Providers install schema only. The CLI then runs site/install.php to initialize
 site data through Settings and Pages. Existing values and content are preserved
 by this site's installer. Core updates never run the site installer. The
@@ -59,6 +66,13 @@ starter enables no feature plugins by default. Optional field-notes and catalog
 examples demonstrate hook-based routes and entity declarations.
 
 ## Template data
+
+Template identifiers start with a lowercase letter followed by lowercase letters,
+digits or hyphens, such as `section2` or `landing-v2`. Existing leading-hyphen
+identifiers containing only lowercase letters/hyphens remain accepted for
+compatibility; prefer the letter-first grammar for new files. Dots, separators,
+underscores, uppercase letters and leading digits remain invalid. A valid but
+missing template retains the `Missing theme template` diagnostic.
 
 Page templates and layouts run in separate local scopes, each receiving the
 original `$data` array and ordinary aliases such as `$title` and `$body`.

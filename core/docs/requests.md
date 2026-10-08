@@ -43,9 +43,12 @@ For legacy URLs, map known query values to fixed local destinations:
 $destinations = ['41' => '/about'];
 $id = $request->query('page_id');
 if (is_string($id) && isset($destinations[$id])) {
-    return new \Webspine\Response('', 301, ['Location' => $destinations[$id]]);
+    return \Webspine\Response::redirect($destinations[$id], 301);
 }
 ```
 
 Never redirect to an arbitrary user-supplied destination. See the optional
 [protected contact-form example](examples/contact-form/README.md).
+
+See [page paths, slash policies and migration redirects](routing.md) for the
+validated redirect helper, fixed permalink maps, and method-preserving semantics.
