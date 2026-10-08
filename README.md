@@ -1,6 +1,6 @@
 # web**spine**
 
-**Your own AI-driven website.**
+**The AI-native website framework**
 
 A lean, open-source foundation for building and maintaining your website with
 your choice of AI. Clear boundaries between content, themes, components, and

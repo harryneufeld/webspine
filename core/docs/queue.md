@@ -23,6 +23,9 @@ restart policy belong to the operator. Missing/paused handlers consume no jobs
 or attempts. Unexpected handler failures record a safe category and log job ID,
 exception class and source location, without exception text or payload data.
 CLI failures exit nonzero with private class/file/line context.
+After a normally returned worker invocation, CLI `work` applies bounded
+completed-job retention, including when no ready jobs were found. Configure it
+before upgrading if your site requires a different retention policy.
 
 ## Private monitoring
 
@@ -143,9 +146,41 @@ private ACLs. Do not expose this directory through the document root.
 per call whose terminal timestamp is older than the retention period (default
 30 days, allowed 1–3650). Pending and processing jobs are retained. Review failed
 jobs before pruning; deletion removes submitted data and dedupe history, so a
-later enqueue using the old key can create a new job. Schedule repeated pruning
-according to the site's retention needs; nothing is pruned during registration
-or HTTP requests. This deletes logical rows, not historical backups or forensic
+later enqueue using the old key can create a new job.
+
+CLI `work` automatically deletes at most 1,000 **completed** jobs per invocation
+whose completion timestamp is at least 30 days old. Pending, processing and
+failed jobs are never automatically removed. Configure an integer 1–3650 days,
+or explicit `null` to disable automatic cleanup and use another retention process:
+
+```php
+'job_queue' => [
+    'stale_after_seconds' => 900,
+    'retention_days' => 30, // null disables automatic completed-job pruning.
+],
+```
+
+Invalid values fail before work/delivery/deletion. CLI output adds a `retention`
+object containing `days`, `supported`, `enabled`, and `pruned_completed`.
+Continue scheduling `work` even when the queue is quiet; later invocations clear
+larger cleanup backlogs. A stopped or failing cron also stops cleanup. Monitor
+failed jobs, review/retry them and explicitly prune or otherwise remove their
+data according to the site's retention policy. The automatic completed policy
+does not establish a retention deadline for failed or active jobs.
+
+`Worker::run()` itself remains delivery-only for existing programmatic callers.
+Explicit code may use `QueueWork::run($queue, $handlers, $jobQueueConfig)` for the
+same operator workflow. Completed-only cleanup is the optional
+`CompletedJobRetention` capability; Queue-only providers remain usable and CLI
+reports `supported: false`, `enabled: false`, rather than calling their broader
+manual prune operation. The bundled SQLite provider supports it without schema
+changes or reinstallation. Registration, HTTP submissions, status and health
+never prune jobs.
+
+Automatic cleanup removes payloads **and dedupe history**. Sites that need
+long-lived deduplication must keep their own durable receipt/history or disable
+automatic pruning. Schedule explicit manual pruning according to site needs.
+Deletion removes logical rows, not historical backups or forensic
 copies of database pages. Protect backups and manage their retention separately.
 
 Core updates preserve queue data and do not install or migrate this schema.

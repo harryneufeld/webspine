@@ -23,6 +23,11 @@ interface QueueMonitor {
     public function workerFinished(string $run, ?int $now = null): void;
 }
 
+/** Optional completed-only cleanup; manual Queue::prune() retains its existing behavior. */
+interface CompletedJobRetention {
+    public function pruneCompleted(int $days = 30): int;
+}
+
 final readonly class Job {
     public function __construct(
         public string $id, public string $type, public int $version, public array $payload,

@@ -51,6 +51,12 @@ status when attention is needed. It defaults to a 15-minute overdue threshold;
 see the queue guide for configuration and warning categories. Saved inquiries
 still require an operational worker and mail provider; a running cron alone
 does not prove delivery. Keep diagnostics private and use external monitoring.
+The CLI worker also prunes up to 1,000 completed inquiry jobs at least 30 days
+old per run. Configure `job_queue.retention_days` (1–3650 or `null` to disable)
+for your site's policy. Keep the worker scheduled even when there is no mail to
+send. Pending/processing/failed inquiries are preserved; monitor and review
+failed messages and manage their retention explicitly. Pruning removes dedupe
+history and does not erase backup copies. See the queue guide for full limits.
 
 A successful POST queues a message and redirects with 303. Confirmation says
 **saved for delivery**, rather than claiming that an email was delivered. Mail
