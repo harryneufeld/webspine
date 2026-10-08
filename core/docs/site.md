@@ -125,14 +125,66 @@ passed renderer prop. PHP themes remain trusted code, not a sandbox.
 `/assets/theme/<active-id>/style.css?v=<12-character-SHA-256-prefix>`.
 Paths are relative to the active theme's `assets/` directory. Invalid, missing,
 unreadable, executable or escaping paths fail explicitly; the helper and asset
-delivery use the same allowlist and realpath containment checks. Existing
-supported formats and filename rules are unchanged. Do not supply a leading
-slash, query string or fragment. Escape the returned URL when placing it in HTML.
+delivery use the same allowlist and realpath containment checks. Do not supply a
+leading slash, query string, fragment, or URL-encoded path to the helper. Escape
+the returned URL when placing it in HTML.
+
+Directory and filename segments use ASCII letters, digits, underscores and
+hyphens, optionally separated by single dots. For example, `fonts/a.b.woff2` and
+`images.v2/logo.dark.avif` are valid. Hidden files, empty/dot/traversal segments,
+backslashes, trailing/consecutive dots and executable suffix chains such as
+`file.php.css` are rejected. Extensions are lowercase and case-sensitive:
+
+| Extensions | Content-Type |
+| --- | --- |
+| css, js | text/css, text/javascript |
+| svg, png, jpg/jpeg, webp | image/svg+xml, image/png, image/jpeg, image/webp |
+| ico, avif, gif | image/vnd.microsoft.icon, image/avif, image/gif |
+| woff2 | font/woff2 |
+| pdf | application/pdf |
+| txt | text/plain; charset=utf-8 |
+| webmanifest | application/manifest+json |
+
+MIME types follow the [IANA registry](https://www.iana.org/assignments/media-types/).
+Asset files are trusted, public theme resources, not an upload area; the framework
+does not validate their contents or sanitize SVG, JavaScript, PDFs or manifests.
+Keep private documents/configuration outside assets, even with allowed extensions.
+Contained links must resolve to allowed asset files; links outside the assets
+directory and links disguising executable/unsupported targets are rejected.
+
+Local helper exceptions distinguish `Invalid theme asset path`, `Unsupported
+theme asset extension`, `Missing theme asset`, and `Cannot read theme asset`.
+Public asset failures remain generic 404s without those diagnostics. HTTP paths
+are decoded once by Request; encoded traversal and executable suffixes remain
+invalid. Successful responses keep `nosniff` through the normal response sender.
 
 Each asset hash/URL is reused within a rendering lifecycle. A fresh lifecycle sees
 file changes and produces a new version. This centralizes URL construction and
 cache-busting; PHP delivery, its one-hour cache policy and the absence of ETag/304
-support are unchanged (tracked separately in #45 and #46).
+support are unchanged (tracked separately in #45).
+
+### Domain-root robots and sitemap routes
+
+These URLs belong to `site/routes.php`, not to a theme's assets directory. For a
+site served at the domain root, register explicit GET routes and use your site's
+public absolute URL in the sitemap. HEAD is handled by the normal entry point:
+
+```php
+$app->router->get('/robots.txt', static fn() => new \Webspine\Response(
+    "User-agent: *\nDisallow:\nSitemap: https://example.com/sitemap.xml\n", 200,
+    ['Content-Type'=>'text/plain; charset=utf-8']));
+$app->router->get('/sitemap.xml', static fn() => new \Webspine\Response(
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    . '<url><loc>https://example.com/</loc></url></urlset>', 200,
+    ['Content-Type'=>'application/xml; charset=utf-8']));
+```
+
+Keep URL lists and indexing decisions site-owned. Escape dynamic XML values and
+list only intended public canonical URLs. A robots file is not access control;
+Starter's default noindex policy still applies until explicitly changed. No
+robots file, sitemap generator or subdirectory-hosting support is added by these
+examples. See [deployment indexing guidance](deployment.md#search-indexing).
 
 ### Rendering lifecycle
 

@@ -66,16 +66,35 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
     foreach ($versions['assets'] as $ext => $type) {
         hostingCheck($host . ' ' . $ext . ' asset bytes, MIME, and cache header', static function () use ($host,$ext,$type): bool {
             $r = request($host, '/assets/theme/test-theme/probe.' . $ext . '?v=1');
-            return $r['status'] === 200 && $r['body'] === 'asset-' . $ext && explode(';', $r['headers']['content-type'])[0] === $type && ($r['headers']['cache-control'] ?? '') === 'public, max-age=3600';
+            return $r['status'] === 200 && $r['body'] === 'asset-' . $ext && explode(';', $r['headers']['content-type'])[0] === explode(';', $type)[0]
+                && ($ext !== 'txt' || str_contains($r['headers']['content-type'], 'charset=utf-8'))
+                && ($r['headers']['x-content-type-options'] ?? '') === 'nosniff' && ($r['headers']['cache-control'] ?? '') === 'public, max-age=3600';
+        });
+        hostingCheck($host . ' HEAD ' . $ext . ' asset returns MIME without bytes', static function () use ($host, $ext, $type): bool {
+            $r = request($host, '/assets/theme/test-theme/probe.' . $ext, 'HEAD');
+            return $r['status'] === 200 && $r['body'] === '' && explode(';', $r['headers']['content-type'])[0] === explode(';', $type)[0];
         });
     }
+    hostingCheck($host . ' dotted font filename and encoded dot reach PHP routing', static function () use ($host): bool {
+        $plain = request($host, '/assets/theme/test-theme/fonts/a.b.woff2?v=1');
+        $encoded = request($host, '/assets/theme/test-theme/fonts/a%2eb.woff2');
+        return $plain['status'] === 200 && $plain['body'] === 'dotted-font' && $plain['headers']['content-type'] === 'font/woff2'
+            && $encoded['status'] === 200 && $encoded['body'] === 'dotted-font';
+    });
     hostingCheck($host . ' HEAD assets return headers without body', static function () use ($host): bool {
         $r = request($host, '/assets/theme/test-theme/probe.css', 'HEAD');
         return $r['status'] === 200 && $r['body'] === '' && str_starts_with($r['headers']['content-type'], 'text/css');
     });
-    foreach (['/missing','/assets/theme/test-theme/missing.css','/assets/theme/test-theme/blocked.php','/assets/theme/test-theme/escape.css','/assets/theme/wrong/probe.css','/assets/theme/test-theme/probe.ico','/assets/theme/test-theme/probe.avif','/assets/theme/test-theme/probe.gif','/assets/theme/test-theme/probe.pdf'] as $path) {
+    foreach (['/missing','/assets/theme/test-theme/missing.css','/assets/theme/test-theme/blocked.php','/assets/theme/test-theme/escape.css','/assets/theme/wrong/probe.css',
+        '/assets/theme/test-theme/danger.php.css','/assets/theme/test-theme/danger.PHP8.txt','/assets/theme/test-theme/danger.phar.gif',
+        '/assets/theme/test-theme/unsupported.html','/assets/theme/test-theme/disguised.css','/assets/theme/test-theme/unreadable.css'] as $path) {
         hostingCheck($host . ' missing/unsafe resource ' . $path, static fn() => request($host, $path)['status'] === 404);
     }
+    hostingCheck($host . ' unreadable assets remain generic for GET and HEAD', static function () use ($host): bool {
+        $get = request($host, '/assets/theme/test-theme/unreadable.css');
+        $head = request($host, '/assets/theme/test-theme/unreadable.css', 'HEAD');
+        return $get['status'] === 404 && $get['body'] === 'Not found' && $head['status'] === 404 && $head['body'] === '';
+    });
     foreach (['/assets/theme/test-theme/%2e%2e/layout.php','/assets/theme/test-theme/%2e%2e/%2e%2e/%2e%2e/%2e%2e/config/local.php','/assets/theme/test-theme/%252e%252e/layout.php','/assets/theme/test-theme/%2e%2e%5clayout.php','/assets/theme/test-theme/probe.css%00'] as $path) {
         hostingCheck($host . ' traversal rejected ' . $path, static function () use ($host,$path): bool {
             $r = request($host, $path);

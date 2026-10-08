@@ -66,17 +66,24 @@ if ($mode === 'prepare') {
     foreach (['core/private.txt','storage/private.txt','site/content/private.txt','.dist/private.txt','private.txt'] as $file) {
         file_put_contents('/srv/webspine/' . $file, 'HOSTING_PRIVATE_SENTINEL');
     }
-    $assets = ['css'=>'text/css','js'=>'text/javascript','svg'=>'image/svg+xml','woff2'=>'font/woff2','png'=>'image/png','jpg'=>'image/jpeg','webp'=>'image/webp'];
+    $assets = ['css'=>'text/css','js'=>'text/javascript','svg'=>'image/svg+xml','woff2'=>'font/woff2','png'=>'image/png','jpg'=>'image/jpeg','jpeg'=>'image/jpeg','webp'=>'image/webp',
+        'ico'=>'image/vnd.microsoft.icon','avif'=>'image/avif','gif'=>'image/gif','pdf'=>'application/pdf','txt'=>'text/plain; charset=utf-8','webmanifest'=>'application/manifest+json'];
     foreach ($assets as $ext => $_) file_put_contents('/srv/webspine/site/themes/test-theme/assets/probe.' . $ext, 'asset-' . $ext);
-    foreach (['ico','avif','gif','pdf'] as $ext) file_put_contents('/srv/webspine/site/themes/test-theme/assets/probe.' . $ext, 'blocked-' . $ext);
+    mkdir('/srv/webspine/site/themes/test-theme/assets/fonts');
+    file_put_contents('/srv/webspine/site/themes/test-theme/assets/fonts/a.b.woff2', 'dotted-font');
+    foreach (['danger.php.css','danger.PHP8.txt','danger.phar.gif','unsupported.html','unreadable.css','private.php'] as $file) {
+        file_put_contents('/srv/webspine/site/themes/test-theme/assets/' . $file, 'HOSTING_PRIVATE_SENTINEL');
+    }
     file_put_contents('/srv/webspine/public/control.css', 'static-control');
     file_put_contents('/srv/webspine/site/themes/test-theme/assets/blocked.php', '<?php echo "HOSTING_PRIVATE_SENTINEL";');
     symlink('/srv/webspine/config/local.php', '/srv/webspine/site/themes/test-theme/assets/escape.css');
+    symlink('/srv/webspine/site/themes/test-theme/assets/private.php', '/srv/webspine/site/themes/test-theme/assets/disguised.css');
     (new App('/srv/webspine'))->install();
     // Runtime group can read code, but only storage is writable.
     command(['chown','-R','root:33','/srv/webspine']);
     command(['chmod','-R','u=rwX,g=rX,o=rX','/srv/webspine']);
     chmod('/srv/webspine/config', 0750); chmod('/srv/webspine/config/local.php', 0640);
+    chmod('/srv/webspine/site/themes/test-theme/assets/unreadable.css', 0000);
     storageMode(true);
     $initial = (require '/source/core/version.php')['version'];
     $parts = array_map('intval', explode('.', $initial)); $parts[2]++;

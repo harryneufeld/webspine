@@ -67,7 +67,10 @@ Pass text/data from existing site content files and render them through
 `$ui` for nested `component()` calls, active theme `id()`, and content-versioned
 `assetUrl()` paths, without inheriting page variables. The same helper is available
 to pages and layouts. The Starter action link renders its own icon and its layout
-uses shared asset URLs. See [components and rendering lifecycle](core/docs/site.md#reusable-components).
+uses shared asset URLs. Safe dotted asset names and explicit image/font/document
+MIME types share validation between URL helpers and delivery. See
+[asset formats and diagnostics](core/docs/site.md#asset-urls) and
+[components and rendering lifecycle](core/docs/site.md#reusable-components).
 
 ## Commands
 
