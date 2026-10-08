@@ -11,7 +11,10 @@ feature's dependency graph.
 Storage is lazy: construction and registration do not create a database. Install
 owns schema creation in an immediate SQLite transaction. Schema 1 is recorded,
 installation is idempotent, and unknown schemas are rejected. No SQL lives in
-feature plugins or core. Database adapters may expose the same contracts but
+feature registration or generic core mechanisms. The optional bundled
+spineanalytics SQLite provider owns its separate aggregate database and explicit
+installer under `core/plugins/spine-analytics/`; it does not query site storage.
+Database adapters may expose the same contracts but
 must implement their own queries, migrations, and data movement.
 
 Providers install schema only. App::install then runs the trusted site/install.php
