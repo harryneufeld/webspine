@@ -24,14 +24,21 @@ final class Response {
         }
         return new self('', $status, ['Location'=>$destination]);
     }
+    public const DEFAULT_HEADERS = [
+        'Content-Type' => 'text/html; charset=utf-8',
+        'X-Content-Type-Options' => 'nosniff', 'Referrer-Policy' => 'strict-origin-when-cross-origin',
+        'Content-Security-Policy' => "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    ];
+    /** Response headers plus each default whose name (case-insensitive) the response did not set. */
+    public function emittedHeaders(): array {
+        $headers = $this->headers;
+        $set = array_change_key_case($headers);
+        foreach (self::DEFAULT_HEADERS as $name => $value) if (!isset($set[strtolower($name)])) $headers[$name] = $value;
+        return $headers;
+    }
     public function send(bool $head = false): void {
         http_response_code($this->status);
-        $headers = $this->headers + [
-            'Content-Type' => 'text/html; charset=utf-8',
-            'X-Content-Type-Options' => 'nosniff', 'Referrer-Policy' => 'strict-origin-when-cross-origin',
-            'Content-Security-Policy' => "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
-        ];
-        foreach ($headers as $name => $value) header($name . ': ' . $value);
+        foreach ($this->emittedHeaders() as $name => $value) header($name . ': ' . $value);
         if (!$head) echo $this->body;
     }
 }
