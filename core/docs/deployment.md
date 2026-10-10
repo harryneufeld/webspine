@@ -5,6 +5,25 @@ and OpenSSL for SMTP. Point the document root to `public/`, never the project
 root. Deployment currently assumes the **domain root**, not a URL subdirectory.
 Use HTTPS and a local-disk SQLite database; network filesystems are unsupported.
 
+## Agent-assisted deployment
+
+An agent may handle deployment and production framework updates when authorized
+by the user. Users may have no technical background; the agent should carry out
+the technical work within that scope and explain outcomes in plain language,
+rather than assume a separate human operator will finish deployment. Ask for
+missing access or decisions when needed.
+
+Develop and test locally with disposable data. Before production changes, verify
+the target, create and verify the full backup required by `AGENTS.md`, and prepare
+a rollback path. Preserve private configuration and persistent data. For updates,
+use a verified core release through the CLI updater; never overlay a bootstrap
+ZIP onto a customized site. Check health, routes, assets and affected features
+after deployment, and report the deployed version and verification results.
+
+Core updates preserve each site's `AGENTS.md`. Existing sites must explicitly
+adopt revised deployment instructions in their own file; a core update will not
+replace their local policy.
+
 ## Server configurations
 
 Adjust paths, domain, and PHP-FPM endpoint in these versioned, copyable examples;
