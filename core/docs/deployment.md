@@ -5,6 +5,56 @@ and OpenSSL for SMTP. Point the document root to `public/`, never the project
 root. Deployment currently assumes the **domain root**, not a URL subdirectory.
 Use HTTPS and a local-disk SQLite database; network filesystems are unsupported.
 
+## PHP setup
+
+| Extension | Needed for |
+|---|---|
+| `pdo_sqlite` (with PDO) | Every website: settings, pages, entities, queue, analytics |
+| `zip` | Core updates (`update`), packaging and release verification |
+| `openssl` | SMTP mail over TLS |
+
+Check the installation with the same PHP executable the site uses:
+
+```sh
+php -v       # version, must be 8.3 or newer
+php --ini    # which php.ini is loaded
+php -m       # loaded extensions
+php core/bin/console.php health
+```
+
+`Loaded Configuration File: (none)` means PHP runs with built-in defaults and
+no extensions configured in an ini file. Create a `php.ini` in the directory
+shown as `Configuration File (php.ini) Path`, or next to `php.exe` on Windows,
+from the distributed template: `php.ini-development` for local work,
+`php.ini-production` for hosted sites. Then set `extension_dir` and enable the
+needed extensions, for example on Windows:
+
+```ini
+extension_dir = "ext"
+extension=pdo_sqlite
+extension=zip
+extension=openssl
+```
+
+Run `php --ini` and `php -m` again. Restart the PHP process that serves the
+site (the `php -S` preview, PHP-FPM, or the web server) after changes; the CLI
+and the web worker may load different ini files. On hosted sites keep
+`display_errors` off and log errors privately.
+
+**Windows (winget):** verified with `PHP.PHP.8.4` 8.4.25. The package ships
+`php.ini-development` and `php.ini-production` but no active `php.ini`. Without
+one, `extension_dir` points to `C:\php\ext` and only PDO is loaded, so
+`pdo_sqlite` is missing. Copy `php.ini-development` to `php.ini` in the package
+directory next to `php.exe` (`(Get-Command php).Source` in PowerShell shows its
+location) and apply the settings above; the extension DLLs are in its `ext\`
+folder. Other packages and versions may differ: check `php --ini` and `php -m`.
+
+**Linux/macOS:** distribution packages usually enable extensions through extra
+ini files, for example `php8.3-sqlite3`, `php8.3-zip` on Debian/Ubuntu.
+
+See the official guides for the [configuration file](https://www.php.net/manual/en/configuration.file.php)
+and [Windows extensions](https://www.php.net/install.pecl.windows.php).
+
 ## Agent-assisted deployment
 
 An agent may handle deployment and production framework updates when authorized
