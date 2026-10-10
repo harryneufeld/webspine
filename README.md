@@ -30,9 +30,27 @@ releases.
 - **Entirely yours** — MIT-licensed, readable code you can keep developing
   without depending on future webspine releases.
 
-## Start
+## Get started
 
-Enable PHP extensions `pdo_sqlite`, `zip` (release tooling), and `openssl` (SMTP).
+### With your AI
+
+Tell your AI to:
+
+```text
+Build me a website using webspine.org.
+Read https://www.webspine.org/docs#technical-reference.
+My website is for: [your idea or business]
+Show me a preview so we can refine it together.
+```
+
+Describe your idea. Shape it together. Make it yours.
+
+### By hand
+
+Download the latest `webspine-<version>.zip` from
+[Releases](https://github.com/harryneufeld/webspine/releases). Requires PHP 8.3+
+with `pdo_sqlite`; `zip` (updates and release tooling) and `openssl` (SMTP) are
+optional. See [PHP setup](core/docs/deployment.md#php-setup), including Windows.
 From the extracted project directory:
 
 ```sh
