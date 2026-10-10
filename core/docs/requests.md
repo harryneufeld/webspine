@@ -52,3 +52,45 @@ Never redirect to an arbitrary user-supplied destination. See the optional
 
 See [page paths, slash policies and migration redirects](routing.md) for the
 validated redirect helper, fixed permalink maps, and method-preserving semantics.
+
+## Security headers and Content Security Policy
+
+Every `Response` is sent with these defaults unless it sets the same header
+itself (names compare case-insensitively, as in HTTP):
+
+| Header | Default |
+|---|---|
+| `Content-Type` | `text/html; charset=utf-8` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'` |
+
+The default CSP allows only same-origin scripts, styles, fonts, frames and form
+targets, `data:` images, no inline scripts/styles, and no framing by other sites.
+`Response::DEFAULT_HEADERS` holds these values and `emittedHeaders()` returns the
+exact headers `send()` will emit, for tests.
+
+To allow an external embed or widget, override the policy only on the response
+that needs it, and add only the origins and directives that embed requires.
+Copy the full default and extend it, because a CSP header replaces the default
+entirely. For example, a video page in `site/routes.php` (remove a `path` for the
+same URL from `pages.php`, or the route conflicts):
+
+```php
+$app->router->get('/video', static function () use ($app): Response {
+    $response = $app->theme->render('page', ['title' => 'Video', 'body' => '', 'page' => '']);
+    $response->headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; "
+        . "style-src 'self'; img-src 'self' data:; font-src 'self'; "
+        . "frame-src https://www.youtube-nocookie.com; "
+        . "base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+    return $response;
+});
+```
+
+Other security headers keep their defaults. Prefer one specific origin per
+directive over wildcards, never add `'unsafe-inline'`/`'unsafe-eval'` or remove
+the header to make an embed work, and keep `frame-ancestors 'none'` unless the
+site itself must be framed. Each allowed origin receives visitor requests: the
+site owner decides whether it is acceptable and covers it in the privacy policy
+and any consent the site needs. Emergency 503 pages in `public/index.php` always
+use the default policy.

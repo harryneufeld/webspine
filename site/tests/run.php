@@ -2,6 +2,8 @@
 declare(strict_types=1);
 // Site-owned checks: extend these when adding pages, routes or components.
 // Use explicit local config and a throwaway SQLite database, never local.php.
+// Checks that start sessions (e.g. the contact example) need headers unsent:
+// run them in a subprocess or over HTTP, not after printing PASS lines here.
 require dirname(__DIR__, 2) . '/core/bootstrap.php';
 use Webspine\App;
 use Webspine\Contracts\Pages;
