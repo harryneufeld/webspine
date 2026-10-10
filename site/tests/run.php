@@ -29,6 +29,16 @@ try {
         });
     }
     siteCheck('Unknown page returns the site-owned 404', fn() => $app->handle('GET','/missing')->status === 404);
+    siteCheck('Starter uses the site language on every page and escapes the attribute',static function()use($app):bool {
+        $saved=$app->site->meta['language'];
+        try {
+            if($saved!=='en'||!str_contains($app->handle('GET','/')->body,'<html lang="en">'))return false;
+            $app->site->meta['language']='de-DE';
+            foreach(['/','/about','/contact','/missing']as$path)if(!str_contains($app->handle('GET',$path)->body,'<html lang="de-DE">'))return false;
+            $app->site->meta['language']='en" onload="unsafe';
+            return str_contains($app->handle('GET','/')->body,'lang="en&quot; onload=&quot;unsafe"');
+        }finally{$app->site->meta['language']=$saved;}
+    });
     siteCheck('Starter stylesheet is available', fn() => ($app->handle('GET','/assets/theme/starter/style.css')->headers['Content-Type'] ?? null) === 'text/css');
     siteCheck('Starter favicon is available', fn() => $app->handle('GET','/assets/theme/starter/favicon.svg')->status === 200);
     siteCheck('Reusable action escapes its text', fn() => str_contains($app->theme->component('action-link',['label'=>'<script>','href'=>'/about']), '&lt;script&gt;'));

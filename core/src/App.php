@@ -9,6 +9,7 @@ final class App {
     public Plugins $plugins;
     public Theme $theme;
     public Site $site;
+    public VisitorErrors $visitorErrors;
     public readonly string $coreRoot;
     public array $config;
     public array $version;
@@ -16,7 +17,8 @@ final class App {
         $this->coreRoot = dirname(__DIR__);
         $this->version = require dirname(__DIR__) . '/version.php';
         $this->config = $config ?? $this->loadConfiguration();
-        $this->services = new Registry(); $this->router = new Router(); $this->hooks = new Hooks();
+        $this->visitorErrors = VisitorErrors::load($root);
+        $this->services = new Registry(); $this->router = new Router($this->visitorErrors); $this->hooks = new Hooks();
         $this->plugins = new Plugins($this); $this->theme = new Theme($this);
         $this->site = new Site($this);
         $providers = $this->config['providers'] ?? [];
@@ -65,13 +67,13 @@ final class App {
         try {
             $request = $method instanceof Request ? $method : new Request($method, $path ?? '/');
             if (str_starts_with($request->path, '/assets/')) {
-                if (!in_array($request->method, ['GET','HEAD'], true)) return new Response('Method not allowed', 405, ['Allow'=>'GET, HEAD']);
+                if (!in_array($request->method, ['GET','HEAD'], true)) return $this->visitorErrors->present(new Response('Method not allowed', 405, ['Allow'=>'GET, HEAD']));
                 return $this->theme->asset($request->path, $request);
             }
             $response = $this->router->dispatch($request->method, $request->path, $request);
             return $response ?? $this->site->render('not-found');
         } catch (HttpError $e) {
-            return new Response($e->getMessage(), $e->status, ['Content-Type'=>'text/plain; charset=utf-8','Cache-Control'=>'no-store']);
+            return $this->visitorErrors->present(new Response($e->getMessage(), $e->status, ['Content-Type'=>'text/plain; charset=utf-8','Cache-Control'=>'no-store']));
         }
     }
 }

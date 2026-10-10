@@ -7,7 +7,8 @@ framework; changing a theme should not silently discard website content.
 
 | Where | What to edit |
 | --- | --- |
-| `site/meta.php` | Site name, brand parts, SEO description, indexing, initial theme |
+| `site/meta.php` | Site name, brand parts, SEO description, indexing, language, initial theme |
+| `site/errors.json` | Optional data-only visitor error language and copy |
 | `site/pages.php` | Page titles, template choices, 404 and plain-text pages |
 | `site/content/home.php` | Homepage copy, headline, subline, labels, links |
 | `site/content/page.php` | Shared page navigation labels |
@@ -30,6 +31,10 @@ Edit `headline`, `intro`, and `items` in `site/content/home.php`. The browser ti
 is in `site/pages.php`; identity is in `site/meta.php`. The Starter theme places
 and escapes these values. The repository's example site is intentionally small;
 webspine.org's marketing content and design are maintained separately.
+
+Declare page language in `site/meta.php`; the Starter layout uses its escaped
+value for HTML `lang`. Optional `site/errors.json` supplies visitor error copy
+even during startup failures. See [site language and visitor errors](language.md).
 
 Before launching a Starter site, set `'indexable' => true` in `site/meta.php`.
 Until then its shared layout emits `noindex` and shows a reminder. Custom themes

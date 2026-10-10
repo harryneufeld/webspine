@@ -4,7 +4,7 @@ $indexable = ($site->meta['indexable'] ?? false) === true;
 $brandProps = ['href' => '/', 'prefix' => $site->meta['brand_prefix'], 'bold' => $site->meta['brand_bold'], 'label' => $site->meta['name'] . ' home'];
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="<?= e($site->meta['language']) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

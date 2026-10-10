@@ -13,6 +13,23 @@ SQLite support.
 You own the code and can keep developing it independently of future webspine
 releases.
 
+## Why webspine
+
+- **Guardrails for your AI** — content, themes, components, and plugins each
+  have their own place. Your AI makes focused changes instead of tangled ones.
+- **Real backend, plain PHP** — routing, pages, redirects, and a CLI for
+  install, health checks, and updates. No Node.js, npm, Composer, or build step.
+- **Built-in database** — SQLite out of the box, with declarative entities,
+  validated CRUD, filters, and indexes.
+- **Contact form** — spam-protected, with messages saved to a durable queue
+  and delivered to your inbox via SMTP.
+- **Simple analytics** — aggregate page visits in a private dashboard, without
+  tracking individual visitors.
+- **Safe updates** — verified core releases update the framework while your
+  content, theme, plugins, and data stay untouched. Failed updates roll back.
+- **Entirely yours** — MIT-licensed, readable code you can keep developing
+  without depending on future webspine releases.
+
 ## Start
 
 Enable PHP extensions `pdo_sqlite`, `zip` (release tooling), and `openssl` (SMTP).
@@ -122,7 +139,7 @@ theme removes both the directive and reminder. Search engines decide whether
 to index eligible pages. No `robots.txt` or sitemap is generated automatically.
 See [deployment and indexing](core/docs/deployment.md#search-indexing).
 
-Implemented: [page routing, canonical slashes and validated redirects](core/docs/routing.md), plugin loading, contracts/registry/hooks, SQLite
+Implemented: [site language and customizable visitor errors](core/docs/language.md), [page routing, canonical slashes and validated redirects](core/docs/routing.md), plugin loading, contracts/registry/hooks, SQLite
 settings/pages, recorded installation schema, theme selection/layouts/assets,
 declarative [entities with validated CRUD, typed filters, sorting/counts and explicit indexes](core/docs/entities.md),
 bounded [asset hash caching, conditional delivery and optional stale-theme diagnostics](core/docs/assets.md),

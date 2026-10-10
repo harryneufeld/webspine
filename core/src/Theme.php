@@ -146,19 +146,19 @@ final class Theme {
     public function asset(string $path, ?Request $request = null): Response {
         $id = $this->active();
         $prefix = '/assets/theme/' . $id . '/';
-        if (!str_starts_with($path, $prefix)) return new Response('Not found', 404);
+        if (!str_starts_with($path, $prefix)) return $this->app->visitorErrors->present(new Response('Not found', 404));
         $relative = substr($path, strlen($prefix));
         try {
             $file = $this->assetFile($id, $relative);
             $body = @file_get_contents($file);
-            if ($body === false) return new Response('Not found', 404);
+            if ($body === false) return $this->app->visitorErrors->present(new Response('Not found', 404));
             // Validators describe these exact bytes, independently of the URL cache.
             $etag = '"' . hash('sha256', $body) . '"';
             $headers = ['Content-Type'=>$this->assetType($relative), 'Cache-Control'=>'public, max-age=3600', 'ETag'=>$etag];
             $condition = $request?->header('If-None-Match');
             if ($condition !== null && in_array($request->method, ['GET','HEAD'], true) && self::matches($condition, $etag)) return new Response('', 304, $headers);
             return new Response($request?->method === 'HEAD' ? '' : $body, 200, $headers);
-        } catch (\RuntimeException) { return new Response('Not found', 404); }
+        } catch (\RuntimeException) { return $this->app->visitorErrors->present(new Response('Not found', 404)); }
     }
     private static function matches(string $condition, string $etag): bool {
         if (strlen($condition) > 8192) return false;

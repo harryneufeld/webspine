@@ -7,6 +7,7 @@ return static function (App $app): void {
     $app->router->page('/hosting-canonical', static fn()=>new Response('Canonical page'), 'strip');
     $app->router->page('/hosting-appended/', static fn()=>new Response('Appended page'), 'append');
     // Synthetic routes are copied only into disposable containers, never the starter.
+    $app->router->get('/hosting-client-error',static function():Response { throw new \Webspine\HttpError(400,'HOSTING_PRIVATE_SENTINEL'); });
     $app->router->get('/hosting-probe', static fn(Request $request) => Response::json([
         'version' => $app->version['version'],
         'query' => $request->query(),
