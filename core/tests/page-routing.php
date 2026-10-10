@@ -3,6 +3,19 @@ declare(strict_types=1);
 use Webspine\{App, Request, Response, Router, Files};
 
 return static function(string $base,string $site):void {
+    check('Responses emit default security headers including the default CSP',function():bool {
+        $h=(new Response('ok'))->emittedHeaders();
+        return $h==Response::DEFAULT_HEADERS&&str_contains($h['Content-Security-Policy'],"frame-ancestors 'none'");
+    });
+    check('An explicit response CSP overrides the default without changing other security headers',function():bool {
+        $policy="default-src 'self'; frame-src https://www.youtube-nocookie.com";
+        foreach(['Content-Security-Policy','content-security-policy'] as $name){
+            $h=(new Response('ok',200,[$name=>$policy]))->emittedHeaders();
+            $csp=array_values(array_filter($h,fn($key)=>strcasecmp($key,'Content-Security-Policy')===0,ARRAY_FILTER_USE_KEY));
+            if($csp!==[$policy]||$h['X-Content-Type-Options']!=='nosniff'||$h['Referrer-Policy']!=='strict-origin-when-cross-origin'||$h['Content-Type']!=='text/html; charset=utf-8')return false;
+        }
+        return true;
+    });
     check('Redirect helpers accept local and fixed HTTP(S) destinations with explicit statuses',function():bool {
         foreach([301,302,303,307,308]as$status){$r=Response::redirect('/new?x=1#part',$status);if($r->status!==$status||$r->body!==''||$r->headers['Location']!=='/new?x=1#part')return false;}
         return Response::redirect('https://example.org:8443/new')->status===302&&Response::redirect('http://[::1]:8080/new')->headers['Location']==='http://[::1]:8080/new'&&Response::redirect('/encoded%20name?q=%0a')->headers['Location']==='/encoded%20name?q=%0a';
