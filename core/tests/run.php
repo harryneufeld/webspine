@@ -89,6 +89,7 @@ try {
     (require __DIR__ . '/page-routing.php')($base, $site);
     (require __DIR__ . '/health.php')($app, $site);
     (require __DIR__ . '/configuration.php')($app, $site);
+    (require __DIR__ . '/language-errors.php')($base, $site);
     check('Generic queue concurrency, leases, retries and retention pass in an isolated process', static function () use ($source): bool {
         $p=proc_open([PHP_BINARY,'-c',php_ini_loaded_file()?:'', $source.'/core/tests/queue.php'],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
         fclose($pipes[0]);$out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);

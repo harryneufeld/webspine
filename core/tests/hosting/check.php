@@ -35,12 +35,25 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
     if ($mode === 'denied') {
         hostingCheck($host . ' rejects unwritable storage without disclosing private data', static function () use ($host): bool {
             $r = request($host, '/hosting-write');
-            return $r['status'] === 503 && !str_contains($r['body'], 'HOSTING_PRIVATE_SENTINEL') && !str_contains($r['body'], '/srv/webspine');
+            $head=request($host,'/hosting-write','HEAD');
+            return $r['status'] === 503 && !str_contains($r['body'], 'HOSTING_PRIVATE_SENTINEL') && !str_contains($r['body'], '/srv/webspine')
+                && str_contains($r['body'],'Bitte versuchen Sie') && ($r['headers']['content-language']??'')==='de-DE'
+                && ($r['headers']['cache-control']??'')==='no-store' && $head['status']===503 && $head['body']==='';
         });
         continue;
     }
     hostingCheck($host . ' pages and preserved query string', static function () use ($host): bool {
         return request($host, '/')['status'] === 200 && request($host, '/docs?source=hosting')['status'] === 200;
+    });
+    hostingCheck($host . ' localized errors preserve status, Allow, security, cache and HEAD through update/rollback',static function()use($host):bool {
+        $get=request($host,'/hosting-client-error');$head=request($host,'/hosting-client-error','HEAD');
+        $method=request($host,'/hosting-client-error','POST');
+        return $get['status']===400&&str_contains($get['body'],'Ungültige Anfrage')&&str_contains($get['body'],'&lt;script&gt; &amp; Text.')
+            &&!str_contains($get['body'],'HOSTING_PRIVATE_SENTINEL')&&($get['headers']['content-language']??'')==='de-DE'
+            &&($get['headers']['content-type']??'')==='text/html; charset=utf-8'&&($get['headers']['cache-control']??'')==='no-store'
+            &&($get['headers']['x-content-type-options']??'')==='nosniff'&&isset($get['headers']['content-security-policy'])
+            &&$head['status']===400&&$head['body']===''&&($head['headers']['content-language']??'')==='de-DE'
+            &&$method['status']===405&&($method['headers']['allow']??'')==='GET, HEAD'&&str_contains($method['body'],'Methode nicht erlaubt');
     });
     hostingCheck($host . ' canonical page redirects preserve queries, methods and security headers', static function()use($host):bool {
         $get=request($host,'/hosting-canonical/?x=a%20b&x=c+d');$head=request($host,'/hosting-appended?x=1','HEAD');
