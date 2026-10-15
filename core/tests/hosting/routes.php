@@ -4,6 +4,7 @@ use Webspine\{App, Request, Response};
 use Webspine\Contracts\Settings;
 return static function (App $app): void {
     (require __DIR__ . '/base-routes.php')($app);
+    (require $app->coreRoot . '/tests/fixtures/response-routes.php')($app);
     $app->router->page('/hosting-canonical', static fn()=>new Response('Canonical page'), 'strip');
     $app->router->page('/hosting-appended/', static fn()=>new Response('Appended page'), 'append');
     // Synthetic routes are copied only into disposable containers, never the starter.
