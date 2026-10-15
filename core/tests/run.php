@@ -84,6 +84,7 @@ try {
     check('Missing components fail explicitly', fn() => expectError(fn() => $app->theme->component('missing'), 'Missing theme component'));
     (require __DIR__ . '/templates.php')($app, $site);
     (require __DIR__ . '/components.php')($app, $site);
+    (require __DIR__ . '/component-children.php')($app, $site);
     (require __DIR__ . '/assets.php')($app, $site);
     (require __DIR__ . '/asset-cache.php')($base, $site);
     (require __DIR__ . '/page-routing.php')($base, $site);
