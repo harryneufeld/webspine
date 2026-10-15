@@ -138,6 +138,55 @@ and thrown exceptions fail explicitly and restore renderer-owned output buffers.
 Existing components using only `$props` continue to work, including a manually
 passed renderer prop. PHP themes remain trusted code, not a sandbox.
 
+### Caller-supplied child content
+
+Both `$app->theme->component()` and `$ui->component()` accept an optional third
+argument, `?callable $children = null`, also usable as `children:`. A wrapper
+receives its rendered default slot as the string `$children`:
+
+```php
+<!-- components/card.php -->
+<article class="card">
+    <h2><?= e($props['title']) ?></h2>
+    <?= $children ?>
+</article>
+
+<!-- In a page or another component; $caption is plain-text site content. -->
+<?= $ui->component('card', ['title' => $title], children: function () use ($ui, $caption) { ?>
+    <p><?= e($caption) ?> <strong>More details</strong></p>
+    <?= $ui->component('action-icon') ?>
+<?php }) ?>
+```
+
+The callback receives no arguments. It may capture caller data and `$ui`
+explicitly, emit buffered output, return an HTML string, or do both. Emitted
+output (including nested buffers) comes first, followed by the returned string.
+A `null` return, including an implicit return, contributes no additional HTML;
+any other return type fails explicitly. A concise callback such as
+`children: fn() => $ui->component('action-icon')` works too.
+
+After component identity, existence and nesting-limit checks, the callback runs
+exactly once, before the wrapper template, even if the wrapper never uses the
+slot. Each component call evaluates its callback afresh. Reading or echoing
+`$children` repeatedly reuses the same string without rerunning the callback;
+echoing it twice deliberately duplicates the markup. Omitted/null callbacks and
+callbacks producing no output give an empty string. Use unique IDs when repeating
+interactive markup. Slots are eager presentation work; avoid side effects in
+callbacks. Named slots are not provided.
+
+`$children` and `$ui` are renderer-provided locals; props named `children` or `ui`
+remain available in `$props` and cannot replace them. Components still do not
+inherit page or parent variables. Existing two-argument calls work unchanged.
+The helper still exposes only `component()`, `id()` and `assetUrl()`.
+
+Child HTML is trusted theme output, just like rendered component HTML. Slots
+do not sanitize content: escape plain-text values and URLs with `e()` inside
+callbacks and components. Never return arbitrary untrusted strings as HTML.
+Callbacks share the 64-component nesting limit. Callback exceptions, invalid
+return types and nested-render failures propagate, discarding renderer-owned
+output and restoring caller buffers; subsequent renders remain usable. As with
+other trusted templates, callbacks must not close buffers owned by their caller.
+
 ### Asset URLs
 
 `$ui->assetUrl('style.css')` (or `$app->theme->assetUrl('style.css')`) returns
