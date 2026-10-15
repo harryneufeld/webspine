@@ -17,6 +17,7 @@ services:
     entrypoint: ["php", "/check.php"]
     volumes:
       - ./check.php:/check.php:ro
+      - ../response-check.php:/response-check.php:ro
       - work:/work:ro
   form-check:
     build: {context: ., args: {PHP_BASE: "php:8.3-fpm-bookworm"}}

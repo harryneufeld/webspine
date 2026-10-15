@@ -4,6 +4,8 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $lock = null;
 $visitorErrors = null;
+$app = null;
+$request = null;
 try {
     // Data-only presentation must also work when bootstrap or executable site files fail.
     require_once $root . '/core/src/VisitorErrors.php';
@@ -18,10 +20,12 @@ try {
     require $root . '/core/bootstrap.php';
     $request = \Webspine\Request::fromGlobals();
     $app = new \Webspine\App($root);
-    $app->handle($request)->send($request->method === 'HEAD');
+    $app->send($app->handle($request), $request);
 } catch (\Webspine\HttpError $e) {
     $response = new \Webspine\Response($e->getMessage(), $e->status, ['Content-Type'=>'text/plain; charset=utf-8','Cache-Control'=>'no-store']);
-    ($visitorErrors ? $visitorErrors->present($response) : $response)->send(($_SERVER['REQUEST_METHOD'] ?? '') === 'HEAD');
+    $response = $visitorErrors ? $visitorErrors->present($response) : $response;
+    if ($app && $request) $app->send($response, $request);
+    else $response->send(($_SERVER['REQUEST_METHOD'] ?? '') === 'HEAD');
 } catch (Throwable $e) {
     // Keep diagnostics private and independent of App/bootstrap availability.
     $cause = $e->getPrevious() ?? $e;
@@ -34,5 +38,10 @@ try {
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
     if ($visitorErrors) header('Content-Language: ' . $visitorErrors->languageTag());
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'HEAD') echo $visitorErrors ? $visitorErrors->unavailableHtml() : '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>webspine · unavailable</title><h1>web<strong>spine</strong></h1><p>The site is temporarily unavailable.</p><p>Site operator: run <code>php core/bin/console.php health</code> from the project directory and inspect the PHP error log. For initial setup only, run <code>php core/bin/console.php install</code> after checking configuration.</p></html>';
+    $body = $visitorErrors ? $visitorErrors->unavailableHtml() : '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>webspine · unavailable</title><h1>web<strong>spine</strong></h1><p>The site is temporarily unavailable.</p><p>Site operator: run <code>php core/bin/console.php health</code> from the project directory and inspect the PHP error log. For initial setup only, run <code>php core/bin/console.php install</code> after checking configuration.</p></html>';
+    if ($app && $request) {
+        $headers = ['Cache-Control'=>'no-store'];
+        if ($visitorErrors) $headers['Content-Language'] = $visitorErrors->languageTag();
+        $app->send(new \Webspine\Response($body, 503, $headers), $request);
+    } elseif (($_SERVER['REQUEST_METHOD'] ?? '') !== 'HEAD') echo $body;
 } finally { if (is_resource($lock)) { flock($lock, LOCK_UN); fclose($lock); } }

@@ -42,6 +42,11 @@ foreach (['apache','nginx','cloudpanel'] as $host) {
         });
         continue;
     }
+    (require __DIR__ . '/response-check.php')(
+        static fn(string $path, string $method): array => request($host, $path, $method),
+        static fn(string $name, callable $test) => hostingCheck($host . ' ' . $name, $test),
+        $host !== 'apache',
+    );
     hostingCheck($host . ' pages and preserved query string', static function () use ($host): bool {
         return request($host, '/')['status'] === 200 && request($host, '/docs?source=hosting')['status'] === 200;
     });
