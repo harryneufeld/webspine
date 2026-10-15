@@ -48,7 +48,7 @@ final class Theme {
         $this->lifecycle->begin($id, $manifest);
         return $this->activeId = $id;
     }
-    public function component(string $name, array $props = []): string {
+    public function component(string $name, array $props = [], ?callable $children = null): string {
         $this->renderBoundary();
         if (!preg_match('/^[a-z][a-z0-9-]*$/D', $name)) throw new \InvalidArgumentException('Invalid component identity.');
         $file = $this->app->root . '/site/themes/' . $this->active() . '/components/' . $name . '.php';
@@ -57,8 +57,9 @@ final class Theme {
         if ($this->componentDepth >= 64) throw new \RuntimeException('Theme component nesting limit exceeded.');
         $this->componentDepth++;
         try {
+            $html = $children === null ? '' : $this->renderChildren($children);
             // Explicit props plus presentation helpers; no inherited page variables.
-            return (static function (string $__file, array $props, ThemeContext $ui): string {
+            return (static function (string $__file, array $props, ThemeContext $ui, string $children): string {
                 $__level = ob_get_level();
                 $file = $__file;
                 ob_start();
@@ -70,8 +71,22 @@ final class Theme {
                     while (ob_get_level() > $__level) ob_end_clean();
                     throw $e;
                 }
-            })($file, $props, $this->ui);
+            })($file, $props, $this->ui, $html);
         } finally { $this->componentDepth--; }
+    }
+    /** Evaluate once; emitted markup precedes an optional returned HTML string. */
+    private function renderChildren(callable $children): string {
+        $level = ob_get_level();
+        ob_start();
+        try {
+            $result = $children();
+            if ($result !== null && !is_string($result)) throw new \UnexpectedValueException('Component children must return a string or null.');
+            while (ob_get_level() > $level + 1) ob_end_flush();
+            return ob_get_clean() . ($result ?? '');
+        } catch (\Throwable $e) {
+            while (ob_get_level() > $level) ob_end_clean();
+            throw $e;
+        }
     }
     public function render(string $template, array $data = [], int $status = 200): Response {
         $this->renderBoundary();
