@@ -105,7 +105,12 @@ The budget is a monotonic, **soft total dispatch deadline**. It is checked befor
 and after each listener. A callback that returns late is logged and remaining
 listeners are skipped. The framework cannot interrupt arbitrary PHP, blocking
 I/O, `exit`, or fatal errors; one callback can exceed the deadline. The sender
-does not extend PHP time limits or change disconnect handling. Operators must
+does not extend PHP time limits. After successful opt-in FastCGI completion,
+it temporarily enables `ignore_user_abort` during hooks so an accidental SAPI
+`flush()` cannot terminate dispatch on the finished connection; it restores the
+previous setting afterward. Portable emission retains normal disconnect handling.
+This does not keep work alive across worker shutdown or guarantee completion.
+Operators must
 bound blocking I/O and configure PHP/server/worker timeouts, including their
 post-FastCGI behavior. No wall-clock completion guarantee is made.
 

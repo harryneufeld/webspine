@@ -80,12 +80,14 @@ PHP;
         responseCheck('Optional FastCGI result ' . $finish . ' closes sessions and preserves one event', static function () use ($bootstrap, $root, $finish): bool {
             $implementation = str_starts_with($finish, 'throw') ? $finish . ';' : 'return ' . $finish . ';';
             $script = 'function fastcgi_finish_request(){if(session_status()===PHP_SESSION_ACTIVE)throw new RuntimeException("Session still locked");' . $implementation . '}' . $bootstrap . <<<'PHP'
-$app->hooks=new \Webspine\Hooks();$events=[];$app->hooks->on('response.sent',function($event)use(&$events){$events[]=$event->fastcgiFinished;});
+$beforeAbort=(bool)ignore_user_abort();$duringAbort=[];
+$app->hooks=new \Webspine\Hooks();$events=[];$app->hooks->on('response.sent',function($event)use(&$events,&$duringAbort){$events[]=$event->fastcgiFinished;$duringAbort[]=(bool)ignore_user_abort();});
 session_start(['save_path'=>$app->root.'/storage','use_cookies'=>0,'cache_limiter'=>'']);
-ob_start();$app->send(new \Webspine\Response('ok'),new \Webspine\Request('HEAD','/manual'));$body=ob_get_clean();echo json_encode(['events'=>$events,'body'=>$body,'active'=>session_status()===PHP_SESSION_ACTIVE]);
+ob_start();$app->send(new \Webspine\Response('ok'),new \Webspine\Request('HEAD','/manual'));$body=ob_get_clean();echo json_encode(['events'=>$events,'body'=>$body,'active'=>session_status()===PHP_SESSION_ACTIVE,'beforeAbort'=>$beforeAbort,'afterAbort'=>(bool)ignore_user_abort(),'duringAbort'=>$duringAbort]);
 PHP;
             $result = responseProcess($script, $root);
-            return $result['events'] === [$finish === 'true'] && $result['body'] === '' && !$result['active'];
+            return $result['events'] === [$finish === 'true'] && $result['body'] === '' && !$result['active']
+                && $result['beforeAbort'] === $result['afterAbort'] && $result['duringAbort'] === [$finish === 'true' || $result['beforeAbort']];
         });
     }
     $socket = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);

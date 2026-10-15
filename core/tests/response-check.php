@@ -18,6 +18,7 @@ return static function (callable $request, callable $check, bool $fastcgi): void
                 && ($r['headers']['x-lifecycle'] ?? '') === 'original' && count($rows) === 2
                 && array_column($rows, 'stage') === ['first','second'] && $rows[0]['method'] === $method
                 && $rows[0]['status'] === 201 && $rows[0]['head'] === ($method === 'HEAD') && $rows[0]['fastcgi'] === $fastcgi
+                && $rows[0]['ignore_abort'] === $fastcgi
                 && $rows[0]['headers']['X-Content-Type-Options'] === 'nosniff' && $rows[0]['update_locked'];
         });
     }

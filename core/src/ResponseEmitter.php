@@ -42,7 +42,10 @@ final class ResponseEmitter {
                 } catch (\Throwable $error) { $this->log($error, 'FastCGI completion'); }
                 try { if (!$finished) flush(); }
                 catch (\Throwable $error) { $this->log($error, 'portable flush'); }
-                $this->notify(new ResponseSent($request, $status, $headers, $head, $finished));
+                // FPM can abort the script if a callback flushes the finished connection.
+                $priorAbort = $finished ? ignore_user_abort(true) : null;
+                try { $this->notify(new ResponseSent($request, $status, $headers, $head, $finished)); }
+                finally { if ($priorAbort !== null) ignore_user_abort((bool) $priorAbort); }
             } catch (\Throwable $error) { $this->log($error, 'completion'); }
             finally { restore_error_handler(); }
         } finally { $this->sending = false; }

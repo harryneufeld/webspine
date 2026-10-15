@@ -14,6 +14,7 @@ return static function (App $app): void {
             'id'=>$event->request->query('id'), 'stage'=>$stage, 'method'=>$event->request->method,
             'status'=>$event->status, 'head'=>$event->head, 'fastcgi'=>$event->fastcgiFinished,
             'session_active'=>session_status() === PHP_SESSION_ACTIVE, 'update_locked'=>$locked,
+            'ignore_abort'=>(bool) ignore_user_abort(),
             'headers'=>$event->headers,
         ], JSON_THROW_ON_ERROR) . "\n", FILE_APPEND | LOCK_EX);
     };
