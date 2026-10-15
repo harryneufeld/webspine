@@ -53,6 +53,13 @@ Never redirect to an arbitrary user-supplied destination. See the optional
 See [page paths, slash policies and migration redirects](routing.md) for the
 validated redirect helper, fixed permalink maps, and method-preserving semantics.
 
+## After-response hooks
+
+Plugins may register `response.sent` for short, best-effort work after managed
+response emission. `App::handle()` alone does not fire it. See the
+[lifecycle contract](response-lifecycle.md) for context, HEAD/errors, optional
+FastCGI completion, session/update locks, output isolation and the soft deadline.
+
 ## Security headers and Content Security Policy
 
 Every `Response` is sent with these defaults unless it sets the same header

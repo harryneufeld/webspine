@@ -13,10 +13,12 @@ final class App {
     public readonly string $coreRoot;
     public array $config;
     public array $version;
+    private readonly ResponseEmitter $emitter;
     public function __construct(public string $root, ?array $config = null) {
         $this->coreRoot = dirname(__DIR__);
         $this->version = require dirname(__DIR__) . '/version.php';
         $this->config = $config ?? $this->loadConfiguration();
+        $this->emitter = new ResponseEmitter($this);
         $this->visitorErrors = VisitorErrors::load($root);
         $this->services = new Registry(); $this->router = new Router($this->visitorErrors); $this->hooks = new Hooks();
         $this->plugins = new Plugins($this); $this->theme = new Theme($this);
@@ -62,6 +64,8 @@ final class App {
             return ['ok' => true, 'version' => $this->version['version'], 'api' => $this->version['api'], 'storage' => $status];
         } catch (\Throwable $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
     }
+    /** Send an already handled response and notify response.sent listeners once per emission. */
+    public function send(Response $response, Request $request): void { $this->emitter->send($response, $request); }
     public function handle(string|Request $method, ?string $path = null): Response {
         $this->theme->refresh(false);
         try {

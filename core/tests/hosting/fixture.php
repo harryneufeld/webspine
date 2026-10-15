@@ -53,7 +53,7 @@ if ($mode === 'prepare') {
     copyHostingTree('/source/core/tests/fixtures/website/site', '/srv/webspine/site');
     mkdir('/srv/webspine/config'); mkdir('/srv/webspine/storage'); mkdir('/srv/webspine/.dist');
     foreach (['README.md','LICENSE','AGENTS.md','.gitignore','.gitattributes'] as $file) copy('/source/' . $file, '/srv/webspine/' . $file);
-    $config = "<?php /* HOSTING_PRIVATE_SENTINEL */ return ['providers'=>['storage'=>'sqlite','mail'=>'capture-mail'], 'plugins'=>['contact-form'], 'sqlite'=>['path'=>'storage/site.sqlite'], 'contact_form'=>['recipient'=>'owner@example.test','secure_cookie'=>false,'max_attempts'=>20]];\n";
+    $config = "<?php /* HOSTING_PRIVATE_SENTINEL */ return ['providers'=>['storage'=>'sqlite','mail'=>'capture-mail'], 'plugins'=>['contact-form'], 'sqlite'=>['path'=>'storage/site.sqlite'], 'response'=>['finish_fastcgi'=>true], 'contact_form'=>['recipient'=>'owner@example.test','secure_cookie'=>false,'max_attempts'=>20]];\n";
     file_put_contents('/srv/webspine/config/example.php', $config);
     file_put_contents('/srv/webspine/config/local.php', $config);
     rename('/srv/webspine/site/routes.php', '/srv/webspine/site/base-routes.php');
