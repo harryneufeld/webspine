@@ -101,7 +101,8 @@ adapters own their SQL, migrations, and data-transfer tooling.
 Edit the homepage headline and subline in `site/content/home.php`, page titles
 in `site/pages.php`, and identity in `site/meta.php`. Theme templates escape and
 present those values. Providers install schema; `site/install.php` seeds this
-website explicitly and idempotently. See `AGENTS.md` and `core/docs/site.md`.
+website explicitly and idempotently. See `AGENTS.md`, `core/docs/site.md`, and
+[design guidelines](core/docs/design.md).
 
 Reusable presentation components live in `site/themes/<id>/components/`.
 Pass text/data from existing site content files and render them through
