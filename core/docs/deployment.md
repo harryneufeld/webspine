@@ -1,33 +1,34 @@
 # Deployment
 
-Requires PHP 8.3+ (CLI and web worker), PDO/PDO SQLite, ZipArchive for releases,
-and OpenSSL for SMTP. Point the document root to `public/`, never the project
-root. Deployment currently assumes the **domain root**, not a URL subdirectory.
-Use HTTPS and a local-disk SQLite database; network filesystems are unsupported.
+Technical reference for hosting webspine. For the agent's step-by-step process
+with a non-technical user, see [publishing.md](publishing.md); for framework
+updates, see [update.md](update.md).
+
+Requires PHP 8.3+ (CLI and web worker). Point the document root to `public/`,
+never the project root. Only the **domain root** is supported, not a URL
+subdirectory. Use HTTPS and a local-disk SQLite database; network filesystems
+are unsupported.
 
 ## PHP setup
 
 | Extension | Needed for |
 |---|---|
 | `pdo_sqlite` (with PDO) | Every website: settings, pages, entities, queue, analytics |
-| `zip` | Core updates (`update`), packaging and release verification |
+| `zip` | Core updates, packaging and release verification |
 | `openssl` | SMTP mail over TLS |
 
-Check the installation with the same PHP executable the site uses:
+Check with the same PHP executable the site uses:
 
 ```sh
-php -v       # version, must be 8.3 or newer
-php --ini    # which php.ini is loaded
+php -v       # 8.3 or newer
+php --ini    # loaded php.ini
 php -m       # loaded extensions
 php core/bin/console.php health
 ```
 
-`Loaded Configuration File: (none)` means PHP runs with built-in defaults and
-no extensions configured in an ini file. Create a `php.ini` in the directory
-shown as `Configuration File (php.ini) Path`, or next to `php.exe` on Windows,
-from the distributed template: `php.ini-development` for local work,
-`php.ini-production` for hosted sites. Then set `extension_dir` and enable the
-needed extensions, for example on Windows:
+`Loaded Configuration File: (none)` means no extensions are configured. Copy
+`php.ini-development` (local) or `php.ini-production` (hosted) to `php.ini` in
+the shown configuration path, or next to `php.exe` on Windows, then enable:
 
 ```ini
 extension_dir = "ext"
@@ -36,168 +37,112 @@ extension=zip
 extension=openssl
 ```
 
-Run `php --ini` and `php -m` again. Restart the PHP process that serves the
-site (the `php -S` preview, PHP-FPM, or the web server) after changes; the CLI
-and the web worker may load different ini files. On hosted sites keep
-`display_errors` off and log errors privately.
+Recheck with `php --ini` and `php -m`, and restart the serving PHP process; CLI
+and web worker may load different ini files. Hosted sites keep `display_errors`
+off and log errors privately.
 
-**Windows (winget):** verified with `PHP.PHP.8.4` 8.4.25. The package ships
-`php.ini-development` and `php.ini-production` but no active `php.ini`. Without
-one, `extension_dir` points to `C:\php\ext` and only PDO is loaded, so
-`pdo_sqlite` is missing. Copy `php.ini-development` to `php.ini` in the package
-directory next to `php.exe` (`(Get-Command php).Source` in PowerShell shows its
-location) and apply the settings above; the extension DLLs are in its `ext\`
-folder. Other packages and versions may differ: check `php --ini` and `php -m`.
+- **Windows (winget `PHP.PHP.8.4`, verified 8.4.25):** ships no active
+  `php.ini`, so only PDO loads. Create it next to `php.exe`
+  (`(Get-Command php).Source`); DLLs are in its `ext\` folder.
+- **Linux/macOS:** packages such as `php8.3-sqlite3` and `php8.3-zip` enable
+  extensions through extra ini files.
 
-**Linux/macOS:** distribution packages usually enable extensions through extra
-ini files, for example `php8.3-sqlite3`, `php8.3-zip` on Debian/Ubuntu.
-
-See the official guides for the [configuration file](https://www.php.net/manual/en/configuration.file.php)
-and [Windows extensions](https://www.php.net/install.pecl.windows.php).
-
-## Agent-assisted deployment
-
-An agent may handle deployment and production framework updates when authorized
-by the user. Users may have no technical background; the agent should carry out
-the technical work within that scope and explain outcomes in plain language,
-rather than assume a separate human operator will finish deployment. Ask for
-missing access or decisions when needed.
-
-Develop and test locally with disposable data. Before production changes, verify
-the target, create and verify the full backup required by `AGENTS.md`, and prepare
-a rollback path. Preserve private configuration and persistent data. For updates,
-use a verified core release through the CLI updater; never overlay a bootstrap
-ZIP onto a customized site. Check health, routes, assets and affected features
-after deployment, and report the deployed version and verification results.
-
-Core updates preserve each site's `AGENTS.md`. Existing sites must explicitly
-adopt revised deployment instructions in their own file; a core update will not
-replace their local policy.
+See PHP's [configuration file](https://www.php.net/manual/en/configuration.file.php)
+and [Windows extensions](https://www.php.net/install.pecl.windows.php) guides.
 
 ## Server configurations
 
-Adjust paths, domain, and PHP-FPM endpoint in these versioned, copyable examples;
-TLS certificates and HTTP-to-HTTPS redirects are hosting settings.
+Adjust paths, domain and PHP-FPM endpoint in these examples. TLS and
+HTTP-to-HTTPS redirects are hosting settings.
 
-- **[Apache](hosting/apache.conf):** enable PHP (mod_php or a PHP-FPM handler),
-  `mod_rewrite`, and `AllowOverride FileInfo Indexes Options` for `public/`.
-  Keep the shipped `.htaccess`; do not alias private project directories.
-- **[nginx](hosting/nginx.conf):** route requests to `public/index.php`, configure
-  PHP-FPM, and retain `REQUEST_URI`/`QUERY_STRING` through `fastcgi_params`.
-- **CloudPanel:** select PHP 8.3+, set the site's root directory to `public/`,
-  and verify `{{root}}` resolves there in both server blocks. Replace the
-  relevant [frontend locations](hosting/cloudpanel-frontend.conf) and
-  [backend locations](hosting/cloudpanel-backend.conf), keeping generated TLS,
-  proxy, PHP settings, and ports. Remove conflicting `try_files`, PHP locations,
+- **[Apache](hosting/apache.conf):** PHP (mod_php or PHP-FPM), `mod_rewrite`,
+  and `AllowOverride FileInfo Indexes Options` for `public/`. Keep the shipped
+  `.htaccess`; do not alias private project directories.
+- **[nginx](hosting/nginx.conf):** route to `public/index.php`, configure
+  PHP-FPM, keep `REQUEST_URI`/`QUERY_STRING` via `fastcgi_params`.
+- **CloudPanel:** PHP 8.3+, site root `public/` (check `{{root}}` in both server
+  blocks). Replace the [frontend](hosting/cloudpanel-frontend.conf) and
+  [backend](hosting/cloudpanel-backend.conf) locations, keeping generated TLS,
+  proxy, PHP settings and ports. Remove conflicting `try_files`, PHP locations
   or file-exists shortcuts; validate in the Vhost Editor before saving.
 
-CloudPanel's generic static regex must start with `^(?!/assets/)`, as in the
-example. `/assets/` URLs are served through PHP from
-`site/themes/<theme>/assets/`, outside `public/`; they must reach the application
-handler. CORS and HTTP/3 headers are separate hosting settings, not this routing
-fix. The frontend example retains `{{varnish_proxy_pass}}`; verify your generated
-proxy chain and purge any enabled Varnish cache after deployment.
+`/assets/` URLs are served through PHP from `site/themes/<theme>/assets/`, so
+they must reach the application; CloudPanel's static regex must start with
+`^(?!/assets/)`. Keep `{{varnish_proxy_pass}}` and purge Varnish after deploys.
+CORS and HTTP/3 are separate hosting settings.
 
 ## Permissions and installation
 
-Let the PHP worker read code/config and write **only `storage/`**, including the
-SQLite database, sidecars, and update lock. Common starting permissions: code
-folders `755`, code files `644`, private config `750`/`640` with the worker's group,
-shared storage folders `2770` and files `660`. Adjust ownership for your host;
-never use `777`. The maintenance operator needs code write access for updates.
+The PHP worker reads code and config and writes **only `storage/`** (database,
+sidecars, update lock). Typical modes: code folders `755`, files `644`, private
+config `750`/`640` with the worker's group, storage folders `2770`, files `660`.
+Never use `777`. The maintenance user needs write access to code for updates.
 
-Run `php core/bin/console.php install` and `health` with the same PHP version and
-storage group before serving. Check `/health`, pages, and theme assets; public
-health is generic, while detailed CLI output must remain private.
+Run `install` and `health` with the site's PHP version and storage group before
+serving, then check `/health`, pages and theme assets. Public health is
+generic; detailed CLI output stays private.
 
 ## Diagnosing an unavailable site
 
-Run `php core/bin/console.php health` from the project directory and inspect the
-PHP error log. Health is a diagnostic command: it does not repair configuration,
-install schema, or migrate data. Only initial setup needs `install`, after valid
-configuration is in place. Do not run it as a general outage remedy.
+Run `php core/bin/console.php health` and read the PHP error log. Health only
+diagnoses; it does not repair, install schema or migrate data. Run `install`
+only for initial setup, not as an outage remedy.
 
-Configuration is loaded from `config/local.php`, or `config/example.php` when the
-local file is absent. Each must return an array. Explicit configuration supplied
-to `App` bypasses these files. Load failures retain their original exception;
-CLI errors exit nonzero and CLI/log diagnostics include the cause's file and
-line, with paths inside the project shown relative to its root. Invalid return
-types identify the configuration file and type without printing its value.
+Configuration loads from `config/local.php`, else `config/example.php`; each
+must return an array. CLI errors exit nonzero and name the file and line,
+relative to the project root, without printing configuration values.
 
-The emergency response is generic HTTP 503 with `Cache-Control: no-store` and
-operator guidance. It does not expose exception messages, paths, configuration
-values, or source excerpts, and needs no database or theme to render. Keep logs
-and CLI output private. Ensure production PHP has `display_errors=Off` and
-`log_errors=On`; PHP's own displayed diagnostics can otherwise disclose details
-before the framework can handle a failure.
+Startup failures return a generic HTTP 503 with `Cache-Control: no-store`,
+without messages, paths or configuration. Keep `display_errors=Off` and
+`log_errors=On` in production, or PHP may leak details first.
 
 ## Search indexing
 
-Starter pages render full HTML with titles, descriptions, and crawlable links,
-but start with `'indexable' => false` in `site/meta.php`. The Starter theme emits
-`<meta name="robots" content="noindex">` and displays a launch reminder on every
-page. Set `'indexable' => true` when ready: both disappear. Missing or non-boolean
-values keep indexing disabled. This is a site-owned theme convention; custom
-themes/plugins must implement their own policy. Core updates preserve existing
-site settings/templates and do not change existing sites' indexing behavior.
-Hosting headers can still block indexing. Search engines decide whether to index
-eligible pages; webspine does not guarantee inclusion.
+Starter sites ship with `'indexable' => false` in `site/meta.php`: every page
+emits `<meta name="robots" content="noindex">` and shows a launch reminder.
+Setting `true` removes both; missing or non-boolean values keep indexing off.
+Custom themes implement their own policy. Hosting headers can still block
+indexing, and search engines decide what to include.
 
-No `robots.txt`, sitemap, or canonical URLs are generated automatically. These
-are site-owned choices; define `/robots.txt` and `/sitemap.xml` in
-`site/routes.php` with `text/plain` and `application/xml` content types. A missing
-robots file returning 404 does not block Google crawling; sitemaps help discovery.
-See [Google's robots rules](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec)
-and [sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview).
+`robots.txt`, sitemaps and canonical URLs are not generated; define them in
+`site/routes.php` ([example](site.md#domain-root-robots-and-sitemap-routes)).
+Protect private staging sites with authentication. For public pages that must
+stay out of search, send `X-Robots-Tag: noindex` and allow crawling;
+`robots.txt` is not access control. See Google's
+[robots](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec),
+[sitemap](https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview)
+and [noindex](https://developers.google.com/search/docs/crawling-indexing/block-indexing) guides.
 
-Protect staging/private sites with authentication. For publicly accessible pages
-that should stay out of search, set `X-Robots-Tag: noindex` on their responses
-(or a robots meta tag in the theme), and allow crawling so engines can see it.
-`robots.txt` is not access control or a reliable way to prevent indexing.
-See [noindex guidance](https://developers.google.com/search/docs/crawling-indexing/block-indexing).
-Check deployed hosting headers and crawler access; customization can change
-these defaults.
+## Backups, workers and caches
 
-## Updates and backups
+Before updates or risky changes, drain or stop PHP workers, cron queue workers
+and other SQLite writers, and create a verified private full-site backup (see
+[update.md](update.md#backup-first)). Copying an active SQLite file is
+unsafe; use SQLite's backup facilities.
 
-If using the [queued contact example](examples/contact-form/README.md), configure
-its explicit queue installation and cron worker. PHP and cron must share the
-private storage group/ACL; queue writers also need draining or consistent SQLite
-backup before a full-site archive. Review [queue retention and guarantees](queue.md)
-and test captured delivery before connecting a real mail provider.
+After updates, restart PHP-FPM or Apache PHP workers **before restoring
+traffic** to clear OPcache; CLI `opcache_reset()` does not reach web workers.
+Purge proxy caches and recheck pages and assets. Never expose configuration,
+SMTP credentials or backups through the web root.
 
-Test on a local clone first. Before updating, drain/stop PHP workers and other
-SQLite writers; create and verify a private full-site backup including code,
-`public/`, `site/`, config, data, and root files. Exclude the archive destination.
-For a live SQLite snapshot use SQLite backup facilities; copying an active
-database file is unsafe. The updater's core backup does not replace this archive.
-
-Apply only a trusted core ZIP using `php core/bin/console.php update <zip>`, then
-run `health`. Restart PHP-FPM or Apache PHP workers **before restoring traffic**
-to clear OPcache, even with timestamp checks enabled. CLI `opcache_reset()` does
-not clear the web workers' cache. Purge proxy caches and recheck pages/assets.
-Use `recover` after interrupted activation; retain verified backups until done.
-Never expose configuration, SMTP credentials, or backups through the web root.
+The [queued contact example](examples/contact-form/README.md) needs its queue
+installation and a cron worker sharing the storage group with PHP. Review
+[queue guarantees](queue.md) and test captured delivery before using real mail.
 
 ## Real-server checks
 
-With Docker Engine and Compose v2 on a local machine or CI, run:
+With Docker Engine and Compose v2:
 
 ```sh
 sh core/tests/hosting/run.sh
 ```
 
-This uses disposable fixtures/volumes, no host ports or private configuration.
-It runs actual Apache + PHP and nginx + PHP-FPM, plus CloudPanel-style frontend/
-backend nginx rules from the examples above. Checks cover pages, query strings,
-redirects, permitted asset MIME types, HEAD/404s, traversal/symlink rejection,
-private files, writable/read-only storage, and update/rollback after restarting
-workers with warmed OPcache and timestamp validation disabled. A negative control
-reproduces CloudPanel's unpatched asset failure. Docker is test tooling only.
-
-The suite does **not** install the CloudPanel control panel or verify a host's
-TLS, HTTP/3, CORS, Varnish, ACLs, or generated settings. Validate those on a local
-CloudPanel staging instance; PHP development-server tests are not server checks.
+Runs disposable Apache + PHP, nginx + PHP-FPM and CloudPanel-style nginx rules
+without host ports or private config. It checks pages, query strings, redirects,
+asset MIME types, HEAD/404, traversal and symlink rejection, private files,
+storage permissions, and update/rollback with warmed OPcache. A negative control
+reproduces CloudPanel's unpatched asset failure. It does not verify a real
+host's TLS, HTTP/3, CORS, Varnish, ACLs or generated panel settings.
 
 References: [Apache overrides](https://httpd.apache.org/docs/2.4/mod/overrides.html),
 [nginx FastCGI](https://nginx.org/en/docs/http/ngx_http_fastcgi_module.html),
