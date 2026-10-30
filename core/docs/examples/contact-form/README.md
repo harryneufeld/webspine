@@ -95,6 +95,17 @@ newer; core updates preserve existing copies under `site/plugins/`. No database
 migration is required. Reply-To does not verify ownership of the supplied
 address, authenticate visitors, or guarantee delivery.
 
+## HTML notifications
+
+When the mail provider implements [`MailWithMessage`](../../mail.md#html-and-attachments),
+as the bundled SMTP provider does, notifications include an HTML part next to the
+unchanged plain-text body. Labels and visitor values are escaped with `e()` and
+line breaks are preserved; visitors cannot submit markup. Set
+`contact_form.html_mail => false` for plain text only; other values fail at
+registration. The setting applies at delivery time, including to queued jobs.
+Providers with only the older contracts keep receiving plain text. The form does
+not accept file uploads: core requests support only URL-encoded forms.
+
 ## Retry window
 
 New contact jobs default to 30 total delivery attempts. Configure
