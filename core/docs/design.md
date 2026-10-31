@@ -81,7 +81,7 @@ boxed buttons.
 
 ## Motion
 
-- Motion explains a change; one or two animated elements per view at most.
+- Motion explains a change or brings illustrations and elements to life.
 - Feedback 100–150ms, state changes 150–300ms, larger transitions 300–500ms.
   Exits faster than entrances; ease out on arrival; no bounce or elastic easing.
 - Animate only `transform` and `opacity`.
