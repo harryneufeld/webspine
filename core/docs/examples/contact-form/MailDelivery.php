@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace Webspine\Examples;
 use Webspine\Jobs\{Handler,Job,PermanentFailure};
-use Webspine\Contracts\{Mail,MailWithReplyTo,ReplyTo};
+use Webspine\Contracts\{Mail,MailMessage,MailWithMessage,MailWithReplyTo,ReplyTo};
 final class MailDelivery implements Handler {
     public function __construct(private \Webspine\App $app) {}
     public function ready(): bool {
@@ -17,12 +17,16 @@ final class MailDelivery implements Handler {
             || !is_array($p['fields']??null) || !is_array($p['labels']??null) || count($p['fields'])>20
             || !is_string($p['form_id']??null) || !preg_match('/^[a-z][a-z0-9-]{0,39}$/D',$p['form_id'])) throw new PermanentFailure();
         $body="Submission ID: {$job->id}\nForm: {$p['form_id']}\n\n";
+        $html='<!doctype html><html><body style="font-family:sans-serif;line-height:1.5"><p>Submission ID: '.e($job->id).'<br>Form: '.e($p['form_id']).'</p>';
         foreach ($p['fields'] as $key=>$value) {
             if (!is_string($key) || !preg_match('/^[a-z][a-z0-9_]{0,39}$/D',$key) || !is_string($value)
                 || ($job->version===1 ? strlen($value)>5000 || !preg_match('//u',$value) : !FormText::safe($value,true) || FormText::units($value)>5000)
                 || !is_string($p['labels'][$key]??null) || strlen($p['labels'][$key])>120 || preg_match('/[\r\n\x00]/',$p['labels'][$key])) throw new PermanentFailure();
             $body.=$p['labels'][$key].":\n".$value."\n\n";
+            // Visitor text is escaped; pre-wrap keeps its line breaks without trusting markup.
+            $html.='<p><strong>'.e($p['labels'][$key]).'</strong></p><p style="white-space:pre-wrap;margin-top:0">'.e($value).'</p>';
         }
+        $html.='</body></html>';
         $replyTo = null;
         if (array_key_exists('reply_to', $p)) {
             if (!is_string($p['reply_to'])) throw new PermanentFailure();
@@ -30,7 +34,9 @@ final class MailDelivery implements Handler {
             catch (\InvalidArgumentException) { throw new PermanentFailure(); }
         }
         $mail = $this->app->services->get(Mail::class);
-        if ($replyTo !== null && $mail instanceof MailWithReplyTo) $mail->sendWithReplyTo($p['recipient'],$p['subject'],$body,$replyTo);
+        if ($mail instanceof MailWithMessage) $mail->sendMessage(new MailMessage($p['recipient'],$p['subject'],$body,
+            ($this->app->config['contact_form']['html_mail']??true)===false ? null : $html,$replyTo));
+        elseif ($replyTo !== null && $mail instanceof MailWithReplyTo) $mail->sendWithReplyTo($p['recipient'],$p['subject'],$body,$replyTo);
         else $mail->send($p['recipient'],$p['subject'],$body);
     }
 }
