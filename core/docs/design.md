@@ -55,13 +55,13 @@ On narrow screens, collapse the main navigation into a flat, modern hamburger
 menu: a light icon that morphs into a close icon, no heavy borders, shadows or
 boxed buttons.
 
-- Keep the mobile header to two elements: logo and menu button. Group any
-  extra actions (search, language, account, contact icons) inside the menu
-  instead of adding more header icons.
+- Keep the mobile header to logo and one control group. Extra actions
+  (language, search, account) may sit next to the menu button in a shared
+  pill, as on webspine.org, as long as clear space remains between logo and
+  pill; otherwise move them into the menu panel.
 - Use a `<button>` with an accessible name, `aria-expanded` and
   `aria-controls`; touch target at least 44×44px.
-- Animate fluently with `transform` and `opacity` only: icon morph and panel
-  slide or fade in about 200–300ms, closing slightly faster, ease-out.
+- Animate the icon morph and panel fluently; closing may be slightly faster.
 - Close on Escape, link selection and a second tap; return focus to the button.
   Keep keyboard order logical and the page from scrolling behind an open overlay.
 - Under `prefers-reduced-motion`, switch instantly or with a short fade.
@@ -82,9 +82,8 @@ boxed buttons.
 ## Motion
 
 - Motion explains a change or brings illustrations and elements to life.
-- Feedback 100–150ms, state changes 150–300ms, larger transitions 300–500ms.
-  Exits faster than entrances; ease out on arrival; no bounce or elastic easing.
-- Animate only `transform` and `opacity`.
+- Keep it smooth: prefer `transform` and `opacity`, and avoid animations that
+  cause layout jank or delay the user.
 - Honor `prefers-reduced-motion`: remove movement, keep meaningful fades.
 - Content is visible by default, so a failed script never hides the page.
 
