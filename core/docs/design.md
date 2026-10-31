@@ -52,8 +52,8 @@ values. Build with realistic copy from `site/content/`, never lorem ipsum.
 ### Mobile navigation
 
 On narrow screens, collapse the main navigation into a flat, modern hamburger
-menu: a light icon that morphs into a close icon, no heavy borders, shadows or
-boxed buttons.
+menu: a light icon with a clear open and close state, no heavy borders, shadows
+or boxed buttons.
 
 - Keep the mobile header to logo and one control group. Extra actions
   (language, search, account) may sit next to the menu button in a shared
@@ -61,7 +61,8 @@ boxed buttons.
   pill; otherwise move them into the menu panel.
 - Use a `<button>` with an accessible name, `aria-expanded` and
   `aria-controls`; touch target at least 44×44px.
-- Animate the icon morph and panel fluently; closing may be slightly faster.
+- Animate the icon and panel fluently in a way that fits the brand (morph,
+  swap, slide, fade); closing may be slightly faster.
 - Close on Escape, link selection and a second tap; return focus to the button.
   Keep keyboard order logical and the page from scrolling behind an open overlay.
 - Under `prefers-reduced-motion`, switch instantly or with a short fade.
