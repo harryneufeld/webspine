@@ -55,6 +55,14 @@ Core updates never change site-owned files (`site/`, `config/`, `storage/`,
 existing site, it is listed here, newest first. Apply it on the local copy,
 run the checks, then deploy. Versions without an entry need nothing.
 
+### 0.1.29
+
+- Optional: the contact form example sends HTML notifications through
+  providers with the new [HTML and attachments](mail.md#html-and-attachments)
+  capability. To adopt it, copy the updated `ContactForm.php` and
+  `MailDelivery.php` into `site/plugins/contact-form/`. No migration is needed.
+- Custom code using SMTP: subjects must now be valid UTF-8 of at most 998 bytes.
+
 ### 0.1.28
 
 - Optional: agent guidance moved into [design](design.md),

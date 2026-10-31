@@ -25,6 +25,7 @@ final class ContactForm {
         if (!is_string($path) || !preg_match('~^/[a-z0-9/-]+$~D',$path) || str_contains($path,'//') || in_array($path,['/health','/_insights'],true) || str_starts_with($path,'/assets/')) throw new \InvalidArgumentException('Invalid form route.');
         if (!is_string($config['recipient']??null) || !filter_var($config['recipient'],FILTER_VALIDATE_EMAIL)) throw new \InvalidArgumentException('Configure a fixed form recipient.');
         if (!is_string($config['subject']??'Contact enquiry') || strlen($config['subject']??'Contact enquiry')>200 || preg_match('/[\r\n\x00]/',$config['subject']??'Contact enquiry')) throw new \InvalidArgumentException('Invalid subject.');
+        if (array_key_exists('html_mail',$config) && !is_bool($config['html_mail'])) throw new \InvalidArgumentException('Configure html_mail as a boolean.');
         if (isset($config['renderer']) && !is_callable($config['renderer'])) throw new \InvalidArgumentException('Renderer must be a trusted callable.');
         $this->copy=$app->site->content('contact-form');
         foreach ($this->copy as $value) if (!is_string($value) || !preg_match('//u',$value)) throw new \InvalidArgumentException('Form copy must be plain UTF-8 text.');
