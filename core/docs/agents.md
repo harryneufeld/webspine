@@ -1,0 +1,92 @@
+# Working on a webspine site
+
+webspine is an open-source website foundation for AI to build and maintain.
+Inspect existing work before editing, make scoped changes, and protect secrets.
+
+This guide is replaced by core updates, so never add site-specific notes here.
+They belong under "Site notes" in the root `AGENTS.md` and take priority over
+this guide. Paths below are relative to the site root.
+
+## Check for updates
+
+At the start of a session, follow the
+[update check](update.md#checking-for-updates) when `storage/update-check.json`
+is missing or its date is more than 30 days old.
+
+## Where things go
+
+| Path | Purpose |
+| --- | --- |
+| `site/meta.php` | Site identity, SEO description, language, indexing, theme |
+| `site/pages.php` | Page titles, paths, templates, plain-text pages, 404 copy |
+| `site/content/` | Editable copy, e.g. `headline`, `intro`, `items` in `home.php` |
+| `site/routes.php` | Custom URLs and database-page routing |
+| `site/install.php` | Idempotent starter-data initialization |
+| `site/themes/<id>/` | Layout, templates, `components/`, scoped CSS/JS, assets |
+| `site/plugins/<id>/` | Custom capabilities, providers, entities |
+| `site/tests/` | Site-specific checks |
+| `config/local.php` | Private configuration; never expose or commit it |
+| `storage/` | Persistent data, journals, backups |
+| `public/` | Only web document root; no site logic here |
+| `core/` | Framework; do not edit it for website work |
+
+Keep content keys stable when changing wording. Text belongs in content
+files; presentation belongs in the theme.
+
+## Rules
+
+- PHP 8.3+, HTML, CSS, vanilla JS. No required Composer, npm, frontend
+  framework, or build step.
+- Escape plain-text values and URLs with `e()`; no trusted HTML in content.
+- Reuse components before duplicating markup; pass data as explicit props.
+- Custom entities go in `site/plugins/<feature>/` via the Entities service.
+- New mutation endpoints need validation, authorization and CSRF protection.
+  Public forms use the [form guard](forms.md).
+- Preserve the theme identity, responsive behavior, accessibility, and
+  reduced-motion support. Follow [design guidelines](design.md).
+- Starter pages are `noindex` until `'indexable' => true` in `site/meta.php`;
+  set it only when the user is ready to be found by search engines.
+- Develop and test locally with disposable data, never production services.
+- Third-party libraries need recorded version, license, source and checksum.
+- Do not claim planned features exist.
+
+## Verify
+
+```sh
+php core/bin/console.php install
+php core/bin/console.php health
+php core/tests/run.php
+php site/tests/run.php
+php -S localhost:8080 -t public public/router.php
+```
+
+Lint changed PHP files. Check changed pages in the browser, including mobile
+widths. Extend `site/tests/` as the site grows. Hosting or routing configuration
+changes also need `sh core/tests/hosting/run.sh` (Docker). Report checks run and gaps.
+If `php` is missing on this development checkout, use `.tools/php/php.exe`.
+
+After developing or changing the website, start it with the PHP built-in server
+(the last command above), give the user the local URL, and let them review and
+test it before finishing, deploying or publishing.
+
+## Deployment and updates
+
+The agent may deploy and update production when the user authorizes it, and
+handles all technical steps itself. Follow [publishing](publishing.md) for
+deployment and [update](update.md) for framework updates and migration notes.
+
+## Guides
+
+Building a site: [site](site.md) ·
+[components and assets](site.md#reusable-components) ·
+[design](design.md) · [language](language.md) · [routing](routing.md) ·
+[requests](requests.md) · [forms](forms.md) · [entities](entities.md) ·
+[mail](mail.md) · [queue](queue.md) · [console commands](console.md) ·
+[after-response work](response-lifecycle.md) · [asset caching](assets.md)
+
+Going live: [publishing](publishing.md) · [deployment](deployment.md) ·
+[update](update.md)
+
+Framework internals: [architecture](architecture.md) ·
+[contributing](contributing.md) · [releases](releases.md) ·
+[verification](verification.md)

@@ -22,7 +22,8 @@ layouts and scoped styles reduce accidental drift. The brand is lowercase
 webspine; only spine is bold when displayed in formatted text.
 
 Keep site content keys stable. Edit text values in site/content/, not framework
-classes. Preserve the site's AGENTS.md during core releases. A theme change
+classes. Preserve the site's AGENTS.md during core releases; general agent
+guidance belongs in core/docs/agents.md. A theme change
 must keep compatible content keys/templates or explicitly adapt them. Never
 include site-owned paths in a core-release inventory. See core/docs/site.md.
 
