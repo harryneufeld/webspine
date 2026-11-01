@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Webspine\Examples;
+use Webspine\Forms\FormText;
 use Webspine\Jobs\{Handler,Job,PermanentFailure};
 use Webspine\Contracts\{Mail,MailMessage,MailWithMessage,MailWithReplyTo,ReplyTo};
 final class MailDelivery implements Handler {

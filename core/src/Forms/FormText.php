@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-namespace Webspine\Examples;
+namespace Webspine\Forms;
 
 /** Browser-compatible limits without an optional PHP Unicode extension. */
 final class FormText {

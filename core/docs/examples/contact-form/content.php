@@ -5,6 +5,7 @@
     'field_error'=>'Please enter a valid value.',
     'token_error'=>'This form token is invalid or expired. Please submit the fresh form below.',
     'expired'=>'Your form token expired. Your input has been kept; please review and submit the fresh form below.',
+    'too_fast'=>'That was very quick. Your input has been kept; please review it and submit again.',
     'unavailable'=>'Your message could not be saved. Please try again later.',
     'rate_error'=>'Too many attempts. Please try again in 10 minutes.', 'rejected'=>'Submission rejected.',
     'name_error'=>'Enter a name of up to 120 characters.', 'email_error'=>'Enter a valid email address.',
