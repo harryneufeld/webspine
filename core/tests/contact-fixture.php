@@ -18,7 +18,7 @@ return static function(string $root,string $path='/contact-example'): void {
     contactCopy(__DIR__.'/fixtures/website/site',$root.'/site');
     mkdir($root.'/storage');mkdir($root.'/config');
     $example=$source.'/core/docs/examples/contact-form';
-    foreach(['plugin.php','plugin.json','FormText.php','ContactForm.php','MailDelivery.php'] as $file){
+    foreach(['plugin.php','plugin.json','ContactForm.php','MailDelivery.php'] as $file){
         \Webspine\Files::write($root.'/site/plugins/contact-form/'.$file,file_get_contents($example.'/'.$file));
     }
     foreach(['template.php'=>'site/themes/test-theme/contact-form.php','content.php'=>'site/content/contact-form.php','contact-form.css'=>'site/themes/test-theme/assets/contact-form.css'] as $file=>$target){

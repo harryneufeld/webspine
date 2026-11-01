@@ -55,6 +55,17 @@ Core updates never change site-owned files (`site/`, `config/`, `storage/`,
 existing site, it is listed here, newest first. Apply it on the local copy,
 run the checks, then deploy. Versions without an entry need nothing.
 
+### 0.1.32
+
+- Optional: new [form guard](forms.md) for public forms. To move the contact
+  example onto it, copy the updated `plugin.php`, `plugin.json`, `ContactForm.php`,
+  `MailDelivery.php` and `content.php` (new key `too_fast`), and delete the
+  site's `FormText.php`. The existing copies keep working until you do.
+- Adopting it changes the storage to `storage/forms/contact/`, the cookie name to
+  `webspine_contact` and its path to the form URL. Visitors with the form open
+  get a fresh token once; `storage/contact-forms/` can then be deleted. An exact
+  replay now uses one rate attempt, and unknown or array fields get the plain 422.
+
 ### 0.1.29
 
 - Optional: the contact form example sends HTML notifications through

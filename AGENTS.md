@@ -31,6 +31,7 @@ files; presentation belongs in the theme.
 - Reuse components before duplicating markup; pass data as explicit props.
 - Custom entities go in `site/plugins/<feature>/` via the Entities service.
 - New mutation endpoints need validation, authorization and CSRF protection.
+  Public forms use the [form guard](core/docs/forms.md).
 - Preserve the theme identity, responsive behavior, accessibility, and
   reduced-motion support. Follow [design guidelines](core/docs/design.md).
 - Starter pages are `noindex` until `'indexable' => true` in `site/meta.php`;
@@ -69,6 +70,7 @@ migration notes.
 
 [site](core/docs/site.md) · [components and assets](core/docs/site.md#reusable-components) ·
 [routing](core/docs/routing.md) · [requests](core/docs/requests.md) ·
+[forms](core/docs/forms.md) ·
 [entities](core/docs/entities.md) · [design](core/docs/design.md) ·
 [publishing](core/docs/publishing.md) · [deployment](core/docs/deployment.md) ·
 [update](core/docs/update.md) · [architecture](core/docs/architecture.md)

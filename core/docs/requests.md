@@ -47,7 +47,8 @@ if (is_string($id) && isset($destinations[$id])) {
 }
 ```
 
-Never redirect to an arbitrary user-supplied destination. See the optional
+Never redirect to an arbitrary user-supplied destination. For public forms, use
+the [form guard](forms.md); see the optional
 [protected contact-form example](examples/contact-form/README.md).
 
 See [page paths, slash policies and migration redirects](routing.md) for the
