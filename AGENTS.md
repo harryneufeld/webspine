@@ -54,6 +54,10 @@ widths. Extend `site/tests/` as the site grows. Hosting or routing configuration
 changes also need `sh core/tests/hosting/run.sh` (Docker). Report checks run and gaps.
 If `php` is missing on this development checkout, use `.tools/php/php.exe`.
 
+After developing or changing the website, start it with the PHP built-in server
+(the last command above), give the user the local URL, and let them review and
+test it before finishing, deploying or publishing.
+
 ## Deployment and updates
 
 The agent may deploy and update production when the user authorizes it, and
