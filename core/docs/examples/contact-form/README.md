@@ -4,7 +4,7 @@ The current copyable example always saves valid submissions to the durable
 `job-queue` before email delivery. There is one delivery workflow; synchronous
 sending is not a configuration mode. The starter still has no enabled form.
 
-Copy `plugin.php`, `plugin.json`, `FormText.php`, `ContactForm.php`, and `MailDelivery.php` into
+Copy `plugin.php`, `plugin.json`, `ContactForm.php`, and `MailDelivery.php` into
 `site/plugins/contact-form/`. Copy `template.php` to `contact-form.php` in your
 selected theme, its CSS to that theme's `assets/`, and `content.php` to
 `site/content/contact-form.php`. Keep presentation and translated copy site-owned.
@@ -157,17 +157,20 @@ discarded. All redisplayed values are escaped by the template.
 After a successful save, the session keeps up to three submission receipts for
 ten minutes. An exact replay of the same validated fields and token in that
 session returns the success redirect without adding another job, including
-concurrent double submissions. This receipt check does not consume another rate
-attempt. Changed fields, unknown/expired receipts and another session do not
+concurrent double submissions. A replay consumes one rate attempt, and once the
+budget is exhausted it gets 429 like any other POST, without a new job. Changed fields, unknown/expired receipts and another session do not
 qualify. The success notice is shown again after a recognized replay. Receipts
-hold only hashes, expiry and job IDs, not submitted text. This handles HTTP
+hold only hashes, expiry and the notice key, not submitted text. This handles HTTP
 resubmission; it does not guarantee exactly-once SMTP delivery.
 
-A honeypot, unknown
-field rejection, fixed recipient and rate limiting remain in place. Queue
+The example uses the core [form guard](../../forms.md) for these checks. A
+honeypot, unknown or array field returns a plain 422. Set `min_seconds` (0–3600,
+default off) to refuse submissions faster than that with the `too_fast` notice,
+keeping the input and token. The fixed recipient remains in place. Queue
 failures return a recoverable 503 without reporting a successful save.
 
-The form owns a session under `storage/contact-forms/sessions`. Secure,
+The form owns a session under `storage/forms/contact/sessions`, with a cookie
+limited to the form path. Secure,
 HttpOnly, SameSite=Lax cookies are the default; `secure_cookie => false` is only
 for local HTTP fixtures. Tokens last ten minutes and sessions are eligible for
 PHP garbage collection after thirty minutes. Integrate explicitly with an
@@ -178,8 +181,8 @@ not after printing progress in the same PHP process. Cookie security is unchange
 for production to accommodate tests.
 
 The locked rate file permits five attempts per direct peer IP in ten minutes
-(`max_attempts` can be 1–20). It caps stored clients at 2,048 and stores salted
-address hashes. It does not trust forwarded headers. Configure trusted real-IP
+(`max_attempts` can be 1–20). It caps stored keys at 4,096, stores salted
+address hashes and counts IPv6 clients per /64. It does not trust forwarded headers. Configure trusted real-IP
 handling at the server when behind a proxy. This is local abuse protection, not
 a distributed anti-spam service or privileged-action authorization.
 
@@ -189,8 +192,8 @@ Core releases preserve customized `site/plugins/contact-form`, content and
 templates. They do not silently replace an installed synchronous example, enable
 a form, install queue tables, or migrate pending messages from another queue.
 Adopting this example is a deliberate local site change: review/copy the new
-plugin files (including `FormText.php`), template and new copy keys (including
-`expired`), retain compatible private settings,
+plugin files, template and new copy keys (including `expired` and `too_fast`),
+delete any older `FormText.php` copy, retain compatible private settings,
 install queue storage and schedule the worker. Existing content keys including
 `sent` remain, with wording changed to saved-for-delivery. Drain/migrate any old
 queue and resolve route overlap before switching. No alternative synchronous

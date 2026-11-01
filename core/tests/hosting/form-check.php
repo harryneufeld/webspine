@@ -65,7 +65,7 @@ formCheck('Mismatched token is retired without retaining submitted values',funct
 });
 formCheck('Expired matching token preserves escaped input with a fresh token without queueing',function()use($headers,&$valid,$fixtureRoot){
     $sid=explode('=',$headers['Cookie'],2)[1];if(!preg_match('/^[a-zA-Z0-9,-]+$/D',$sid))return false;
-    fixturePhp('session_id('.var_export($sid,true).');session_start(["save_path"=>'.var_export($fixtureRoot.'/storage/contact-forms/sessions',true).',"use_cookies"=>0,"cache_limiter"=>""]);$_SESSION["contact_forms"]["contact"]["expires"]=0;session_write_close();echo "{}";');
+    fixturePhp('session_id('.var_export($sid,true).');session_start(["save_path"=>'.var_export($fixtureRoot.'/storage/forms/contact/sessions',true).',"use_cookies"=>0,"cache_limiter"=>""]);$_SESSION["form"]["expires"]=0;session_write_close();echo "{}";');
     $old=$valid['csrf'];$bad=$valid;$bad['name']='<b>Änne</b>';$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);$valid['csrf']=refreshFormToken($headers);
     return $r['status']===403 && str_contains($r['body'],'Your input has been kept') && str_contains($r['body'],'&lt;b&gt;Änne&lt;/b&gt;')
         && str_contains($r['body'],$valid['email']) && str_contains($r['body'],$valid['message']) && $valid['csrf']!==$old && queueAction()['pending']===0;
@@ -85,7 +85,7 @@ formCheck('Unicode over-limit text remains editable; malformed and hard-byte-lim
 });
 // Native maxlength counts astral emoji twice and combining marks separately.
 formCheck('Unicode length follows browser UTF-16 limits without optional extensions',function()use($fixtureRoot){
-    return fixturePhp('require '.var_export($fixtureRoot.'/site/plugins/contact-form/FormText.php',true).';echo json_encode([\\Webspine\\Examples\\FormText::units("ä"),\\Webspine\\Examples\\FormText::units("😀"),\\Webspine\\Examples\\FormText::units("e\\u{0301}")]);')===[1,2,2];
+    return fixturePhp('require '.var_export($fixtureRoot.'/core/src/Forms/FormText.php',true).';echo json_encode([\\Webspine\\Forms\\FormText::units("ä"),\\Webspine\\Forms\\FormText::units("😀"),\\Webspine\\Forms\\FormText::units("e\\u{0301}")]);')===[1,2,2];
 });
 formCheck('Astral emoji and combining marks enforce browser limits through HTTP',function()use($headers,$valid){
     foreach([str_repeat('😀',61),str_repeat("e\u{0301}",61)] as $name){$bad=$valid;$bad['name']=$name;$r=contactRequest(CONTACT_PATH,'POST',http_build_query($bad),$headers);if($r['status']!==422 || !str_contains($r['body'],$name))return false;}
@@ -117,13 +117,13 @@ formCheck('Malformed JSON and unregistered methods never reach a write handler',
 formCheck('Legacy redirect ignores untrusted destinations',function(){ $r=contactRequest('/hosting-legacy?page_id=41&next=https%3A%2F%2Fevil.test'); $bad=contactRequest('/hosting-legacy?page_id[]=41'); return $r['status']===302 && $r['headers']['location']==='/docs' && $bad['status']===404; });
 formCheck('Expired successful receipt cannot authorize a replay',function()use($headers,$valid,$fixtureRoot){
     $sid=explode('=',$headers['Cookie'],2)[1];
-    fixturePhp('session_id('.var_export($sid,true).');session_start(["save_path"=>'.var_export($fixtureRoot.'/storage/contact-forms/sessions',true).',"use_cookies"=>0,"cache_limiter"=>""]);foreach($_SESSION["contact_forms"]["contact"]["receipts"] as &$receipt)$receipt["expires"]=0;unset($receipt);session_write_close();echo "{}";');
+    fixturePhp('session_id('.var_export($sid,true).');session_start(["save_path"=>'.var_export($fixtureRoot.'/storage/forms/contact/sessions',true).',"use_cookies"=>0,"cache_limiter"=>""]);foreach($_SESSION["form"]["receipts"] as &$receipt)$receipt["expires"]=0;unset($receipt);session_write_close();echo "{}";');
     $r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);
     return $r['status']===403 && queueAction()['pending']===0 && mailCount()===1;
 });
 formCheck('Concurrent identical POSTs both redirect and queue exactly one job',function()use($headers,&$valid,$base,$fixtureRoot){
     // Reset only this disposable fixture limiter so this independently tested scenario has a budget.
-    fixturePhp('unlink('.var_export($fixtureRoot.'/storage/contact-forms/rate.json',true).');echo "{}";');
+    fixturePhp('unlink('.var_export($fixtureRoot.'/storage/forms/contact/rate.json',true).');echo "{}";');
     $valid['csrf']=refreshFormToken($headers);$valid['message']='Concurrent test message.';
     $script='$ctx=stream_context_create(["http"=>["method"=>"POST","content"=>'.var_export(http_build_query($valid),true).',"header"=>'.var_export('Content-Type: application/x-www-form-urlencoded'."\r\n".'Cookie: '.$headers['Cookie'],true).',"ignore_errors"=>true,"follow_location"=>0,"timeout"=>10]]);file_get_contents('.var_export($base.CONTACT_PATH,true).',false,$ctx);echo $http_response_header[0];';
     $children=[];
@@ -136,9 +136,9 @@ formCheck('Concurrent identical POSTs both redirect and queue exactly one job',f
         && str_contains($saved['body'],'saved for delivery') && str_contains($savedAgain['body'],'saved for delivery');
 });
 formCheck('Cookie rotation and forged forwarded addresses cannot bypass rate limiting',function(){ $limited=false; for($i=0;$i<21;$i++){ $r=contactRequest(CONTACT_PATH,'POST','csrf=wrong',['Content-Type'=>'application/x-www-form-urlencoded','X-Forwarded-For'=>'203.0.113.'.($i+1)]); if($r['status']===429){ $limited=$r['headers']['retry-after']==='600'; break; } if($r['status']!==403)return false; } return $limited && mailCount()===1; });
-formCheck('A successful receipt still works after the ordinary attempt budget is exhausted',function()use($headers,$valid){$r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);return $r['status']===303 && queueAction()['pending']===1 && mailCount()===1;});
+formCheck('An exhausted attempt budget refuses a replay before the session without another job',function()use($headers,$valid){$r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);return $r['status']===429 && queueAction()['pending']===1 && mailCount()===1;});
 formCheck('Receipt history retains only the last three successful tokens',function()use($headers,$valid,$fixtureRoot){
-    fixturePhp('unlink('.var_export($fixtureRoot.'/storage/contact-forms/rate.json',true).');echo "{}";');
+    fixturePhp('unlink('.var_export($fixtureRoot.'/storage/forms/contact/rate.json',true).');echo "{}";');
     $first=null;
     for($i=0;$i<4;$i++){$valid['csrf']=refreshFormToken($headers);$valid['message']='Receipt history message '.$i;if($i===0)$first=$valid;$r=contactRequest(CONTACT_PATH,'POST',http_build_query($valid),$headers);if($r['status']!==303)return false;}
     $old=contactRequest(CONTACT_PATH,'POST',http_build_query($first),$headers);

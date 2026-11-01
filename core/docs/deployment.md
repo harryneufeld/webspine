@@ -125,6 +125,9 @@ traffic** to clear OPcache; CLI `opcache_reset()` does not reach web workers.
 Purge proxy caches and recheck pages and assets. Never expose configuration,
 SMTP credentials or backups through the web root.
 
+Exclude public form URLs from page caches and configure the real client IP as
+`REMOTE_ADDR` behind a proxy; see [forms](forms.md#deployment).
+
 The [queued contact example](examples/contact-form/README.md) needs its queue
 installation and a cron worker sharing the storage group with PHP. Review
 [queue guarantees](queue.md) and test captured delivery before using real mail.
