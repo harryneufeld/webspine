@@ -101,8 +101,8 @@ adapters own their SQL, migrations, and data-transfer tooling.
 Edit the homepage headline and subline in `site/content/home.php`, page titles
 in `site/pages.php`, and identity in `site/meta.php`. Theme templates escape and
 present those values. Providers install schema; `site/install.php` seeds this
-website explicitly and idempotently. See `AGENTS.md`, `core/docs/site.md`, and
-[design guidelines](core/docs/design.md).
+website explicitly and idempotently. See `core/docs/agents.md`, `core/docs/site.md`,
+and [design guidelines](core/docs/design.md).
 
 Reusable presentation components live in `site/themes/<id>/components/`.
 Pass text/data from existing site content files and render them through
@@ -139,8 +139,8 @@ updates are planned. Drain production workers and reset OPcache after activation
 Create a website from a bootstrap once; update the framework using core releases.
 Do not overlay the upstream repository or another full bootstrap onto a customized
 site. Git pulls use merge rules and do not offer the core updater's preservation
-guarantee. The site's root `AGENTS.md` is preserved; framework docs and README are
-update-owned.
+guarantee. The site's root `AGENTS.md` is preserved and points to the update-owned
+`core/docs/agents.md`; framework docs and README are update-owned.
 
 Bundled dependencies and per-file SHA-256 inventories are recorded in
 `core/vendor/dependencies.json`. PHPMailer 7.1.1 is LGPL-2.1.
