@@ -42,7 +42,9 @@ but are rejected by the updater. SMTP's bundled library lives in core/vendor/;
 plugin updates are separately planned.
 
 The root AGENTS.md is shipped in full bootstrap packages and preserved in core
-updates. Upstream Git pulls/overlays do not provide this preservation contract.
+updates. It holds site notes and points to core/docs/agents.md, the general agent
+guide that core updates replace. Upstream Git pulls/overlays do not provide this
+preservation contract.
 See site.md for the bootstrap-once, core-releases-afterwards workflow.
 
 Update validation rejects unlisted, missing, duplicate/case-colliding, traversing,

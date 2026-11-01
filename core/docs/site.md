@@ -204,7 +204,8 @@ instructions, then apply core release ZIPs with
 `php core/bin/console.php update` ([update](update.md)). Core archives
 exclude `site/`, `config/`, `storage/`, `.dist/` and `AGENTS.md`; the updater
 rejects site paths and bootstrap ZIPs. Git pulls and archive overlays do not
-follow this contract. `core/docs/` is update-owned; site guides belong in `site/`.
+follow this contract. `core/docs/`, including the [agent guide](agents.md), is
+update-owned; site guides belong in `site/`, and agent notes in `AGENTS.md`.
 
 ## Site tests
 
