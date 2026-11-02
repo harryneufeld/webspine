@@ -111,8 +111,12 @@ php core/bin/console.php job-queue:health
 An operator can schedule the worker every minute, using absolute paths:
 
 ```cron
-* * * * * /usr/bin/php /srv/example/core/bin/console.php job-queue:work
+* * * * * /usr/bin/flock -n -E 0 /srv/example/storage/job-queue.lock /usr/bin/timeout 600 /usr/bin/php /srv/example/core/bin/console.php job-queue:work
 ```
+
+`flock` skips a run while the previous one is active and `timeout` stops a hung
+worker. Use one lock file per queue, leave `job-queue:health` unlocked, and if
+`flock` is unavailable, use the plain command.
 
 Run it as the local site's runtime user/group, keep output/diagnostics private,
 and monitor exit codes. See [queue operations](queue.md). The existing
