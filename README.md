@@ -7,7 +7,7 @@ your choice of AI. Clear boundaries between content, themes, components, and
 plugins give your AI guardrails to keep the code organized and maintainable.
 
 Built with plain PHP, HTML, CSS, and JavaScript. No frontend framework, Node.js
-runtime, or build step—just straightforward deployment on a PHP web server with
+runtime, or build step, just straightforward deployment on a PHP web server with
 SQLite support.
 
 You own the code and can keep developing it independently of future webspine
@@ -15,19 +15,19 @@ releases.
 
 ## Why webspine
 
-- **Guardrails for your AI** — content, themes, components, and plugins each
+- **Guardrails for your AI**: content, themes, components, and plugins each
   have their own place. Your AI makes focused changes instead of tangled ones.
-- **Real backend, plain PHP** — routing, pages, redirects, and a CLI for
+- **Real backend, plain PHP**: routing, pages, redirects, and a CLI for
   install, health checks, and updates. No Node.js, npm, Composer, or build step.
-- **Built-in database** — SQLite out of the box, with declarative entities,
+- **Built-in database**: SQLite out of the box, with declarative entities,
   validated CRUD, filters, and indexes.
-- **Contact form** — spam-protected, with messages saved to a durable queue
+- **Contact form**: spam-protected, with messages saved to a durable queue
   and delivered to your inbox via SMTP.
-- **Simple analytics** — aggregate page visits in a private dashboard, without
+- **Simple analytics**: aggregate page visits in a private dashboard, without
   tracking individual visitors.
-- **Safe updates** — verified core releases update the framework while your
+- **Safe updates**: verified core releases update the framework while your
   content, theme, plugins, and data stay untouched. Failed updates roll back.
-- **Entirely yours** — MIT-licensed, readable code you can keep developing
+- **Entirely yours**: MIT-licensed, readable code you can keep developing
   without depending on future webspine releases.
 
 ## Get started
